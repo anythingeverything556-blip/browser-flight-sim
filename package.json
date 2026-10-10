@@ -1,0 +1,23 @@
+{
+  "name": "sr71-sim",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 4173",
+    "test": "node test/dem-test.mjs && node test/fdm-test.mjs"
+  },
+  "dependencies": {
+    "@mapbox/vector-tile": "^3.0.0",
+    "earcut": "^3.2.4",
+    "leaflet": "^1.9.4",
+    "pbf": "^5.1.2",
+    "pmtiles": "^4.5.0",
+    "three": "^0.180.0"
+  },
+  "devDependencies": {
+    "vite": "^7.3.6"
+  }
+}

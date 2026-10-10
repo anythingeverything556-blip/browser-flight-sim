@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#07111b" />
+  <title>Blackbird — SR-71 Flight Simulator</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2307111b'/%3E%3Cpath d='M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z' fill='%2375d8f4'/%3E%3C/svg%3E" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body class="intro">
+  <canvas id="view" aria-hidden="true"></canvas>
+  <div id="gloom" aria-hidden="true"></div>
+  <div id="fogveil" aria-hidden="true"></div>
+  <canvas id="rain" aria-hidden="true"></canvas>
+  <div id="bolt" aria-hidden="true"></div>
+  <canvas id="hud" aria-hidden="true"></canvas>
+
+  <nav id="rail" aria-label="Simulator controls">
+    <div class="brand" title="Blackbird SR-71" aria-hidden="true">
+      <svg viewBox="0 0 40 40"><path d="M20 3 L21.4 13 L23 13.6 L24 11 L25.6 11 L26 22 L36 30 L36 32 L26 30 L24 33 L21.8 33 L21 37 L19 37 L18.2 33 L16 33 L14 30 L4 32 L4 30 L14 22 L14.4 11 L16 11 L17 13.6 L18.6 13 Z" /></svg>
+    </div>
+    <button type="button" data-sheet="flight" title="Flight setup" aria-label="Flight setup"><svg viewBox="0 0 24 24"><path d="M2 16l20-6-20-6 3 6-3 6zm3-6h9"/></svg><span>Flight</span></button>
+    <button type="button" data-sheet="map" title="Map &amp; route (M)" aria-label="Map and route"><svg viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg><span>Map</span></button>
+    <button type="button" data-sheet="airports" title="Airports" aria-label="Airports"><svg viewBox="0 0 24 24"><path d="M4 20h16M7 20V9l5-4 5 4v11M10 20v-5h4v5"/></svg><span>Airports</span></button>
+    <button type="button" data-sheet="ap" title="Autopilot (A)" aria-label="Autopilot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v4M12 16v4M4 12h4M16 12h4M12 12l4-3"/></svg><span>Autopilot</span></button>
+    <button type="button" data-sheet="views" title="Cameras (V)" aria-label="Camera views"><svg viewBox="0 0 24 24"><path d="M3 8h13v9H3zM16 11l5-3v9l-5-3"/></svg><span>Views</span></button>
+    <button type="button" data-sheet="env" title="Time &amp; weather" aria-label="Time and weather"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.5"/><path d="M9 2v2M9 14v2M2 9h2M14 9h2M7 20h11a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6 1.5A3 3 0 0 0 7 20z"/></svg><span>Weather</span></button>
+    <button type="button" data-sheet="settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>Settings</span></button>
+    <button type="button" data-sheet="help" title="Help" aria-label="Help"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 1-1 1.7v.5M12 17h.01"/></svg><span>Help</span></button>
+    <div class="grow"></div>
+    <button type="button" id="b-pause" title="Pause (P)" aria-keyshortcuts="P"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg><span>Pause</span></button>
+    <button type="button" id="b-sound" title="Sound (O)" aria-keyshortcuts="O"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg><span>Sound</span></button>
+  </nav>
+
+  <div id="hero" aria-label="Blackbird flight simulator">
+    <div class="hero-brand"><span class="hero-signal"></span><span class="h-kicker">LOCKHEED · SR-71A</span></div>
+    <div class="hero-program">HIGH-ALTITUDE FLIGHT SIMULATION</div>
+    <h1>BLACKBIRD</h1>
+    <p>Choose a runway, shape a route, and fly at the edge of the atmosphere.</p>
+    <div class="hero-specs" aria-label="Aircraft specifications">
+      <div><span>MAX SPEED</span><b>MACH 3.2+</b></div>
+      <div><span>SERVICE CEILING</span><b>85,000 FT</b></div>
+      <div><span>CREW</span><b>2 AIRCREW</b></div>
+    </div>
+    <div class="hero-footer"><span class="hero-signal"></span><span>FLIGHT SYSTEMS</span><b>READY FOR SORTIE</b></div>
+    <button type="button" class="linkbtn hero-terms js-terms">Terms &amp; credits</button>
+    <div class="hero-loader">
+      <div class="hero-loader-head"><span>MISSION SYSTEMS</span><span id="loadmsg" aria-live="polite">Loading aircraft…</span></div>
+      <div id="loadline"><div id="loadbar"></div></div>
+    </div>
+  </div>
+
+  <section class="sheet" id="sheet-flight" aria-labelledby="flight-heading">
+    <header>
+      <div class="heading"><span class="eyebrow">MISSION PLANNING</span><h2 id="flight-heading">Flight setup</h2></div>
+      <span class="hint">Configure your aircraft and departure.</span>
+      <button type="button" class="x" data-close aria-label="Close flight setup">×</button>
+    </header>
+    <div class="body">
+      <div class="card home">
+        <div class="lbl">Home base <span class="field-meta">SAVED AIRFIELD</span></div>
+        <div class="row"><div><b id="home-name">—</b><div class="sub" id="home-sub"></div></div><button type="button" id="home-go" class="ghost" disabled>Return</button></div>
+      </div>
+      <label class="lbl" for="dep-q">Departure airport <span class="field-meta">ICAO · IATA · NAME</span></label>
+      <div class="search"><input id="dep-q" type="search" placeholder="Search airports — e.g. KEDW, LAX, Kadena" autocomplete="off" aria-label="Search departure airports" /><div id="dep-results" class="results"></div></div>
+      <div class="card" id="dep-card"></div>
+      <div class="lbl">Start profile <span class="field-meta">SELECT INSERTION</span></div>
+      <div class="seg" id="start-mode" role="group" aria-label="Flight start profile">
+        <button type="button" data-v="runway" class="on">On runway</button><button type="button" data-v="approach">10 NM final</button><button type="button" data-v="cruise">Mach 3.2 cruise</button>
+      </div>
+      <label class="lbl" for="intro-tod">Time of day <span id="intro-tod-l" class="val"></span></label>
+      <input type="range" id="intro-tod" min="0" max="24" step="0.25" value="15" aria-label="Departure time of day" />
+      <div class="lbl">Weather preset <span class="field-meta">INITIAL CONDITIONS</span></div>
+      <div class="seg wrap" id="intro-wx" role="group" aria-label="Departure weather"><button type="button" data-v="clear">Clear</button><button type="button" data-v="few" class="on">Fair</button><button type="button" data-v="scattered">Scattered</button><button type="button" data-v="overcast">Overcast</button><button type="button" data-v="rain">Rain</button><button type="button" data-v="storm">Storm</button><button type="button" data-v="fog">Fog</button><button type="button" data-v="windy">Gusty</button></div>
+      <button type="button" id="start-btn" class="cta" disabled>Start flight</button>
+      <label class="check"><input type="checkbox" id="make-home" /> <span>Make this my home base</span></label>
+    </div>
+  </section>
+
+  <section class="sheet wide" id="sheet-map" aria-labelledby="map-heading">
+    <header>
+      <div class="heading"><span class="eyebrow">NAVIGATION</span><h2 id="map-heading">Map &amp; route</h2></div>
+      <span class="hint">Click the map to add a waypoint or teleport · select an airport for options.</span>
+      <button type="button" class="x" data-close aria-label="Close map and route">×</button>
+    </header>
+    <div class="mapwrap">
+      <div id="map" aria-label="Flight planning map"></div>
+      <aside id="route" aria-label="Route planner">
+        <div id="map-apt"></div>
+        <div class="lbl">Flight plan <span class="field-meta">WAYPOINTS</span></div>
+        <ol id="route-list"></ol>
+        <div id="route-sum" class="sub"></div>
+        <div class="lbl">Arrival runway <span class="field-meta">ILS</span></div>
+        <div id="arr-box" class="sub">None — choose one from an airport</div>
+        <div class="btns"><button type="button" id="route-nav" class="primary">Fly route (NAV)</button><button type="button" id="route-clear" class="ghost">Clear</button></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="sheet" id="sheet-airports" aria-labelledby="airports-heading">
+    <header>
+      <div class="heading"><span class="eyebrow">DATABASE</span><h2 id="airports-heading">Airports</h2></div>
+      <span class="hint" id="apt-count"></span>
+      <button type="button" class="x" data-close aria-label="Close airports">×</button>
+    </header>
+    <div class="body">
+      <div class="search"><input id="apt-q" type="search" placeholder="Search 7,000+ airports worldwide" autocomplete="off" aria-label="Search airports" /></div>
+      <div class="seg small" id="apt-filter" role="group" aria-label="Filter airports"><button type="button" data-v="near" class="on">Nearby</button><button type="button" data-v="all">All</button><button type="button" data-v="mil">Military</button><button type="button" data-v="long">3 km+</button></div>
+      <div id="apt-list" class="list" aria-label="Airport search results"></div>
+      <div id="apt-detail"></div>
+    </div>
+  </section>
+
+  <section class="sheet" id="sheet-ap" aria-labelledby="ap-heading">
+    <header>
+      <div class="heading"><span class="eyebrow">FLIGHT DIRECTOR</span><h2 id="ap-heading">Autopilot</h2></div>
+      <span id="ap-ann" class="ann">OFF</span>
+      <button type="button" class="x" data-close aria-label="Close autopilot">×</button>
+    </header>
+    <div class="body">
+      <button type="button" id="ap-master" class="cta">Engage autopilot</button>
+      <div class="modes" id="ap-modes" role="group" aria-label="Autopilot modes">
+        <button type="button" data-m="hdg">HDG</button><button type="button" data-m="nav">NAV</button><button type="button" data-m="appr">APPR</button>
+        <button type="button" data-m="alt">ALT</button><button type="button" data-m="vs">V/S</button><button type="button" data-m="spd">SPD</button><button type="button" data-m="mach">MACH</button>
+      </div>
+      <div class="dial" data-k="hdg"><span>Heading</span><button type="button" data-d="-10">−10</button><button type="button" data-d="-1">−</button><input id="ap-hdg" type="number" value="330" aria-label="Heading target" /><button type="button" data-d="1">+</button><button type="button" data-d="10">+10</button><i>°</i></div>
+      <div class="dial" data-k="alt"><span>Altitude</span><button type="button" data-d="-5000">−5k</button><button type="button" data-d="-500">−</button><input id="ap-alt" type="number" value="30000" step="500" aria-label="Altitude target" /><button type="button" data-d="500">+</button><button type="button" data-d="5000">+5k</button><i>ft</i></div>
+      <div class="dial" data-k="vs"><span>Vert. speed</span><button type="button" data-d="-1000">−1k</button><button type="button" data-d="-100">−</button><input id="ap-vs" type="number" value="0" step="100" aria-label="Vertical speed target" /><button type="button" data-d="100">+</button><button type="button" data-d="1000">+1k</button><i>fpm</i></div>
+      <div class="dial" data-k="spd"><span>Speed</span><button type="button" data-d="-50">−50</button><button type="button" data-d="-5">−</button><input id="ap-spd" type="number" value="350" aria-label="Airspeed target" /><button type="button" data-d="5">+</button><button type="button" data-d="50">+50</button><i>KEAS</i></div>
+      <div class="dial" data-k="mach"><span>Mach</span><button type="button" data-d="-0.5">−.5</button><button type="button" data-d="-0.05">−</button><input id="ap-mach" type="number" value="3.2" step="0.05" aria-label="Mach target" /><button type="button" data-d="0.05">+</button><button type="button" data-d="0.5">+0.5</button><i>M</i></div>
+      <div class="dial" data-k="vsl"><span>Climb limit</span><button type="button" data-d="-1000">−1k</button><button type="button" data-d="-250">−</button><input id="ap-vsl" type="number" value="6000" step="250" aria-label="Vertical speed limit" /><button type="button" data-d="250">+</button><button type="button" data-d="1000">+1k</button><i>fpm</i></div>
+      <button type="button" id="ap-sync" class="ghost wide">Sync targets to current flight</button>
+      <p class="note">NAV follows the flight plan from the Map. APPR captures the localizer and glideslope of the arrival runway and disconnects at 150 ft — the SR-71 had no autoland, so you flare and land by hand.</p>
+    </div>
+  </section>
+
+  <section class="sheet" id="sheet-views" aria-labelledby="views-heading">
+    <header>
+      <div class="heading"><span class="eyebrow">CAMERA CONTROL</span><h2 id="views-heading">Views</h2></div>
+      <span class="hint">V / Shift+V · drag to look · wheel to zoom</span>
+      <button type="button" class="x" data-close aria-label="Close views">×</button>
+    </header>
+    <div class="body"><div id="view-grid" class="grid" aria-label="Camera views"></div></div>
+  </section>
+
+  <section class="sheet" id="sheet-env" aria-labelledby="env-heading">
+    <header>
+      <div class="heading"><span class="eyebrow">ENVIRONMENT</span><h2 id="env-heading">Time &amp; weather</h2></div>
+      <button type="button" class="x" data-close aria-label="Close time and weather">×</button>
+    </header>
+    <div class="body">
+      <label class="lbl" for="tod">Time of day <span id="tod-l" class="val"></span></label>
+      <input type="range" id="tod" min="0" max="24" step="0.05" value="15" aria-label="Time of day" />
+      <label class="check"><input type="checkbox" id="tod-run" /> <span>Clock runs in real time</span></label>
+      <div class="lbl">Weather <span class="field-meta">PRESET</span></div>
+      <div class="seg wrap" id="wx-presets" role="group" aria-label="Weather preset"><button type="button" data-v="clear">Clear</button><button type="button" data-v="few">Fair</button><button type="button" data-v="scattered">Scattered</button><button type="button" data-v="overcast">Overcast</button><button type="button" data-v="rain">Rain</button><button type="button" data-v="storm">Storm</button><button type="button" data-v="fog">Fog</button><button type="button" data-v="windy">Gusty</button></div>
+      <div class="lbl">Cloud coverage</div>
+      <div class="seg" id="clouds" role="group" aria-label="Cloud coverage"><button type="button" data-v="0">Clear</button><button type="button" data-v="0.3" class="on">Few</button><button type="button" data-v="0.6">Scattered</button><button type="button" data-v="0.9">Broken</button></div>
+      <label class="lbl" for="cloud-base">Cloud base <span id="cb-l" class="val"></span></label>
+      <input type="range" id="cloud-base" min="1000" max="30000" step="500" value="6000" aria-label="Cloud base" />
+      <div class="lbl">Wind <span id="wind-l" class="val"></span></div>
+      <div class="two"><input type="range" id="wind-dir" min="0" max="350" step="10" value="320" aria-label="Wind direction" title="Wind direction" /><input type="range" id="wind-spd" min="0" max="60" step="1" value="8" aria-label="Wind speed" title="Wind speed" /></div>
+      <label class="lbl" for="turb">Turbulence <span id="turb-l" class="val"></span></label>
+      <input type="range" id="turb" min="0" max="1" step="0.05" value="0.1" aria-label="Turbulence" />
+      <label class="lbl" for="vis">Visibility <span id="vis-l" class="val"></span></label>
+      <input type="range" id="vis" min="0.3" max="3" step="0.1" value="1" aria-label="Visibility" />
+    </div>
+  </section>
+
+  <section class="sheet" id="sheet-settings" aria-labelledby="settings-heading">
+    <header>
+      <div class="heading"><span class="eyebrow">AIRCRAFT &amp; SIM</span><h2 id="settings-heading">Settings</h2></div>
+      <button type="button" class="x" data-close aria-label="Close settings">×</button>
+    </header>
+    <div class="body">
+      <div class="lbl">Units</div>
+      <div class="seg" id="units" role="group" aria-label="Measurement units"><button type="button" data-v="imp" class="on">Feet · knots</button><button type="button" data-v="met">Metres · km/h</button></div>
+      <label class="lbl" for="vol">Master volume <span id="vol-l" class="val"></span></label>
+      <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7" aria-label="Master volume" />
+      <div class="lbl">Graphics quality <span class="field-meta">RENDER PRESET</span></div>
+      <div class="seg" id="detail" role="group" aria-label="Graphics quality"><button type="button" data-v="low">Low</button><button type="button" data-v="normal">Normal</button><button type="button" data-v="high" class="on">High</button><button type="button" data-v="ultra">Ultra</button></div>
+      <p class="note quality-note">Choose a preset for your device; adaptive resolution can smooth frame pacing.</p>
+      <label class="lbl" for="relief">Terrain relief shading <span id="relief-l" class="val"></span></label>
+      <input type="range" id="relief" min="0" max="1" step="0.05" value="0.75" aria-label="Terrain relief shading" />
+      <div class="setting-list">
+        <label class="check"><input type="checkbox" id="opt-strip" checked /> <span>Flight data strip</span></label>
+        <label class="check"><input type="checkbox" id="opt-buildings" checked /> <span>3D buildings (OpenStreetMap)</span></label>
+        <label class="check"><input type="checkbox" id="opt-trees" checked /> <span>3D trees (OpenStreetMap land cover + satellite)</span></label>
+        <label class="check"><input type="checkbox" id="opt-shake" /> <span>Camera shake (buffet, touchdown, afterburner)</span></label>
+        <label class="check"><input type="checkbox" id="opt-dynres" checked /> <span>Adaptive resolution (keeps the frame rate smooth)</span></label>
+        <label class="check"><input type="checkbox" id="opt-hud" /> <span>HUD overlay in the cockpit (the real jet has none)</span></label>
+        <label class="check"><input type="checkbox" id="opt-mouse" /> <span>Fly with the mouse (stick follows the cursor)</span></label>
+        <label class="check"><input type="checkbox" id="opt-crash" checked /> <span>Crashes and over-g damage</span></label>
+        <label class="check"><input type="checkbox" id="opt-unstart" checked /> <span>Inlet unstarts above Mach 2.3</span></label>
+        <label class="check"><input type="checkbox" id="opt-fuel" /> <span>Unlimited fuel</span></label>
+      </div>
+    </div>
+  </section>
+
+  <section class="sheet wide" id="sheet-help" aria-labelledby="help-heading">
+    <header>
+      <div class="heading"><span class="eyebrow">QUICK REFERENCE</span><h2 id="help-heading">Flying the Blackbird</h2></div>
+      <button type="button" class="x" data-close aria-label="Close help">×</button>
+    </header>
+    <div class="body cols">
+      <table class="keys">
+        <caption class="sr-only">Flight and simulator keyboard controls</caption>
+        <tbody>
+          <tr><th colspan="2">Flight controls</th></tr>
+          <tr><td>↑ ↓</td><td>Pitch (nose down / up)</td></tr><tr><td>← →</td><td>Roll</td></tr>
+          <tr><td>Z X</td><td>Rudder, nose-wheel steering</td></tr><tr><td>Home End</td><td>Pitch trim</td></tr>
+          <tr><td>PgUp PgDn · + −</td><td>Throttle (last quarter = afterburner)</td></tr><tr><td>9 · 0</td><td>Max afterburner · idle</td></tr>
+          <tr><td>G</td><td>Landing gear</td></tr><tr><td>B / Space</td><td>Brakes · Shift+B parking brake</td></tr>
+          <tr><td>C</td><td>Drag chute (deploy below 200 kt)</td></tr><tr><td>A</td><td>Autopilot</td></tr>
+          <tr><th colspan="2">Simulator</th></tr>
+          <tr><td>V</td><td>Next view · Shift+V previous</td></tr><tr><td>M</td><td>Map</td></tr><tr><td>P</td><td>Pause</td></tr>
+          <tr><td>R</td><td>Restart</td></tr><tr><td>Y</td><td>Slew mode</td></tr><tr><td>H</td><td>HUD overlay</td></tr><tr><td>O</td><td>Sound</td></tr>
+        </tbody>
+      </table>
+      <div class="prose">
+        <h3>Typical sortie</h3>
+        <ol>
+          <li>Press <b>9</b>: the J58s take ~6 s to spool and the afterburners light with a green TEB flash.</li>
+          <li>Rotate gently at <b>~210 kt</b>, pitch 10°, gear up (<b>G</b>) once climbing.</li>
+          <li>In <b>Autopilot</b> set Mach 3.2 and 80,000 ft. Climb and acceleration take about 15 minutes.</li>
+          <li>Keep sideslip small above Mach 2.3 or an inlet can unstart — the jet yaws hard until it restarts.</li>
+          <li>Plan the arrival on the <b>Map</b>, pick the arrival runway, then use <b>NAV</b> and <b>APPR</b>.</li>
+          <li>Fly final at ~175 kt, touch down below 160 kt, chute (<b>C</b>) and brakes.</li>
+        </ol>
+        <h3>Cockpit</h3>
+        <p>The front panel is live: ADI with flight director and glideslope, HSI with bearing/DME to the active waypoint and localizer, KEAS/Mach, triple display, altimeter, VSI, g, AoA, clock, fuel, gear lights, both engines' RPM, EGT, nozzle and fuel flow, spike and bypass positions, CIT and annunciators.</p>
+        <p class="note"><button type="button" class="linkbtn js-terms">Terms &amp; credits</button></p>
+      </div>
+    </div>
+  </section>
+
+  <div id="status" aria-label="Flight status">
+    <span id="st-state" class="chip live">● FLYING</span>
+    <span id="st-near" class="chip"></span>
+    <span id="st-time" class="chip"></span>
+    <span id="st-fps" class="chip dim"></span>
+  </div>
+
+  <div id="strip" role="group" aria-label="Flight instruments">
+    <div class="seg-d"><label>KEAS</label><b id="d-spd">0</b><small id="d-spd2">M 0.00</small></div>
+    <div class="seg-d"><label>ALT</label><b id="d-alt">0</b><small id="d-alt2">VS 0</small></div>
+    <div class="seg-d"><label>HDG</label><b id="d-hdg">000</b><small id="d-hdg2">GS 0</small></div>
+    <div class="seg-d thr"><label>THROTTLE</label><div class="bars"><i><em id="d-tl"></em></i><i><em id="d-tr"></em></i></div><small id="d-thr">IDLE</small></div>
+    <div class="seg-d"><label>FUEL</label><b id="d-fuel">0</b><small id="d-fuel2">lb</small></div>
+    <div class="pills">
+      <span id="p-gear" class="pill">GEAR</span><span id="p-brk" class="pill">BRK</span><span id="p-chute" class="pill">CHUTE</span>
+      <span id="p-ap" class="pill">A/P</span><span id="p-ab" class="pill">A/B</span><span id="p-uns" class="pill">UNSTART</span>
+    </div>
+  </div>
+  <div id="flash" aria-hidden="true"></div>
+  <div id="warnline" role="alert" aria-live="assertive"></div>
+  <div id="toasts" aria-live="polite" aria-relevant="additions" aria-atomic="false"></div>
+  <div id="crash" role="alertdialog" aria-modal="true" aria-labelledby="crash-title" aria-describedby="crash-why">
+    <div class="card"><span class="crash-mark" aria-hidden="true">!</span><div class="eyebrow">FLIGHT TERMINATED</div><h2 id="crash-title">Aircraft lost</h2><p id="crash-why"></p><button type="button" id="crash-reset" class="cta">Restart (R)</button><button type="button" id="crash-apt" class="ghost wide">Choose another airport</button></div>
+  </div>
+
+  <div id="terms" role="dialog" aria-modal="true" aria-labelledby="terms-title" hidden>
+    <div class="terms-card">
+      <header><h2 id="terms-title">Terms &amp; credits</h2><button type="button" class="x" id="terms-close" aria-label="Close terms and credits">&times;</button></header>
+      <div class="terms-body">
+        <h3>Terms of use</h3>
+        <p>Blackbird is an unofficial, non-commercial flight simulator provided as is, without warranty. It is not affiliated with or endorsed by Lockheed Martin or any government. Do not use it for real-world navigation or flight planning: charts, airports, runways and terrain are approximations. Third-party data stays under its owners&rsquo; licences, listed below.</p>
+        <h3>Imagery</h3>
+        <p>Imagery &copy; Esri, Maxar, Earthstar Geographics and the GIS User Community. Higher-resolution regional orthophotos where available: IGN France (Licence Ouverte); Bayerische Vermessungsverwaltung (CC BY 4.0); GeoBasis-DE / LVermGeoRP (dl-de/by-2.0); Digitaal Vlaanderen; &#268;&Uacute;ZK Czechia (CC BY 4.0); Provincia autonoma di Bolzano; NSW Spatial Services (CC BY 4.0).</p>
+        <h3>Terrain and maps</h3>
+        <p>Elevation: Terrain Tiles on AWS, from Mapzen and the public datasets listed at registry.opendata.aws/terrain-tiles (SRTM, NED, GMTED and others). Vector map data &copy; OpenStreetMap contributors (ODbL), served as OpenMapTiles by OpenFreeMap. Buildings: Overture Maps Foundation, OpenStreetMap contributors, Google Open Buildings and Microsoft building footprints (CC BY 4.0 / ODbL). Airports and runways: OurAirports (public domain). Aeronautical charts: FAA.</p>
+        <h3>Software</h3>
+        <p>Rendered with three.js, mapped with Leaflet, vector tiles decoded with Mapbox&rsquo;s vector-tile and Pbf libraries, polygons triangulated with earcut, PMTiles by Protomaps. Each is used under its own open-source licence.</p>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/boot.js"></script>
+</body>
+</html>
