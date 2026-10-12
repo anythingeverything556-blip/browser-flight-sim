@@ -340,8 +340,12 @@ export class FlightModel {
     const fuelOk = this.fuel > 0 || this.unlimitedFuel;
     let thrust = 0;
     const mb = new THREE.Vector3();
+    // The J58 fuel control holds the compressor inlet temperature to 427 C (the airframe and engine limit): the faster the jet goes the
+    // hotter the ram air, and past about 410 C the control cuts fuel flow, which is what stops the real aircraft near Mach 3.3 in
+    // standard air. In hot air the limit arrives at a lower Mach.
+    const cit = atm.T * (1 + 0.2 * M * M) - 273.15, citT = Math.min(1, Math.max(0, (cit - 410) / 30)), citCut = 1 - citT * citT * (3 - 2 * citT);
     this.engines.forEach((e, i) => {
-      e.thrust = fuelOk ? engineThrust(e.dry, e.ab, atm, M) * (e.unstart > 0 ? 0.25 : 1) : 0;
+      e.thrust = fuelOk ? engineThrust(e.dry, e.ab, atm, M) * (e.unstart > 0 ? 0.25 : 1) * (this.citLimit === false ? 1 : citCut) : 0;
       thrust += e.thrust;
       const arm = i === 0 ? -ENGINE_ARM : ENGINE_ARM;
       mb.y += arm * e.thrust;               // asymmetric thrust yaws towards the weaker engine

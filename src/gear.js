@@ -66,6 +66,8 @@ function makeRimGeometry() {
     new THREE.TorusGeometry(0.29, 0.025, 6, 20),
     cylinderAlongZ(0.17, 0.42, 20),
   ];
+  // solid web behind the spokes on both faces so the wheel is not an open frame you can see through
+  for (const face of [-1, 1]) { const web = cylinderAlongZ(0.49, 0.03, 28); web.translate(0, 0, face * 0.15); parts.push(web); }
   const spokeGeo = new THREE.BoxGeometry(0.052, 0.34, 0.055);
   for (let i = 0; i < 8; i++) {
     const spoke = spokeGeo.clone();
@@ -416,7 +418,8 @@ class GearRig {
       frame.slide.position.y = -1.42 + compression * 0.62;
       if (frame.isNose) {
         const speed = fdm.vel ? Math.hypot(fdm.vel.x, fdm.vel.z) : 0;
-        const steer = clamp(fdm.ctrl?.dr || 0, -1, 1) * 0.34 * (1 - smooth(12, 36, speed));
+        // same angle as the tyre model in flight.js; +y rotation swings the wheel left, so right input is negative
+        const steer = -clamp(fdm.ctrl?.dr || 0, -1, 1) * (3 + 32 * clamp(1 - speed / 40, 0, 1)) * Math.PI / 180;
         frame.axleGroup.rotation.y = steer;
       }
     }

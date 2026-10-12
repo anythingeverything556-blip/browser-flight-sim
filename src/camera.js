@@ -19,7 +19,7 @@ class CameraRig {
       (this.world = new THREE.Vector3()),
       (this.look = { yaw: 0, pitch: -0.12 }),
       (this.orbit = { az: 2.6, el: 0.18, dist: 48 }),
-      (this.fov = { cockpit: 70, other: 55 }),
+      (this.fov = { cockpit: 84, other: 55 }),
       (this.chasePos = null),
       (this.flyPos = null),
       (this.tower = null),

@@ -150,12 +150,13 @@ export const ATMOS_UNIFORMS = {
   uAtmAmb: { value: new THREE.Vector3(0.03, 0.05, 0.1) }, // mean sky radiance seen by an up-facing surface (sun irradiance = 1)
   uAtmRef: { value: new THREE.Vector3(1, 1, 1) },        // lighting of the imagery's baked sun (a clear mid-morning) in the same terms
   uAtmNight: { value: new THREE.Vector3(0, 0, 0) },      // moon/airglow floor added to the sky radiance
+  uMoon: { value: new THREE.Vector4(0, 1, 0, 0) },        // unit vector to the moon (xyz) and how brightly it lights the ground (w, 0..1)
 };
 
 // sky radiance towards d (scene-referred) and display mapping, plus aerial perspective for a point `rel`
 // (camera-relative world offset, curvature drop already applied) whose colour `col` is already display-referred
 export const ATM_FRAG = `
-uniform sampler2D uAtmLut; uniform vec4 uAtm; uniform vec3 uAtmSun, uAtmSunCol, uAtmAmb, uAtmRef, uAtmNight;
+uniform sampler2D uAtmLut; uniform vec4 uAtm; uniform vec3 uAtmSun, uAtmSunCol, uAtmAmb, uAtmRef, uAtmNight; uniform vec4 uMoon;
 ${ATM_COMMON}
 vec3 atmSky(vec3 d) { return texture2D(uAtmLut, atmLutUV(d, uAtm.y, uAtmSun)).rgb + uAtmNight; }
 vec3 atmTone(vec3 c) {

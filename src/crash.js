@@ -15,13 +15,14 @@ const PVERT = `
 #include <logdepthbuf_pars_vertex>
 attribute vec3 iPos; attribute vec4 iCol; attribute float iSize; attribute vec2 iMisc;
 uniform vec3 uSunW;
-varying vec4 vCol; varying vec2 vQ; varying vec2 vP; varying vec2 vMisc; varying vec3 vSunV;
+varying vec4 vCol; varying vec2 vQ; varying vec2 vP; varying vec2 vMisc; varying vec3 vSunV; varying float vW; varying float vSize;
 void main() {
-  vCol = iCol; vMisc = iMisc; vP = position.xy * 2.0;
+  vCol = iCol; vSize = iSize; vMisc = iMisc; vP = position.xy * 2.0;
   float c = cos(iMisc.x), s = sin(iMisc.x);
   vQ = vec2(c * vP.x - s * vP.y, s * vP.x + c * vP.y);
   vSunV = mat3(viewMatrix) * uSunW;
   vec4 mv = viewMatrix * vec4(iPos, 1.0);
+  vW = -mv.z;
   mv.xy += position.xy * iSize;
   gl_Position = projectionMatrix * mv;
   #include <logdepthbuf_vertex>
@@ -30,8 +31,8 @@ void main() {
 const PFRAG = `
 #include <common>
 #include <logdepthbuf_pars_fragment>
-uniform float uBillow;
-varying vec4 vCol; varying vec2 vQ; varying vec2 vP; varying vec2 vMisc; varying vec3 vSunV;
+uniform float uBillow, uSoft, uLogF; uniform vec2 uRes; uniform highp sampler2D tDepth;
+varying vec4 vCol; varying vec2 vQ; varying vec2 vP; varying vec2 vMisc; varying vec3 vSunV; varying float vW; varying float vSize;
 float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
@@ -43,15 +44,22 @@ void main() {
   float n = fbm(vQ * 1.6 + vMisc.y * 37.0);
   float edge = 1.0 - smoothstep(0.3, 1.0, d + (n - 0.45) * uBillow);
   if (edge <= 0.004) discard;
+  // drawn after the cloud composite, so occlusion by terrain and buildings is tested here against the scene depth
+  float vis = 1.0;
+  if (uSoft > 0.5) {
+    float sceneW = exp2(texture2D(tDepth, gl_FragCoord.xy / uRes).r * uLogF) - 1.0;
+    vis = clamp((sceneW - vW) / max(1.0, vSize * 0.35), 0.0, 1.0);
+    if (vis <= 0.0) discard;
+  }
   #ifdef ADDITIVE
   float core = 1.0 - smoothstep(0.0, 0.85, d);
-  float a = vCol.a * edge * (0.45 + 1.0 * n) * (0.3 + 0.7 * core);
+  float a = vCol.a * vis * edge * (0.45 + 1.0 * n) * (0.3 + 0.7 * core);
   gl_FragColor = vec4(vCol.rgb * a, a);
   #else
   vec3 N = normalize(vec3(vP * 0.85, sqrt(max(0.06, 1.0 - d * d))));
   float lit = clamp(dot(N, normalize(vSunV)) * 0.5 + 0.5, 0.0, 1.0);
   float shade = mix(0.5, 1.35, lit) * (0.78 + 0.44 * n);
-  float a = vCol.a * edge * (0.55 + 0.7 * n);
+  float a = vCol.a * vis * edge * (0.55 + 0.7 * n);
   gl_FragColor = vec4(vCol.rgb * shade, min(a, 1.0));
   #endif
 }`;
@@ -73,7 +81,7 @@ class Particles {
     this.aMisc = new THREE.InstancedBufferAttribute(new Float32Array(max * 2), 2).setUsage(THREE.DynamicDrawUsage);
     g.setAttribute('iPos', this.aPos); g.setAttribute('iCol', this.aCol); g.setAttribute('iSize', this.aSize); g.setAttribute('iMisc', this.aMisc);
     g.instanceCount = 0;
-    this.uniforms = { uBillow: { value: additive ? 1.0 : 1.0 }, uSunW: { value: SUN_W.clone() } };
+    this.uniforms = { uBillow: { value: 1.0 }, uSunW: { value: SUN_W.clone() }, uSoft: { value: 0 }, uLogF: { value: 1 }, uRes: { value: new THREE.Vector2(1, 1) }, tDepth: { value: null } };
     this.mesh = new THREE.Mesh(g, new THREE.ShaderMaterial({
       uniforms: this.uniforms, vertexShader: PVERT, fragmentShader: PFRAG,
       defines: additive ? { ADDITIVE: '' } : {}, transparent: true, depthWrite: false,
@@ -81,6 +89,11 @@ class Particles {
     }));
     this.mesh.frustumCulled = false; this.mesh.renderOrder = additive ? 7 : 8;
     scene.add(this.mesh);
+  }
+  // soft: drawn by the post pass after the clouds, with a depth test done in the shader
+  attach(scene, soft) {
+    if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
+    scene.add(this.mesh); this.uniforms.uSoft.value = soft ? 1 : 0;
   }
   // kind: 0 fire, 1 soot/smoke, 2 sparks, 3 dust, 4 flash
   emit(x, y, z, vx, vy, vz, life, s0, s1, kind) {
@@ -471,6 +484,7 @@ export class Wreck {
   constructor(scene) {
     this.scene = scene; this.group = new THREE.Group(); scene.add(this.group);
     this.fire = new Particles(scene, 1800, true); this.smoke = new Particles(scene, 3000, false);
+    this.setOverlay = (ov) => { for (const q of [this.fire, this.smoke]) q.attach(ov || scene, !!ov); };
     this.fragments = new DebrisField(scene, 200); this.ground = new GroundEffects(scene, 144);
     // always present (at zero) so adding it never recompiles every lit material at the moment of a crash
     this.light = new THREE.PointLight(0xff8a3a, 0, 0, 2); scene.add(this.light);
@@ -683,6 +697,10 @@ export class Wreck {
     this.impactPos = fdm.pos.clone(); this.impactGroundY = fdm.pos.y; this.terrainSlope = 0; this.terrainReady = false;
     this.createdGeometries.length = 0; this.pieces.length = 0;
     this._makePieces(visual, fdm, info, this.plan, vel, wb);
+    // Hiding the aircraft hides its lights too, and three.js bakes the light count into every lit material's shader, so terrain, buildings
+    // and trees would all recompile mid-crash. Zero-intensity stand-ins keep the count (and so the programs) unchanged.
+    this.standIns = [];
+    visual.root.traverseVisible((o) => { if (o.isLight) { const c = o.clone(); c.intensity = 0; this.scene.add(c); this.standIns.push(c); } });
     visual.root.visible = false;
     this._initialEffects(fdm, info);
     const fuel = clamp(info.fuel / 36300, 0, 1);
@@ -782,5 +800,6 @@ export class Wreck {
     this.fire.clear(); this.smoke.clear(); this.fragments.clear(); this.ground.clear();
     this.info = null; this.description = ''; this.severity = 'minor'; this.fireIntensity = 0; this.light.intensity = 0; this.fireRadius = 0;
     if (visual && visual.root) visual.root.visible = true;
+    if (this.standIns) { for (const l of this.standIns) this.scene.remove(l); this.standIns = null; }
   }
 }

@@ -40,32 +40,41 @@ void main() {
   gl_FragColor = vec4(ao, d, 0.0, 1.0);
 }`,
   z2 = `
-uniform sampler2D tScene, tAO, tClouds; uniform highp sampler2D tDepth;
-uniform float uLogF, uAO, uClouds; uniform vec2 uAOTexel;
+uniform sampler2D tScene, tAO, tClouds, tDrops; uniform highp sampler2D tDepth;
+uniform float uLogF, uAO, uClouds, uDrops; uniform vec2 uAOTexel; uniform vec3 uDropLight;
 varying vec2 vUv;
 vec3 s2l(vec3 c) { return mix(c / 12.92, pow((c + 0.055) / 1.055, vec3(2.4)), step(0.04045, c)); }
 vec3 l2s(vec3 c) { c = max(c, 0.0); return mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(0.0031308, c)); }
 void main() {
-  vec3 col = texture2D(tScene, vUv).rgb;
+  // water on the canopy glass: the picture behind it is bent (offset.xy), darkened at the rim (a) and lit by a highlight (b)
+  vec2 uv = vUv; float dDark = 0.0, dSpec = 0.0;
+  if (uDrops > 0.5) { vec4 dr = texture2D(tDrops, vUv); uv = clamp(vUv + dr.rg, vec2(0.002), vec2(0.998)); dSpec = dr.b; dDark = dr.a; }
+  vec4 scn = texture2D(tScene, uv); vec3 col = scn.rgb;
+  // additive effects (afterburner plume, fire) write no depth, so the cloud march cannot know they are in front of the cloud layer. Additive blending also
+  // adds to the target's alpha (opaque surfaces leave it at exactly 1), so alpha above 1 marks them and the cloud layer is not composited over them.
+  float fx = smoothstep(0.02, 0.25, scn.a - 1.0);
   if (uAO > 0.0) {
-    float zc = exp2(texture2D(tDepth, vUv).r * uLogF) - 1.0, sum = 0.0, ws = 0.0;
+    float zc = exp2(texture2D(tDepth, uv).r * uLogF) - 1.0, sum = 0.0, ws = 0.0;
     // depth-aware 3x3 blur of the half-res AO (bilinear taps 1.5 texels apart)
     for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
-      vec2 a = texture2D(tAO, vUv + vec2(float(i), float(j)) * uAOTexel * 1.5).rg;
+      vec2 a = texture2D(tAO, uv + vec2(float(i), float(j)) * uAOTexel * 1.5).rg;
       float z = exp2(a.g * uLogF) - 1.0;
       float w = (i == 0 && j == 0 ? 2.0 : 1.0) * max(0.0, 1.0 - abs(z - zc) / (0.05 * zc + 0.05)) + 1e-4;
       sum += a.r * w; ws += w;
     }
-    col *= mix(1.0, sum / ws, uAO);
+    col *= mix(1.0, sum / ws, uAO * (1.0 - fx)); // not over additive effects (plume, vapour): they have no depth, so AO would use the ground or sky behind them
   }
-  if (uClouds > 0.5) { vec4 c = texture2D(tClouds, vUv); col = l2s(s2l(col) * c.a + c.rgb); }
+  if (uClouds > 0.5) { vec4 c = texture2D(tClouds, uv); vec3 lin = s2l(col); col = l2s(mix(lin * c.a + c.rgb, lin, fx)); }
+  col = col * (1.0 - dDark) + dSpec * uDropLight;
   gl_FragColor = vec4(col, 1.0);
 }`;
 class PostFX {
   constructor(t) {
     ((this.renderer = t),
       (this.enabled = !1),
+      (this.overlay = new THREE.Scene()),
       (this.msaa = 0),
+      (this.dbg = {}), // F5-F9 debug switches (perf.js): ao, clouds, smaa, bloom
       (this.aoStrength = 0),
       (this.aoSamples = 0),
       (this.bloomStrength = 0),
@@ -83,6 +92,9 @@ class PostFX {
           tAO: { value: null },
           tClouds: { value: null },
           tDepth: { value: null },
+          tDrops: { value: null },
+          uDrops: { value: 0 },
+          uDropLight: { value: new THREE.Vector3(1, 1, 1) },
           uLogF: { value: 1 },
           uAO: { value: 0 },
           uClouds: { value: 0 },
@@ -106,7 +118,8 @@ class PostFX {
       (this.smaaPass = new SMAAPass()),
       (this.smaaPass.renderToScreen = !0),
       (this.clouds = null),
-      (this.cloudParams = null));
+      (this.cloudParams = null),
+      (this.glassWater = null));
   }
   configure({ enabled: t, msaa: e = 0, ao: n = 0, aoSamples: i = 12, bloom: r = 0, smaa: a = !1 }) {
     ((this.enabled = t),
@@ -132,8 +145,21 @@ class PostFX {
           depthTest: !1,
           depthWrite: !1,
         }))),
-      (e !== this.msaa || !this.sceneRT) && ((this.msaa = e), this._makeSceneRT()),
+      (this.msaaWanted = e),
+      this._applyMsaa(),
       (this.bloom.strength = r));
+  }
+  _applyMsaa() {
+    const e = Math.min(this.msaaWanted ?? 0, this.msaaMax ?? 4);
+    if (e !== this.msaa || !this.sceneRT) { this.msaa = e; this._makeSceneRT(); }
+  }
+  set msaaMax(v) { this._msaaMax = v; if (this.msaaWanted !== undefined) this._applyMsaa(); }
+  get msaaMax() { return this._msaaMax; }
+  // sizes of every full-frame target, for the F3 resolution check: anything much smaller than the canvas is an intended down-scale
+  sizes() {
+    const f = (r) => (r ? `${r.width}x${r.height}` : '-');
+    const g = this.glassWater;
+    return `scene ${f(this.sceneRT)} (msaa ${this.msaa ?? 0}) · ao ${f(this.aoRT)} (half-res by design) · comp ${f(this.compRT)} · out ${f(this.outRT)} · clouds ${f(this.clouds && this.clouds.lowRT)} · glass ${f(g && g.rt)}`;
   }
   _makeSceneRT() {
     this.sceneRT && (this.sceneRT.depthTexture.dispose(), this.sceneRT.dispose());
@@ -144,6 +170,15 @@ class PostFX {
     });
     ((t.isXRRenderTarget = !0), (t.texture.colorSpace = THREE.SRGBColorSpace), (this.sceneRT = t));
   }
+  // fire and smoke: composited after the clouds so the cloud pass cannot paint over them where the depth buffer says "sky"
+  _renderOverlay(n, camera, depth, logF) {
+    if (!this.overlay.children.length) return;
+    for (const c of this.overlay.children) {
+      const u = c.material && c.material.uniforms;
+      if (u && u.tDepth) { u.tDepth.value = depth; u.uLogF.value = logF; u.uRes.value.set(this.w, this.h); }
+    }
+    const ac = n.autoClear; n.autoClear = false; n.setRenderTarget(this.compRT); n.render(this.overlay, camera); n.autoClear = ac;
+  }
   setSize(t, e) {
     ((this.w = t),
       (this.h = e),
@@ -151,6 +186,7 @@ class PostFX {
       this.aoRT.setSize(Math.max(1, t >> 1), Math.max(1, e >> 1)),
       this.compRT.setSize(t, e),
       this.outRT.setSize(t, e),
+      this.glassWater && this.glassWater.setSize(t, e),
       this.bloom.setSize(t, e),
       this.smaaPass.setSize(t, e),
       this.clouds && this.clouds.setSize(t, e));
@@ -161,11 +197,14 @@ class PostFX {
       (n.setRenderTarget(null), n.render(t, e));
       return;
     }
+    const P = this.prof || (() => {});
     const i = Math.log2(e.far + 1),
       r = this.sceneRT.depthTexture;
+    P('scene');
     (n.setRenderTarget(this.sceneRT), n.render(t, e));
-    const a = this.aoStrength > 0;
+    const a = this.aoStrength > 0 && !this.dbg.ao;
     if (a) {
+      P('ao');
       const u = this.aoMat.uniforms;
       ((u.tDepth.value = r),
         u.uProjInv.value.copy(e.projectionMatrixInverse),
@@ -176,12 +215,18 @@ class PostFX {
         n.setRenderTarget(this.aoRT),
         this.quad.render(n));
     }
+    P('glass');
+    const gw = this.glassWater, dropRT = gw ? gw.render(n, t, e, r, i, this.w, this.h) : null;
     let l = null;
-    this.clouds &&
+    P('clouds');
+    this.clouds && !this.dbg.clouds &&
       this.cloudParams &&
       this.cloudParams.coverage > 0.01 &&
       (l = this.clouds.render(n, { ...this.cloudParams, camera: e, depthTexture: r }));
+    P('composite');
     const h = this.compMat.uniforms;
+    h.tDrops.value = dropRT ? dropRT.texture : null; h.uDrops.value = dropRT ? 1 : 0;
+    if (gw) h.uDropLight.value.copy(gw.light);
     ((h.tScene.value = this.sceneRT.texture),
       (h.tAO.value = this.aoRT.texture),
       (h.tDepth.value = r),
@@ -193,8 +238,11 @@ class PostFX {
       (this.quad.material = this.compMat),
       n.setRenderTarget(this.compRT),
       this.quad.render(n),
-      this.bloomStrength > 0 && this.bloom.render(n, null, this.compRT, 0, !1),
-      this.smaa
+      this._renderOverlay(n, e, r, i),
+      P('bloom'),
+      this.bloomStrength > 0 && !this.dbg.bloom && this.bloom.render(n, null, this.compRT, 0, !1),
+      P('smaa'),
+      this.smaa && !this.dbg.smaa
         ? this.smaaPass.render(n, this.outRT, this.compRT, 0, !1)
         : ((this.copyMat.uniforms.t.value = this.compRT.texture),
           (this.quad.material = this.copyMat),

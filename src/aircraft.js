@@ -1,11 +1,19 @@
 import * as THREE from 'three';
+import { applyWear } from './cockpitwear.js';
+import { buildChineZone } from './cockpitkit.js';
+import { buildRealCockpit } from './cockpitreal.js';
+import { GlassWater } from './glasswater.js';
+import { whenIdle } from './warmup.js';
+import { TERRAIN_UNIFORMS } from './terrain-shader.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { CG_MODEL, CHUTE_POINT } from './flight.js';
 import { CockpitPanel } from './panel.js';
+import { ChangeGate } from './workstats.js';
 import { DecalGeometry } from 'three/examples/jsm/geometries/DecalGeometry.js';
 import { SHADOW_LAYER } from './shadows.js';
 import { createGearRig } from './gear.js';
+import { cullHidden } from './occlusion.js';
 
 // Model frame (three.js): x nose, y up, z right wing. Nozzle exits at x -12.78, nacelle axis 2.47 m up, 4.30 m out.
 const NOZZLE_X = -12.78, NAC_Y = 2.47, NAC_Z = 4.30;
@@ -48,15 +56,19 @@ if (eAng != 0.0) { vec3 ed = transformed - vec3(eHx, 0.0, 0.0); float ec = cos(-
 
 // Procedural skin detail in model space (x nose, y up, z right; wing plane at y = 0):
 // frame and panel lines, chordwise wing corrugations, nacelle rings and per-panel tone/gloss variation.
+// shared water-on-skin state: wetness 0..1 and how hard the airflow drags it aft 0..1
+export const SKIN_WET = { value: 0 }, SKIN_FLOW = { value: 0 };
 function addSkinDetail(mat) {
   const prev = mat.onBeforeCompile;
   mat.onBeforeCompile = (sh, r) => {
     prev(sh, r);
+    sh.uniforms.uSkinWet = SKIN_WET; sh.uniforms.uSkinFlow = SKIN_FLOW;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vMP; varying vec3 vMN; varying vec3 vZv; varying vec3 vXv;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvMP = transformed; vMN = objectNormal; vZv = normalize((modelViewMatrix * vec4(0.0, 0.0, 1.0, 0.0)).xyz); vXv = normalize((modelViewMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz);');
     const common = `
 varying vec3 vMP; varying vec3 vMN; varying vec3 vZv; varying vec3 vXv;
+uniform float uSkinWet, uSkinFlow;
 float skHash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float skLine(float v, float s, float w){ float d = abs(fract(v / s + 0.5) - 0.5) * s; float aa = fwidth(v); return (1.0 - smoothstep(w, w + aa * 1.2, d)) * (1.0 - smoothstep(0.01, 0.06, aa)); }
 float skNacelle(vec3 p){ return 1.0 - smoothstep(1.02, 1.1, length(vec2(p.y - 0.22, abs(p.z) - 4.3))); }
@@ -78,6 +90,17 @@ float skRivets(vec3 p){
   float d = length(vec2(dx, du)), aa = fwidth(p.x);
   return (1.0 - smoothstep(0.004, 0.004 + max(aa * 1.5, 1e-4), d)) * (1.0 - smoothstep(0.004, 0.012, aa));
 }
+// beaded water on the skin: drops pinned to the paint, stretched aft at speed; metres of dome height, fades out before it aliases
+float skBeads(vec3 p, vec3 n){
+  vec2 q = abs(n.y) > 0.6 ? p.xz : p.xy;
+  float cs = 0.016, aa = fwidth(q.x) / cs;
+  vec2 g = q / cs; g.x /= (1.0 + 2.5 * uSkinFlow);
+  vec2 id = floor(g), f = fract(g) - 0.5;
+  float a = skHash(id), b = skHash(id + 3.7), c = skHash(id + 9.1);
+  if (c > uSkinWet * 0.8) return 0.0;
+  vec2 d = f - (vec2(a, b) - 0.5) * 0.4; float rr = 0.12 + 0.2 * b * b, u = length(d) / rr;
+  return sqrt(max(0.0, 1.0 - u * u)) * rr * (1.0 - smoothstep(0.06, 0.2, aa));
+}
 // derivative bump mapping (as three's perturbNormalArb) so seams read as recessed grooves, not just painted lines
 vec3 skBump(vec3 pos, vec3 n, vec2 dH){
   vec3 sx = normalize(dFdx(pos)), sy = normalize(dFdy(pos)), r1 = cross(sy, n), r2 = cross(n, sx);
@@ -93,7 +116,7 @@ vec3 skBump(vec3 pos, vec3 n, vec2 dH){
           vec2 cell = wing > 0.5 ? floor(vec2(p.x / 1.6, p.z / 1.1)) : (nac > 0.5 ? floor(vec2(p.x / 1.5, sign(p.z))) : floor(vec2(p.x / 1.0, p.z / 0.9)));
           float tone = 0.9 + 0.2 * skHash(cell);
           float lines = skSeams(p);
-          if (gl_FrontFacing) diffuseColor.rgb *= tone * (1.0 - 0.45 * lines);
+          if (gl_FrontFacing) diffuseColor.rgb *= tone * (1.0 - 0.45 * lines) * (1.0 - 0.28 * uSkinWet);
         }
         // weathering: repaint mottling, grime streaks swept aft by the airflow, the famous fuel leaks on the
         // undersides, heat-tinted paint around the aft nacelles, and rivet heads catching the light
@@ -108,14 +131,15 @@ vec3 skBump(vec3 pos, vec3 n, vec2 dH){
         }`)
       .replace('#include <roughnessmap_fragment>', `#include <roughnessmap_fragment>
         roughnessFactor = clamp(roughnessFactor + 0.12 * (skHash(floor(vMP.xz / vec2(1.3, 1.0)) + 7.0) - 0.5)
-          + 0.14 * skGrime - 0.22 * skLeak + 0.08 * skHeat, 0.18, 1.0);`)
+          + 0.14 * skGrime - 0.22 * skLeak + 0.08 * skHeat, 0.18, 1.0);
+        roughnessFactor = mix(roughnessFactor, 0.1, uSkinWet * 0.85);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         {
           // corrugations run fore-and-aft on the wing panels (ridges every 16 cm across the span)
           float s = 0.16, aa = fwidth(vMP.z) / s;
           float m = skWing(vMP) * step(0.5, abs(vMN.y)) * (1.0 - smoothstep(0.15, 0.5, aa)) * step(-10.6, vMP.x);
           if (m > 0.0) { normal = normalize(normal + vZv * 0.22 * m * sin(6.2831853 * vMP.z / s)); }
-          float sh = -0.2 * skSeams(vMP) + 0.06 * skRivets(vMP); vec2 dH = vec2(dFdx(sh), dFdy(sh));
+          float sh = -0.2 * skSeams(vMP) + 0.06 * skRivets(vMP) + 90.0 * uSkinWet * skBeads(vMP, vMN); vec2 dH = vec2(dFdx(sh), dFdy(sh));
           if (gl_FrontFacing && dot(dH, dH) > 0.0) normal = skBump(-vViewPosition, normal, dH);
         }`);
   };
@@ -246,10 +270,17 @@ export class AircraftVisual {
       else if (n === 'SR71_Nozzle') kind = 'nozzle';
       if (!kind) {
         // the canopy hides most of the sky from the cockpit, which the unoccluded env map can't know
-        o.material.envMapIntensity = /^SR71_(Cpt|Pnl)/.test(n) ? 0.12 : 0.5;
+        const cab = /^SR71_(Cpt|Pnl)/.test(n); o.material.envMapIntensity = cab ? 0.12 : 0.5;
+        if (cab) (this.cabinMats || (this.cabinMats = new Set())).add(o.material);
         // SR-71 cockpit: medium-dark grey sidewalls and consoles, black panels
-        if (n === 'SR71_Cpt_Paint') o.material.color.setHex(0x3a3f45);
-        if (n === 'SR71_Pnl_Console') o.material.color.setHex(0x1c1f23);
+        const worn = (hex, o2) => { if (!o.material.userData.worn) { o.material.userData.worn = true; o.material.color.setHex(hex); o.material.metalness = 0.12; applyWear(o.material, o2); } };
+        if (n === 'SR71_Cpt_Paint') worn(0x424d59, { rust: 0.5 });
+        if (n === 'SR71_Pnl_Console') worn(0x272c33, { rust: 0.2 });
+        if (n === 'SR71_Pnl_Black') worn(0x202328, { rust: 0.15, wear: 0.8 });
+        if (n === 'SR71_Pnl_SeatFrame') worn(0x40454c, { rust: 0.3 });
+        if (n === 'SR71_Pnl_Leather') { o.material.color.setHex(0x5e5140); o.material.roughness = 0.92; }
+        if (n === 'SR71_Pnl_Strap') o.material.color.setHex(0x646a5c);
+        if (n === 'SR71_Cpt_Floor') worn(0x30353b, { rust: 0.25 });
         return;
       }
       if (!cache[kind]) { cache[kind] = MATS[kind](); if (kind === 'skin') { addElevons(cache[kind], this.uElev); addSkinDetail(cache[kind]); } }
@@ -265,15 +296,23 @@ export class AircraftVisual {
     model.traverse((o) => { if (/^SR71_Cpt/.test(o.name)) this.cockpit.push(o); });
     // the opaque exterior casts world sun shadows (onto the runway, buildings); the cockpit interior can't be seen by the sun
     const caster = new THREE.MeshBasicMaterial({ colorWrite: false }), inside = new Set();
-    for (const c of this.cockpit) c.traverse((o) => inside.add(o));
+    for (const c of this.cockpit) c.traverse((o) => { inside.add(o); o.castShadow = false; });
     model.traverse((o) => { if (o.isMesh && !inside.has(o) && !o.material.transparent) { o.userData.casterMat = caster; o.layers.enable(SHADOW_LAYER); } });
     const box = new THREE.Box3().setFromObject(model);
     this.dims = { length: box.max.x - box.min.x, span: box.max.z - box.min.z, height: box.max.y - box.min.y };
     this.setupMoving(model);
     this.setupGear(model.getObjectByName('SR71_Gear'));
     this.setupPanel(model);
+    // the lit opaque materials skip fragments that lie behind the cockpit, which would only lose the depth test (see occlusion.js)
+    model.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m && !m.transparent) cullHidden(m); });
     this.buildEffects();
-    try { this.addDecals(model); } catch (e) { console.warn('decals', e); }
+    // two jobs that take the main thread most of a second each and are only seen later (the cockpit's smoothed fuselage edge, the stencils on
+    // the skin) run when the browser is idle instead of delaying the menu
+    // painted markings on the outside of the skin (rescue arrows, placards) are seen from inside as stray shapes on the lining: hide them from the seat
+    this.decalOrig = []; model.traverse((o) => { if (/^SR71_Decal_/.test(o.name)) this.decalOrig.push(o); });
+    this.chine = null; whenIdle(() => { try { this.chine = buildChineZone(model); } catch (e) { console.warn('chine', e); } });
+    this.buildCrew(model);
+    whenIdle(() => { try { this.addDecals(model); } catch (e) { console.warn('decals', e); } }, 6000);
   }
 
   addDecals(model) {
@@ -298,7 +337,7 @@ export class AircraftVisual {
       const rot = new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().makeBasis(xa, ya, n));
       const geo = new DecalGeometry(hit.object, hit.point, rot, new THREE.Vector3(w, h, 0.25));
       const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex[name] || (tex[name] = PLACARDS[name]()), transparent: true, roughness: 0.6, metalness: 0.05, polygonOffset: true, polygonOffsetFactor: -4, depthWrite: false }));
-      m.renderOrder = 2; this.root.attach(m);
+      m.renderOrder = 2; this.root.attach(m); (this.decals || (this.decals = [])).push(m);
     }
   }
 
@@ -318,59 +357,52 @@ export class AircraftVisual {
     if (this.gearGroup) this.gearGroup.visible = false;
   }
 
-  // ---------- live instrument panel over the pilot's main panel ----------
+  // Two crew in white full-pressure suits, so the cockpit is not empty when seen through the canopy. Positions are in model space
+  // (x nose, y up, z right); hidden from the cockpit view, where the camera sits inside the pilot's helmet.
+  buildCrew(model) {
+    const suit = new THREE.MeshStandardMaterial({ color: 0xe9e7e0, roughness: 0.62, metalness: 0.02 });
+    const shell = new THREE.MeshStandardMaterial({ color: 0xf4f3ee, roughness: 0.3, metalness: 0.05 });
+    const visor = new THREE.MeshStandardMaterial({ color: 0x1b1608, roughness: 0.08, metalness: 0.9 });
+    const strap = new THREE.MeshStandardMaterial({ color: 0x2b2d2f, roughness: 0.8 });
+    const make = (x, y) => {
+      const g = new THREE.Group(); g.position.set(x, y, 0);
+      const head = new THREE.Mesh(new THREE.SphereGeometry(0.165, 24, 16), shell); head.scale.set(1.08, 1, 0.94); head.position.set(0.02, 0.0, 0); g.add(head);
+      const vz = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 12, -Math.PI * 0.42, Math.PI * 0.84, Math.PI * 0.3, Math.PI * 0.32), visor);
+      vz.rotation.y = Math.PI / 2; vz.scale.set(1.02, 1, 1.02); vz.position.set(0.03, 0.0, 0); vz.rotation.y = 0; g.add(vz);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.11, 0.14, 14), suit); neck.position.set(0, -0.18, 0); g.add(neck);
+      const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.34, 6, 14), suit); torso.scale.set(0.8, 1, 1.2); torso.position.set(-0.1, -0.46, 0); torso.rotation.z = 0.28; g.add(torso);
+      for (const z of [-1, 1]) {
+        const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.46, 4, 10), suit); arm.position.set(0.16, -0.5, z * 0.27); arm.rotation.z = -1.05; g.add(arm);
+        const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.095, 0.4, 4, 10), suit); thigh.position.set(0.2, -0.82, z * 0.13); thigh.rotation.z = -1.35; g.add(thigh);
+        const sh = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.25, 0.04), strap); sh.position.set(0.1, -0.4, z * 0.1); sh.rotation.z = 0.28; g.add(sh);
+      }
+      return g;
+    };
+    this.crew = new THREE.Group();
+    this.crew.add(make(11.02, 3.2), make(8.96, 3.18));
+    model.add(this.crew);
+  }
+  // ---------- pilot's cockpit: original panel, console and canopy meshes hidden, rebuilt from the photographs (cockpitreal.js) ----------
   setupPanel(model) {
-    const panelMesh = model.getObjectByName('SR71_Cpt_Pilot_Panel');
-    if (!panelMesh) return;
-    const box = new THREE.Box3().setFromObject(panelMesh);
-    const y0 = box.min.y, y1 = box.max.y, zMax = Math.max(-box.min.z, box.max.z);
-    let topX = Infinity, botX = Infinity;
-    const v = new THREE.Vector3();
+    const keep = /^SR71_Cpt_Pilot(_1|_Tub_\d+)$/;
     model.traverse((o) => {
       if (!o.isMesh) return;
-      let p = o, ok = false;
-      while (p) { if (/^SR71_Cpt_Pilot/.test(p.name) && !/Glare|Tub/.test(p.name)) { ok = true; break; } p = p.parent; }
-      if (!ok) return;
-      const pos = o.geometry.attributes.position, mw = o.matrixWorld;
-      for (let i = 0; i < pos.count; i++) {
-        v.fromBufferAttribute(pos, i).applyMatrix4(mw);
-        if (v.y < y0 || v.y > y1 || Math.abs(v.z) > zMax || v.x < box.min.x - 0.25 || v.x > box.max.x + 0.02) continue;
-        const f = (v.y - y0) / (y1 - y0);
-        if (f > 0.5) topX = Math.min(topX, v.x); else botX = Math.min(botX, v.x);
-      }
-    });
-    if (!isFinite(topX)) topX = box.min.x; if (!isFinite(botX)) botX = box.min.x;
-    const h = y1 - y0, w = 2 * zMax;
-    const tilt = Math.atan2(topX - botX, h * 0.5);
-    // remove the static Blender gauges, knobs and labels that sit where the live panel goes
-    const x0 = Math.min(topX, botX) - 0.11, x1 = box.max.x + 0.03, c = new THREE.Vector3();
-    model.traverse((o) => {
-      if (!o.isMesh) return;
-      let p = o, ok = false;
-      while (p) { if (/^SR71_Cpt_Pilot/.test(p.name) && !/Glare|Tub/.test(p.name)) { ok = true; break; } p = p.parent; }
-      if (!ok) return;
-      if (/ADI/.test(o.name) || /ADI/.test(o.parent && o.parent.name)) { o.visible = false; o.userData.hidden = true; return; }
-      const g = o.geometry, pos = g.attributes.position, mw = o.matrixWorld;
-      const idx = g.index ? g.index.array : Array.from({ length: pos.count }, (_, i) => i);
-      const keep = [];
-      for (let t = 0; t < idx.length; t += 3) {
-        c.set(0, 0, 0);
-        for (let k = 0; k < 3; k++) c.add(v.fromBufferAttribute(pos, idx[t + k]).applyMatrix4(mw));
-        c.multiplyScalar(1 / 3);
-        const inside = c.x > x0 && c.x < x1 && Math.abs(c.z) < zMax + 0.012 && c.y > y0 - 0.012 && c.y < y1 + 0.012;
-        if (!inside) keep.push(idx[t], idx[t + 1], idx[t + 2]);
-      }
-      if (keep.length !== idx.length) g.setIndex(keep);
+      if (/^SR71_Cpt_Pilot/.test(o.name) && !keep.test(o.name)) { o.visible = false; o.userData.hidden = true; }
     });
     this.panel = new CockpitPanel();
-    const mat = new THREE.MeshBasicMaterial({ map: this.panel.texture, toneMapped: false });
-    const plane = new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
-    plane.rotation.order = 'YXZ'; plane.rotation.y = -Math.PI / 2; plane.rotation.x = -tilt;
-    plane.position.set((topX + botX) / 2 - 0.006, (y0 + y1) / 2, 0);
-    // plane was placed in the model's world frame at load (root at origin): store it in root space
-    this.root.worldToLocal(plane.position);
-    this.root.add(plane);
-    this.panelMesh = plane; this.panelMat = mat;
+    this.real = buildRealCockpit(model, this.panel, model.userData.skin);
+    this.extCanopy = ['SR71_Canopy_Pilot_mesh', 'SR71_Canopy_Pilot_mesh_1'].map((n) => model.getObjectByName(n)).filter(Boolean);
+    this.glassWater = new GlassWater();
+    this.glassWater.attach(this.real.group.userData.glass, model);
+    this.glassWater.attach(this.extCanopy[1], model);
+    this.cabinMats = this.cabinMats || new Set();
+    for (const m of this.real.stdMats) { m.envMapIntensity = 0.12; this.cabinMats.add(m); cullHidden(m); }
+  }
+
+  // the cockpit parts the pilot cannot see through, for the occlusion mask
+  registerOccluders(occ) {
+    occ.addAll(this.real.interior); occ.addAll(this.real.canopy);
+    for (const o of this.cockpit) occ.addAll(o);
   }
 
   buildEffects() {
@@ -425,8 +457,17 @@ export class AircraftVisual {
     this.navL = dot('rgba(255,40,30,0.9)', 1.4); this.navL.position.set(-11.4 - CG_MODEL.x, 2.05 - CG_MODEL.y, -8.45);
     this.navR = dot('rgba(40,255,80,0.9)', 1.4); this.navR.position.set(-11.4 - CG_MODEL.x, 2.05 - CG_MODEL.y, 8.45);
     this.root.add(this.beacon, this.navL, this.navR);
+    // solid lenses under the glow sprites, so the lights have a body and are not flat blobs
+    const lens = (color, pos, r) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 14, 10), new THREE.MeshBasicMaterial({ color, toneMapped: false })); m.position.copy(pos); this.root.add(m); return m; };
+    this.lensL = lens(0xff3a2a, this.navL.position, 0.07); this.lensR = lens(0x3aff60, this.navR.position, 0.07); this.lensB = lens(0xff2a20, this.beacon.position, 0.1);
+    // landing light: a real spot light for the aircraft and buildings (the ground cone is in the terrain shader)
+    this.landLight = new THREE.SpotLight(0xfff0d0, 0, 500, 0.4, 0.55, 1.4);
+    this.landLight.position.set(6.6 - CG_MODEL.x, 0.5 - CG_MODEL.y, 0); this.landLight.target.position.set(60, -8, 0);
+    this.root.add(this.landLight, this.landLight.target);
+    this._lp = new THREE.Vector3(); this._ld = new THREE.Vector3();
     // cockpit lighting: daylight fill through the canopy, warm flood at night
-    this.cockpitLight = new THREE.PointLight(0xffe3c4, 0, 2.4, 1.6);
+    this._np = new THREE.Vector3(); this._pd = new THREE.Vector3();
+    this.cockpitLight = new THREE.PointLight(0xe8eef8, 0, 4.5, 1.1);
     this.cockpitLight.position.set(10.9 - CG_MODEL.x, 3.55 - CG_MODEL.y, 0);
     this.root.add(this.cockpitLight);
     // planform-shaped contact shadow on the ground
@@ -468,7 +509,9 @@ export class AircraftVisual {
     const de = Math.max(-1, Math.min(1, fdm.surf.de + fdm.trim)) * 18 * D2R, da = fdm.surf.da * 12 * D2R;
     this.uElev.value.set(de - da, de - da * 1.3, de + da, de + da * 1.3);
     // all-moving fins: positive rudder swings the trailing edges right
-    const rud = fdm.surf.dr * 20 * D2R;
+    // on the ground the pedals steer the nose wheel; the fins only visibly swing once there is airflow over them
+    const fade = fdm.onGround ? Math.min(1, Math.max(0, ((fdm.out.V || 0) - 30) / 60)) : 1;
+    const rud = fdm.surf.dr * 20 * D2R * fade;
     for (const f of this.fins || []) {
       f.q.setFromAxisAngle(AXIS_Y, rud);
       f.o.quaternion.copy(f.quat).multiply(f.q);
@@ -494,7 +537,10 @@ export class AircraftVisual {
       fx.disc.material.uniforms.uHot.value = Math.min(1, ab * 1.5);
       // plume length grows with A/B and stretches in thin air
       const thin = 1 + 0.8 * (1 - rhoRatio);
-      const L = (lit ? 6 + 10 * ab : 1.5 + 2.5 * run) * thin;
+      // a plume pointing down at the runway (rotation, climb-out) stops at the surface instead of burning through it
+      fx.outer.getWorldPosition(this._np); this._pd.set(-1, 0, 0).applyQuaternion(fdm.quat);
+      const clear = this._np.y - (groundY - camWorld.y) - 0.25, maxLen = this._pd.y < -0.02 ? Math.max(0.6, clear / -this._pd.y) : 1e9;
+      const L = Math.min((lit ? 6 + 10 * ab : 1.5 + 2.5 * run) * thin, maxLen);
       const wid = 1 + 0.5 * (1 - rhoRatio);
       const vis = lit ? (0.55 + 0.45 * rhoRatio) : 0.12 * run;
       const set = (m, len, inten, rad, dia) => {
@@ -508,7 +554,7 @@ export class AircraftVisual {
       // shock diamonds: evenly spaced bright knots, spacing grows with altitude
       const spacing = (1.25 + 0.5 * ab) * thin;
       fx.diamonds.forEach((s, k) => {
-        const fade = Math.max(0, 1 - k / (3 + 5 * ab));
+        const fade = Math.max(0, 1 - k / (3 + 5 * ab)) * (0.9 + k * spacing < maxLen ? 1 : 0);
         s.position.set(-(0.9 + k * spacing), 0, 0);
         s.scale.setScalar((1.7 - k * 0.12) * (1 + 0.3 * ab) * wid);
         s.material.opacity = lit ? Math.min(1, 1.25 * ab) * fade * (0.5 + 0.5 * rhoRatio) * (0.85 + 0.15 * Math.sin(t * 50 + k)) : 0;
@@ -538,17 +584,49 @@ export class AircraftVisual {
     this.beacon.material.opacity = 0.9 * n;
     this.navL.material.opacity = this.navR.material.opacity = 0.9 * n;
     this.navL.visible = this.navR.visible = n > 0.05;
+    this.lensL.visible = this.lensR.visible = !fdm.crashed; this.lensB.visible = this.beacon.visible;
+    { const on = !fdm.crashed && fdm.gearDown && n > 0.15 ? Math.min(1, (n - 0.15) * 3) : 0;
+      this.landLight.intensity = 600 * on;
+      this.root.updateMatrixWorld(true);
+      this._lp.copy(this.landLight.position).applyMatrix4(this.root.matrixWorld);
+      this._ld.set(1, -0.14, 0).applyQuaternion(this.root.quaternion).normalize();
+      TERRAIN_UNIFORMS.uLand.value.set(this._lp.x, this._lp.y, this._lp.z, on); TERRAIN_UNIFORMS.uLandDir.value.copy(this._ld); }
     if (this.gearRig) this.gearRig.setLamp(!fdm.crashed && fdm.gearPos > 0.65 && (fdm.out.V || 0) < 180, n);
     const inside = view === 'cockpit';
-    this.cockpitLight.intensity = inside ? 0.9 * env.daylight + 0.9 * n : 0;
+    if (this.crew) this.crew.visible = !inside;
+    if (this.chine) { const c = this.chine; if (c.zoneMesh.visible !== inside) { c.zoneMesh.visible = inside; c.fus.geometry.setIndex(inside ? c.cut : c.full); } }
+    // The cockpit was nearly black: a candela-rated point light of ~1 does almost nothing at panel distance, and the exterior sky map is
+    // heavily damped inside. Light it like a cabin full of daylight through the canopy, and a warm red-white flood at night.
+    this.cockpitLight.intensity = inside ? 6 * env.daylight + 3.5 * n : 0;
+    if (this.cabinMats) { const ei = inside ? 0.14 + 0.34 * env.daylight : 0.12; for (const m of this.cabinMats) if (m.envMapIntensity !== ei) m.envMapIntensity = ei; }
     // the interior is ~250k triangles: only draw it when the camera is close enough to see it
     const near = view === 'cockpit' || camWorld.distanceTo(fdm.pos) < 70;
-    this.cockpit.forEach((o) => { o.visible = near && !o.userData.hidden; });
-    if (this.panelMesh) {
-      this.panelMesh.visible = near;
-      const lvl = 0.35 + 0.55 * env.daylight + 0.25 * n;
-      this.panelMat.color.setScalar(Math.min(1, lvl));
-      if (inside && panelState) this.panel.draw({ ...panelState, spikeIn: this.spikeIn || 0 }, dt);
+    this.cockpit.forEach((o) => { o.visible = near && !o.userData.hidden && !(inside && o.name.startsWith('SR71_Cpt_RSO')); });
+    SKIN_WET.value = Math.max(this.glassWater ? this.glassWater.wet : 0, fdm.onGround ? (env.wet || 0) * 0.85 : 0);
+    SKIN_FLOW.value = this.glassWater ? this.glassWater.uniforms.uSpeed.value : 0;
+    if (this.decals) for (const d of this.decals) d.visible = !inside;
+    if (this.decalOrig) for (const d of this.decalOrig) d.visible = !inside;
+    if (this.glassWater) {
+      const sun = this._sunM || (this._sunM = new THREE.Vector3());
+      sun.copy(env.sunDir).applyQuaternion(this.root.quaternion.clone().invert());
+      this.glassWater.update(dt, { rain: this.rainEff || 0, ground: this.rainGround || 0, V: fdm.out.V || 0, sun, daylight: env.daylight, near });
+    }
+    if (this.real) {
+      this.real.interior.visible = near;
+      // the modelled canopy is the correct outside shape; the rebuilt one is only for the view from the seat
+      this.real.canopy.visible = inside;
+      for (const o of this.extCanopy) o.visible = !inside;
+      const lvl = Math.min(1, 0.35 + 0.55 * env.daylight + 0.25 * n);
+      for (const m of this.real.panelMats) m.color.setScalar(lvl);
+      this._pAcc = (this._pAcc || 0) + dt;
+      if (inside && panelState) { this.real.cheek.update({ ...panelState, spikeIn: this.spikeIn || 0 }, dt); this.real.controls.set(panelState); }
+      if (inside && panelState && this._pAcc >= 1 / 24) {
+        const ps = { ...panelState, spikeIn: this.spikeIn || 0 };
+        // the panel is a 2048x1152 canvas that is re-uploaded as a texture on every draw: skip it while no gauge is changing (parked, paused)
+        this._pGate ??= new ChangeGate('panel');
+        if (this._pGate.should(ps, Math.floor(performance.now() / 400) % 2)) { this.panel.draw(ps, this._pAcc + (this._pLost || 0)); this._pLost = 0; } else this._pLost = (this._pLost || 0) + this._pAcc;
+        this._pAcc = 0;
+      }
     }
     // ground shadow, offset along the sun direction
     const agl = fdm.pos.y - groundY;

@@ -62,7 +62,7 @@ class Navigation {
       ((e += haversine(n.lat, n.lon, this.wps[i].lat, this.wps[i].lon)), (n = this.wps[i]));
     return e / 1852;
   }
-  update(t, e, n) {
+  update(t, e, n, bankDeg) {
     const i = {
       valid: !1,
       ident: '',
@@ -88,10 +88,11 @@ class Navigation {
         d = bearing(a.lat, a.lon, t.lat, t.lon),
         p = f * Math.sin((d - l) * D2R),
         v = haversine(a.lat, a.lon, r.lat, r.lon) - f * Math.cos((d - l) * D2R),
-        y = (n * n) / (9.80665 * Math.tan((n > 340 ? 35 : 25) * D2R)),
+        y = (n * n) / (9.80665 * Math.tan((bankDeg ?? (n > 340 ? 35 : 25)) * D2R)),
         x = this.wps[this.active + 1],
         g = x ? Math.abs(gT(bearing(r.lat, r.lon, x.lat, x.lon) - l)) : 0,
         _ = x ? Math.max(1e3, y * Math.tan((Math.min(150, g) * D2R) / 2)) : 300;
+      i.turnInS = x && g > 8 ? Math.max(0, (h - _) / Math.max(n, 1)) : null; i.turnDeg = x ? g : 0; i.turnRadiusNm = y / 1852;
       h < _ || v < 0
         ? x
           ? (this.active++, (this.legStart = { lat: r.lat, lon: r.lon }), this.changed(), (this.sequenced = r.name))

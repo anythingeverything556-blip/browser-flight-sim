@@ -9,8 +9,10 @@ with help from an AI assistant.
 
 ## Map data (loaded live in the browser)
 - Satellite imagery: Esri World Imagery, and national orthophoto services for
-  France (IGN), Bavaria, Rhineland-Palatinate, Flanders, Czechia, South Tyrol
-  and New South Wales.
+  France (IGN), Bavaria, Rhineland-Palatinate, Flanders, Czechia, South Tyrol,
+  New South Wales, Switzerland (swisstopo SWISSIMAGE, open government data),
+  the Netherlands (PDOK, CC BY 4.0), Austria (basemap.at, CC BY 4.0) and Japan
+  (Geospatial Information Authority of Japan seamless photo).
 - Terrain elevation: AWS Terrain Tiles.
 - 3D buildings: Overture Maps Foundation (includes OpenStreetMap data, (c)
   OpenStreetMap contributors, ODbL, plus Google and Microsoft building data).

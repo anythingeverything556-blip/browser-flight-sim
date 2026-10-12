@@ -138,6 +138,7 @@ export class Audio {
     this.rollHiss = voice(this.pink, 'bandpass', 1400, 0.6, this.mix);
     this.thump = (() => { const s = C.createBufferSource(); s.buffer = this.thumpBuf; s.loop = true; s.playbackRate.value = 1; const g = gain(0); s.connect(g); g.connect(this.mix); s.start(); return { s, g }; })();
     this.ac = voice(this.white, 'lowpass', 2400, 0.5, this.mix);
+    this.breath = voice(this.pink, 'bandpass', 900, 0.8, this.mix);
     // rain: a hiss on the airframe, and a patter on the canopy that you only hear from inside
     this.rainHiss = voice(this.white, 'highpass', 1800, 0.5, this.mix);
     this.rainBand = voice(this.pink, 'bandpass', 4300, 0.6, this.mix, 0.25);
@@ -346,6 +347,13 @@ export class Audio {
     set(this.rollHiss.g.gain, ground * 0.04 * (cab ? 1 : near)); set(this.rollHiss.fl.frequency, 900 + s.gs * 14);
     set(this.thump.g.gain, ground * clamp(s.gs / 70, 0, 1) * 0.22 * (cab ? 1 : near)); set(this.thump.s.playbackRate, clamp(s.gs / 6, 0.2, 14), 0.1);
     set(this.ac.g.gain, cab ? 0.011 : 0); set(this.humGain.gain, cab ? 0.0035 : 0);
+    // pressure-suit breathing: a short rasping inhale, a longer exhale through the regulator, then a clear pause. Quiet, and silent
+    // in between, so it reads as someone breathing rather than a constant hiss.
+    {
+      const T = 4.8, ph = (t % T) / T, inh = ph < 0.13 ? Math.sin(Math.PI * ph / 0.13) : 0, exh = ph >= 0.2 && ph < 0.42 ? Math.sin(Math.PI * (ph - 0.2) / 0.22) : 0;
+      const env = inh * 0.6 + exh, live = cab && !s.crashed ? 1 : 0;
+      set(this.breath.g.gain, live * env * 0.16, 0.03); set(this.breath.fl.frequency, inh > 0 ? 1300 : 700, 0.08);
+    }
 
     // hydraulics: the pump climbs in pitch with load while the gear is moving
     const moving = s.gearMoving ? 1 : 0, hv = moving * (cab ? 0.05 : 0.012 * near / 0.5);

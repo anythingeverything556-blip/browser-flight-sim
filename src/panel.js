@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { weatherPanelCanvas } from './cockpitwear.js';
 
 const kl = 2048,
   ea = 1152,
@@ -202,23 +203,93 @@ const kl = 2048,
   },
   li = (s, t) => (s.a0 + ((Us(t, s.min, s.max) - s.min) / (s.max - s.min)) * (s.a1 - s.a0)) * ki,
   vm = (s) => (-90 + Math.sign(s) * 165 * Math.sqrt(Math.min(1, Math.abs(s) / 6e3))) * ki;
+// ---- dense field of small gauges: the real panel is packed with 1.5-inch dials beside the big ones. They go in the free strips beside the attitude
+// indicator and compass and in the bottom corners; every needle follows the simulation (tank quantities, hydraulics, temperatures, spikes...) ----
+const oatC = (ft) => 15 - 6.5 * Math.min(11, Math.max(0, ft * 0.0003048));
+const G = (label, min, max, red, v) => ({ label, min, max, red, v, a0: -135, a1: 135, r: 27 });
+const MINI_L = [
+  ...[0, 1, 2, 3, 4, 5].map((i) => G('T' + (i + 1), 0, 16, [0, 1.2], (st) => st.fuelTanksLb[i] / 1000)),
+  G('OL', 0, 100, [0, 10], (st) => st.oilPressurePsi[0]), G('OR', 0, 100, [0, 10], (st) => st.oilPressurePsi[1]),
+  G('HL', 0, 4, [0, 2], (st) => st.hydraulicPressureKpsi[0]), G('HR', 0, 4, [0, 2], (st) => st.hydraulicPressureKpsi[1]),
+  G('AMP', 0, 400, [350, 400], (st) => st.busCurrentA), G('VLT', 0, 30, [0, 22], (st) => st.busVoltageV),
+];
+const MINI_R = [
+  G('CAB', 0, 50, [35, 50], (st) => st.cabinAltitudeFt / 1000), G('dP', 0, 6, [5.2, 6], (st) => st.differentialPressurePsi),
+  G('OAT', -80, 40, [30, 40], (st) => oatC(st.altFt)), G('OTL', 0, 150, [110, 150], (st) => st.oilTemperatureC[0]),
+  G('OTR', 0, 150, [110, 150], (st) => st.oilTemperatureC[1]), G('F-T', -80, 80, [50, 80], (st) => st.fuelTemperatureC),
+  G('SPL', 0, 26, [0, 0], (st) => st.spikeIn || 0), G('SPR', 0, 26, [0, 0], (st) => st.spikeIn || 0),
+  G('BPL', 0, 100, [90, 100], (st) => (st.bypass ? st.bypass[0] : 0)), G('BPR', 0, 100, [90, 100], (st) => (st.bypass ? st.bypass[1] : 0)),
+  G('NZL', 0, 100, [0, 0], (st) => (st.noz ? st.noz[0] : 0)), G('NZR', 0, 100, [0, 0], (st) => (st.noz ? st.noz[1] : 0)),
+  G('OXY', 0, 100, [0, 20], (st) => st.oxygenQuantityPct),
+];
+const MINI_C = [ // bottom corners of the engine facet
+  G('AOA', 0, 25, [18, 25], (st) => st.aoaDeg), G('MCH', 0, 3.5, [3.3, 3.5], (st) => st.mach), G('FF', 0, 80, [0, 0], (st) => (st.ff ? (st.ff[0] + st.ff[1]) / 1000 : 0)), G('ALT', 0, 100, [85, 100], (st) => st.altFt / 1000),
+  G('PCH', -20, 20, [0, 0], (st) => (st.pitch || 0) * 57.3), G('BNK', -60, 60, [45, 60], (st) => (st.bank || 0) * 57.3), G('VS', -6, 6, [0, 0], (st) => st.vsFpm / 1000), G('KEA', 0, 600, [450, 600], (st) => st.kias),
+];
+const place = (list, xs, y0, pitch) => list.map((m, i) => ({ ...m, x: xs[i % xs.length], y: y0 + pitch * Math.floor(i / xs.length) }));
+const MINI = [
+  ...place(MINI_L, [622], 168, 71), ...place(MINI_R, [1221], 168, 65),
+  ...place([...MINI_C.slice(0, 4)], [1627, 1687], 1005, 62).map((m, i) => ({ ...m, x: [1627, 1687, 1627, 1687][i], y: [1005, 1005, 1067, 1067][i] })),
+  ...place([...MINI_C.slice(4)], [1925, 1985], 1005, 62).map((m, i) => ({ ...m, x: [1925, 1985, 1925, 1985][i], y: [1005, 1005, 1067, 1067][i] })),
+];
+
+// 3/4 of the logical 2048x1152 panel: needles and digits stay crisp (a 512x288 layer was visibly soft), and an upload is 5.3 MB at most 20 times a second
+const DYNAMIC_W = 1536, DYNAMIC_H = 864;
+function panelHardware() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (!gl) return { maxTextureSize: 2048, maxAnisotropy: 8 };
+    const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    const ext = gl.getExtension('EXT_texture_filter_anisotropic') || gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic') || gl.getExtension('MOZ_EXT_texture_filter_anisotropic');
+    const maxAnisotropy = ext ? gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 1;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return { maxTextureSize, maxAnisotropy };
+  } catch {
+    return { maxTextureSize: 2048, maxAnisotropy: 8 };
+  }
+}
+
+const panelSignature = (state) => JSON.stringify(state, (key, value) => {
+  if (typeof value !== 'number') return value;
+  if (key === 'flightTime') return undefined;
+  if (key === 'hour') return Math.round(value * 3600);
+  return Math.round(value * 2) / 2;
+});
+
 class CockpitPanel {
   constructor() {
-    ((this.canvas = document.createElement('canvas')),
-      (this.canvas.width = kl),
-      (this.canvas.height = ea),
-      (this.ctx = this.canvas.getContext('2d')),
-      (this.texture = new THREE.CanvasTexture(this.canvas)),
-      (this.texture.colorSpace = THREE.SRGBColorSpace),
-      (this.texture.anisotropy = 8),
-      (this.sm = {}),
-      (this.gMax = 1),
-      (this.gMin = 1),
-      (this.t = 0),
-      (this.bg = document.createElement('canvas')),
-      (this.bg.width = kl),
-      (this.bg.height = ea),
-      this.drawStatic(this.bg.getContext('2d')));
+    const hw = panelHardware();
+    this.staticScale = hw.maxTextureSize >= 4096 ? 2 : 1;
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = DYNAMIC_W;
+    this.canvas.height = DYNAMIC_H;
+    this.ctx = this.canvas.getContext('2d');
+    this.dynamicTexture = new THREE.CanvasTexture(this.canvas);
+    this.dynamicTexture.colorSpace = THREE.SRGBColorSpace;
+    this.dynamicTexture.minFilter = THREE.LinearFilter;
+    this.dynamicTexture.magFilter = THREE.LinearFilter;
+    this.dynamicTexture.generateMipmaps = false;
+
+    this.bg = document.createElement('canvas');
+    this.bg.width = kl * this.staticScale;
+    this.bg.height = ea * this.staticScale;
+    const staticCtx = this.bg.getContext('2d');
+    staticCtx.scale(this.staticScale, this.staticScale);
+    this.drawStatic(staticCtx);
+    weatherPanelCanvas(staticCtx, kl, ea);
+    this.texture = new THREE.CanvasTexture(this.bg);
+    this.texture.colorSpace = THREE.SRGBColorSpace;
+    this.texture.anisotropy = hw.maxAnisotropy;
+    this.sm = {};
+    this.gMax = 1;
+    this.gMin = 1;
+    this.t = 0;
+    this.pendingDt = 0;
+    this.lastDrawAt = -Infinity;
+    this.stateKey = '';
+    this.lastDrawMs = 0;
+    this.drawCount = 0;
   }
   ease(t, e, n, i, r) {
     (this.sm[t] === void 0 || !isFinite(this.sm[t])) && (this.sm[t] = e);
@@ -252,6 +323,19 @@ class CockpitPanel {
       (t.beginPath(), t.arc(e + Math.cos(a * ki) * l, n + Math.sin(a * ki) * l, i * 0.045, 0, Math.PI * 2), t.fill());
     }
   }
+  glass(t, x, y, r) {
+    t.save();
+    t.beginPath();
+    t.arc(x, y, r * 0.88, 0, Math.PI * 2);
+    t.clip();
+    const g = t.createLinearGradient(x - r * 0.6, y - r, x + r * 0.5, y + r);
+    g.addColorStop(0, 'rgba(255,255,255,0.11)');
+    g.addColorStop(0.42, 'rgba(255,255,255,0.025)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    t.fillStyle = g;
+    t.fillRect(x - r, y - r, 2 * r, 2 * r);
+    t.restore();
+  }
   scale(t, e) {
     (t.save(), t.translate(e.x, e.y));
     for (const [i, r, a] of e.arcs || [])
@@ -276,17 +360,36 @@ class CockpitPanel {
         t.stroke(),
         Math.abs(r / e.labelEvery - Math.round(r / e.labelEvery)) < 1e-6)
       ) {
-        t.font = `bold ${Math.round(e.r * 0.17)}px ${Ki}`;
-        const u = e.r * 0.62,
+        t.font = `bold ${Math.round(e.r * 0.14)}px ${Ki}`;
+        const u = e.r * 0.68,
           f = e.id === 'clock' && r === 0 ? '12' : String(Math.round(r * 10) / 10);
         t.fillText(f, Math.sin(a) * u, -Math.cos(a) * u);
       }
     }
-    ((t.font = `${Math.round(e.r * 0.15)}px ${Ki}`),
+    ((t.font = `${Math.round(e.r * 0.13)}px ${Ki}`),
       (t.fillStyle = '#cfd3d6'),
-      e.title && t.fillText(e.title, 0, -e.r * 0.3),
-      e.unit && ((t.font = `${Math.round(e.r * 0.1)}px ${Ki}`), t.fillText(e.unit, 0, e.r * 0.32)),
+      e.title && t.fillText(e.title, 0, -e.r * 0.34),
+      e.unit && ((t.font = `${Math.round(e.r * 0.1)}px ${Ki}`), t.fillText(e.unit, 0, -e.r * 0.2)),
       t.restore());
+  }
+  miniStatic(t) {
+    // screws in the corners and along the edges of every facet
+    t.fillStyle = '#8a8f94';
+    for (const [x0, y0, w, h] of [[20, 110, 560, 1030], [575, 110, 680, 1030], [1265, 110, 300, 1030], [1575, 110, 455, 1030]]) {
+      for (const [x, y] of [[x0 + 12, y0 + 12], [x0 + w - 12, y0 + 12], [x0 + 12, y0 + h - 12], [x0 + w - 12, y0 + h - 12]]) { t.beginPath(); t.arc(x, y, 5, 0, 7); t.fill(); t.strokeStyle = '#2a2c2e'; t.lineWidth = 1.5; t.beginPath(); t.moveTo(x - 3, y - 3); t.lineTo(x + 3, y + 3); t.stroke(); }
+      for (let x = x0 + 70; x < x0 + w - 40; x += 70) for (const y of [y0 + 10, y0 + h - 10]) { t.fillStyle = '#6d7276'; t.beginPath(); t.arc(x, y, 2.2, 0, 7); t.fill(); }
+    }
+    for (const m of MINI) {
+      this.bezel(t, m.x, m.y, m.r);
+      t.save(); t.translate(m.x, m.y);
+      if (m.red && m.red[1] > m.red[0]) { t.strokeStyle = '#d22'; t.lineWidth = m.r * 0.1; t.beginPath(); t.arc(0, 0, m.r * 0.84, li(m, m.red[0]) - Math.PI / 2, li(m, m.red[1]) - Math.PI / 2); t.stroke(); }
+      t.strokeStyle = '#ececec'; for (let i = 0; i <= 8; i++) { const a = (m.a0 + ((m.a1 - m.a0) * i) / 8) * ki, big = i % 2 === 0; t.lineWidth = big ? 2 : 1.2; t.beginPath(); t.moveTo(Math.sin(a) * m.r * (big ? 0.62 : 0.74), -Math.cos(a) * m.r * (big ? 0.62 : 0.74)); t.lineTo(Math.sin(a) * m.r * 0.92, -Math.cos(a) * m.r * 0.92); t.stroke(); }
+      t.fillStyle = '#cfd3d6'; t.font = `bold ${Math.round(m.r * 0.38)}px ${Ki}`; t.textAlign = 'center'; t.textBaseline = 'middle'; t.fillText(m.label, 0, m.r * 0.5);
+      t.restore();
+    }
+  }
+  miniLive(n, t, e) {
+    for (let i = 0; i < MINI.length; i++) { const m = MINI[i]; this.needle(n, m.x, m.y, li(m, this.ease('mn' + i, m.v(t), 5, e)), m.r * 0.8, 2.3, '#f4f4f4', 0.18); }
   }
   label(t, e, n, i, r = 22, a = '#d8dcdf') {
     ((t.fillStyle = a),
@@ -361,7 +464,8 @@ class CockpitPanel {
       this.label(t, 'FWD BYPASS', 1805, 905, 18),
       this.label(t, 'NAV / AUTOPILOT', 1415, 728, 18),
       this.label(t, 'GEAR', 340, 1040, 18),
-      this.label(t, 'BRAKES · CHUTE', 1415, 960, 18));
+      this.label(t, 'BRAKES · CHUTE', 1415, 960, 18),
+      this.miniStatic(t));
   }
   needle(t, e, n, i, r, a, l = '#f4f4f4', h = 0.2) {
     (t.save(),
@@ -406,6 +510,8 @@ class CockpitPanel {
       (t.textBaseline = 'middle'));
     const u = e.split(`
 `);
+    const wide = Math.max(...u.map((f) => t.measureText(f).width));
+    if (wide > r - 10) t.font = `bold ${Math.floor(a * 0.38 * ((r - 10) / wide))}px ${Ki}`;
     u.forEach((f, d) => t.fillText(f, n, i + (d - (u.length - 1) / 2) * a * 0.4));
   }
   adi(t, e, n) {
@@ -642,10 +748,26 @@ class CockpitPanel {
         24,
         e.nav.ilsValid ? '#3ef06a' : '#d8dcdf',
       ));
+    for (const gauge of Object.values(It)) if (gauge.r) this.glass(t, gauge.x, gauge.y, gauge.r);
+    for (const gauge of MINI) this.glass(t, gauge.x, gauge.y, gauge.r);
   }
   draw(t, e) {
+    this.pendingDt += Math.max(0, e || 0);
+    const now = performance.now();
+    const nextTime = this.t + this.pendingDt;
+    const blinkActive = t.warn.stall || t.warn.overG || t.warn.pullUp || t.warn.lowFuel || t.warn.overspeed || t.warn.gearUnsafe || t.unstart[0] || t.unstart[1];
+    const key = `${panelSignature(t)}:${blinkActive ? Math.floor(nextTime * 2.5) : ''}`;
+    if (key === this.stateKey || now - this.lastDrawAt < 50) return false;
+    this.stateKey = key;
+    this.lastDrawAt = now;
+    this.t = nextTime;
+    this.pendingDt = 0;
+    const started = now;
     const n = this.ctx;
-    ((this.t += e), n.drawImage(this.bg, 0, 0));
+    n.setTransform(DYNAMIC_W / kl, 0, 0, DYNAMIC_H / ea, 0, 0);
+    n.globalAlpha = 1;
+    n.globalCompositeOperation = 'source-over';
+    n.clearRect(0, 0, kl, ea);
     const i = Math.floor(this.t * 2.5) % 2 === 0,
       r = t.warn.stall || t.warn.overG || t.warn.pullUp || t.unstart[0] || t.unstart[1],
       a = t.warn.lowFuel || t.warn.overspeed || t.warn.gearUnsafe;
@@ -702,7 +824,6 @@ ENGAGED`,
         t.apOn,
         '#58e070',
       ],
-      ['SAS', !0, '#58e070'],
       [
         `GEAR
 UNSAFE`,
@@ -712,7 +833,6 @@ UNSAFE`,
     ].forEach(([x, g, _], w) => this.lamp(n, x, 90 + w * 142, 58, 128, 66, !!g, _));
     const h = this.ease('kias', t.kias, 6, e);
     (this.needle(n, It.kias.x, It.kias.y, li(It.kias, h), It.kias.r * 0.86, 9),
-      this.digits(n, t.mach.toFixed(2), It.kias.x, It.kias.y + It.kias.r * 0.55, 110, 44),
       this.digits(n, String(Math.round(t.kias)).padStart(3, ' '), 462, 220, 150, 52),
       this.digits(n, t.mach.toFixed(2), 462, 316, 150, 52),
       this.digits(n, String(Math.round(t.altFt)).padStart(5, ' '), 462, 412, 150, 52, '#f2f2f2', 32),
@@ -729,7 +849,7 @@ UNSAFE`,
       this.needle(n, It.clock.x, It.clock.y, (f / 60) * Math.PI * 2, It.clock.r * 0.82, 5),
       this.needle(n, It.clock.x, It.clock.y, (d / 60) * Math.PI * 2, It.clock.r * 0.88, 2, '#ff9b1c'),
       this.needle(n, It.fuel.x, It.fuel.y, li(It.fuel, t.fuelLb / 1e3), It.fuel.r * 0.86, 7),
-      this.digits(n, String(Math.round(t.fuelLb)).padStart(6, ' '), It.fuel.x, It.fuel.y + It.fuel.r * 0.5, 120, 34));
+      this.digits(n, String(Math.round(t.fuelLb)).padStart(6, ' '), It.fuel.x, It.fuel.y + It.fuel.r * 0.36, 96, 28, '#f2f2f2', 20));
     const p = t.gearPos > 0.02 && t.gearPos < 0.98;
     (['NOSE', 'LEFT', 'RIGHT'].forEach((x, g) =>
       this.lamp(n, x, 120 + g * 105, 1095, 95, 50, t.gearPos > 0.98 || p, p ? '#ff3a2e' : '#58e070'),
@@ -743,17 +863,7 @@ UNSAFE`,
       this.adi(n, t, e),
       this.hsi(n, t, e));
     const v = this.ease('alt', t.altFt, 8, e);
-    (this.digits(
-      n,
-      String(Math.round(v)).padStart(6, ' '),
-      It.alt.x,
-      It.alt.y + It.alt.r * 0.42,
-      150,
-      46,
-      '#f2f2f2',
-      34,
-    ),
-      this.needle(n, It.alt.x, It.alt.y, ((v % 1e3) / 1e3) * Math.PI * 2, It.alt.r * 0.86, 9),
+    (this.needle(n, It.alt.x, It.alt.y, ((v % 1e3) / 1e3) * Math.PI * 2, It.alt.r * 0.86, 9),
       this.needle(n, It.alt.x, It.alt.y, ((v % 1e4) / 1e4) * Math.PI * 2, It.alt.r * 0.55, 12, '#c8c8c8'),
       this.needle(n, It.vvi.x, It.vvi.y, vm(this.ease('vvi', t.vsFpm, 5, e)), It.vvi.r * 0.86, 8),
       (n.fillStyle = '#060606'),
@@ -776,7 +886,17 @@ UNSAFE`,
         880,
         t.nav.valid,
       ),
-      y(t.nav.ilsValid ? `LOC ${t.nav.locDev.toFixed(1)} GS ${t.nav.gsDev.toFixed(1)}` : 'ILS --', 914, t.nav.ilsValid),
+      y(
+        t.nav.ilsValid
+          ? `LOC ${t.nav.locDev.toFixed(1)} GS ${t.nav.gsDev.toFixed(1)}`
+          : t.nav.valid && t.nav.turnInS != null
+            ? t.nav.turnInS > 1
+              ? `TURN ${Math.round(t.nav.turnDeg)}° IN ${Math.floor(t.nav.turnInS / 60)}:${String(Math.floor(t.nav.turnInS % 60)).padStart(2, '0')}`
+              : `TURNING ${Math.round(t.nav.turnDeg)}°`
+            : 'ILS --',
+        914,
+        t.nav.ilsValid || (t.nav.valid && t.nav.turnInS != null),
+      ),
       this.lamp(n, 'BRAKE', 1335, 1010, 92, 50, t.brakes, '#ffb21e'),
       this.lamp(
         n,
@@ -789,15 +909,14 @@ BRAKE`,
         t.park,
         '#ffb21e',
       ),
-      this.lamp(n, 'CHUTE', 1335, 1072, 92, 50, t.chute === 'deployed', '#58e070'),
-      this.lamp(n, 'NWS', 1440, 1072, 92, 50, t.onGround, '#58e070'));
+      this.lamp(n, 'CHUTE', 1335, 1072, 92, 50, t.chute === 'deployed', '#58e070'));
     for (const x of [0, 1]) {
       const g = x ? 'R' : 'L',
         _ = x ? 1920 : 1690;
       (this.needle(n, _, It.rpmL.y, li(It.rpmL, this.ease('rpm' + g, t.rpm[x], 4, e)), It.rpmL.r * 0.86, 6),
-        this.digits(n, String(Math.round(t.rpm[x])), _, It.rpmL.y + It.rpmL.r * 0.55, 70, 30),
+        this.digits(n, String(Math.round(t.rpm[x])), _, It.rpmL.y + It.rpmL.r * 0.4, 56, 26),
         this.needle(n, _, It.egtL.y, li(It.egtL, this.ease('egt' + g, t.egt[x], 2, e)), It.egtL.r * 0.86, 6),
-        this.digits(n, String(Math.round(t.egt[x])), _, It.egtL.y + It.egtL.r * 0.55, 70, 30),
+        this.digits(n, String(Math.round(t.egt[x])), _, It.egtL.y + It.egtL.r * 0.4, 56, 26),
         this.needle(n, _, It.nozL.y, li(It.nozL, this.ease('noz' + g, t.noz[x], 3, e)), It.nozL.r * 0.86, 5),
         this.digits(n, String(Math.round(t.ff[x])).padStart(5, ' '), _, 765, 150, 42));
       const w = (b, S, E) => {
@@ -805,19 +924,34 @@ BRAKE`,
           n.fillRect(_ - 90, b - 18, 180, 36),
           (n.fillStyle = '#ddd'),
           n.fillRect(_ - 86, b - 14, 172 * Us(S, 0, 1), 28),
-          (n.fillStyle = S > 0.55 ? '#111' : '#ddd'),
           (n.font = `bold 20px ${Ki}`),
           (n.textAlign = 'center'),
           (n.textBaseline = 'middle'),
-          n.fillText(E, _, b));
+          n.save(),
+          n.beginPath(),
+          n.rect(_ - 86, b - 14, 172 * Us(S, 0, 1), 28),
+          n.clip(),
+          (n.fillStyle = '#111'),
+          n.fillText(E, _, b),
+          n.restore(),
+          n.save(),
+          n.beginPath(),
+          n.rect(_ - 86 + 172 * Us(S, 0, 1), b - 14, 172, 28),
+          n.clip(),
+          (n.fillStyle = '#ddd'),
+          n.fillText(E, _, b),
+          n.restore());
       };
       (w(850, t.spikeIn / 26, `${t.spikeIn.toFixed(0)} IN AFT`),
-        w(943, t.bypass[x] / 100, `${Math.round(t.bypass[x])} %`),
-        this.lamp(n, 'UNSTART', _, 1e3, 120, 40, t.unstart[x] && i, '#ff3a2e'));
+        w(943, t.bypass[x] / 100, `${Math.round(t.bypass[x])} %`));
     }
     (this.needle(n, It.cit.x, It.cit.y, li(It.cit, this.ease('cit', t.cit, 2, e)), It.cit.r * 0.86, 6),
-      this.digits(n, String(Math.round(t.cit)), It.cit.x, It.cit.y + It.cit.r * 0.55, 80, 30),
-      (this.texture.needsUpdate = !0));
+      this.digits(n, String(Math.round(t.cit)), It.cit.x, It.cit.y + It.cit.r * 0.4, 60, 26),
+      this.miniLive(n, t, e),
+      (this.dynamicTexture.needsUpdate = !0));
+    this.lastDrawMs = performance.now() - started;
+    this.drawCount++;
+    return true;
   }
 }
 

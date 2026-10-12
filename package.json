@@ -7,7 +7,7 @@
     "dev": "vite --host 0.0.0.0 --port 5173",
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
-    "test": "node test/dem-test.mjs && node test/fdm-test.mjs"
+    "test": "node test/dem-test.mjs && node test/fdm-test.mjs && node test/controls-test.mjs && node test/missions-test.mjs && node test/tutorial-test.mjs && node test/autopilot-test.mjs && node test/workstats-test.mjs && node test/trees-test.mjs && node test/metar-test.mjs && node test/atc-test.mjs && node test/traffic-test.mjs && node test/systems-test.mjs && node test/landing-test.mjs && node test/mach-dial-test.mjs && node test/occlusion-test.mjs"
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",

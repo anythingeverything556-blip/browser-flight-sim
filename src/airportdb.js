@@ -52,8 +52,8 @@ export class Runway {
       const p = destination(end.start.lat, end.start.lon, end.hdg, 90);
       return { ...p, alt: end.elev, hdg: end.hdg, speed: 0, ground: true };
     }
-    if (mode === 'approach') {
-      const d = 18520, p = destination(end.start.lat, end.start.lon, (end.hdg + 180) % 360, d);
+    if (mode === 'approach' || mode === 'final') {
+      const d = mode === 'final' ? 9260 : 18520, p = destination(end.start.lat, end.start.lon, (end.hdg + 180) % 360, d);
       return { ...p, alt: end.elev + 4 + (d + 300) * Math.tan(3 * D2R), hdg: end.hdg, speed: 92, ground: false, gamma: -3 };
     }
     const p = destination(end.start.lat, end.start.lon, end.hdg, 30000);

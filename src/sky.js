@@ -27,6 +27,25 @@ void main() {
   #ifndef ATM_HDR
   float c = dot(d, uAtmSun);
   L += uAtmSunCol * (400.0 * smoothstep(0.999928, 0.999959, c) + 2.0 * exp(-(1.0 - c) * 3000.0));
+  // the moon: a lit disc (phase from the sun's direction), maria and craters from noise, and a soft halo
+  {
+    vec3 md = uMoon.xyz; float mc = dot(d, md);
+    const float MR = 0.0125;
+    float ang = acos(clamp(mc, -1.0, 1.0));
+    float halo = 0.35 * exp(-ang * 60.0) + 0.05 * exp(-ang * 14.0);
+    vec3 e1 = normalize(cross(md, vec3(0.0, 1.0, 0.0))), e2 = cross(e1, md);
+    vec2 q = vec2(dot(d, e1), dot(d, e2)) / MR;
+    float rr = length(q);
+    vec3 mn = vec3(q, sqrt(max(0.0, 1.0 - rr * rr)));
+    vec3 nw = e1 * mn.x + e2 * mn.y + md * mn.z;
+    float lit = smoothstep(-0.03, 0.12, dot(nw, uAtmSun));
+    float n1 = mn.x * 3.1 + mn.y * 1.7, mar = smoothstep(0.35, 0.7, 0.5 + 0.5 * sin(n1 * 2.1 + sin(mn.y * 5.0) * 1.3) * cos(mn.x * 4.2 - mn.y * 2.3));
+    float cr = 0.5 + 0.5 * sin(mn.x * 31.0 + sin(mn.y * 27.0) * 2.0) * sin(mn.y * 23.0 + mn.x * 9.0);
+    vec3 alb = mix(vec3(0.95, 0.93, 0.88), vec3(0.42, 0.43, 0.46), mar * 0.8) * (0.85 + 0.15 * cr);
+    float disc = 1.0 - smoothstep(0.96, 1.0, rr);
+    float vis = mix(0.25, 1.0, 1.0 - smoothstep(-0.12, 0.2, uAtmSun.y));
+    L += (vec3(alb) * lit * 9.0 * disc * (0.35 + 0.65 * pow(max(mn.z, 0.0), 0.35)) + vec3(0.55, 0.65, 0.9) * halo * (0.4 + 0.6 * lit)) * vis * step(0.0, mc);
+  }
   gl_FragColor = vec4(atmTone(L), 1.0);
   #include <colorspace_fragment>
   #include <dithering_fragment>
@@ -55,7 +74,11 @@ class Environment {
       t.add(this.sky),
       (this.sun = new THREE.DirectionalLight(16777215, 3)),
       t.add(this.sun),
-      t.add(this.sun.target));
+      t.add(this.sun.target),
+      (this.moonLight = new THREE.DirectionalLight(0x9db6ff, 0)),
+      t.add(this.moonLight),
+      t.add(this.moonLight.target),
+      (this.moonDir = new THREE.Vector3(0, 1, 0)));
     const n = this.sun.shadow;
     (n.mapSize.set(2048, 2048),
       (n.bias = -4e-4),
@@ -122,7 +145,12 @@ class Environment {
     (a.setAttribute('position', new THREE.BufferAttribute(r, 3)),
       (this.starMat = new THREE.PointsMaterial({
         color: 16777215,
-        size: 1.6,
+        map: (() => { // a soft round dot: a hard 1-2 pixel square pops on and off as the camera turns (twinkling and flicker)
+          const c = document.createElement('canvas'); c.width = c.height = 32; const x = c.getContext('2d'), g = x.createRadialGradient(16, 16, 0, 16, 16, 16);
+          g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.35, 'rgba(255,255,255,0.55)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+          x.fillStyle = g; x.fillRect(0, 0, 32, 32); const t = new THREE.CanvasTexture(c); return t;
+        })(),
+        size: 3,
         sizeAttenuation: !1,
         transparent: !0,
         opacity: 0,
@@ -165,10 +193,18 @@ class Environment {
       x = MIE_BOOST / (this.visibility || 1),
       g = ATMOS_UNIFORMS;
     (g.uAtm.value.set(y, g.uAtm.value.y, (SKY_K * v) / 0.6, x),
+      // moon: roughly opposite the sun but offset sideways, so it is a gibbous moon that is up most of the night
+      (this._side || (this._side = new THREE.Vector3())).set(-this.sunDir.z, 0, this.sunDir.x).normalize(),
+      this.moonDir.copy(this.sunDir).negate().addScaledVector(this._side, 0.62).normalize(),
+      (this.moonI = Math.pow(Math.max(0, this.moonDir.y), 0.55) * 0.9 * (1 - Math.min(1, Math.max(0, this.sunDir.y * 6)))),
+      g.uMoon.value.set(this.moonDir.x, this.moonDir.y, this.moonDir.z, this.moonI),
+      (this.moonLight.intensity = 0.55 * this.moonI * (1 - f)),
+      this.moonLight.position.copy(this.sun.target.position).addScaledVector(this.moonDir, 60),
+      this.moonLight.target.position.copy(this.sun.target.position),
       g.uAtmSun.value.copy(this.sunDir),
       sunColor(y, h, x, this.sunCol),
       g.uAtmSunCol.value.set(this.sunCol[0], this.sunCol[1], this.sunCol[2]),
-      g.uAtmNight.value.set(6e-4, 9e-4, 0.0016).multiplyScalar(this.night * (1 - f)));
+      g.uAtmNight.value.set(6e-4, 9e-4, 0.0016).multiplyScalar(this.night * (1 - f) * (1 + 5 * this.moonI)));
     const _ = performance.now(),
       w = `${Math.round(Math.log(1 + y / 60) * 14)}|${Math.round(p * 10)}|${x.toFixed(2)}`;
     if (w !== this.lutKey && _ - this.lutAt > 250) {
@@ -201,6 +237,7 @@ class Environment {
       0.19 * (this.sunCol[2] * A + E[2]) * 0.55,
     ),
       (this.hemi.intensity = 1),
+      (this.starMat.size = 3.4 * Math.max(1, this.renderer.getPixelRatio() / 1.5)),
       (this.starMat.opacity = Math.max(this.night * 0.9, f * f * 0.25 * (1 - this.daylight * 0.5))),
       this.scene.fog.color.copy(this.fogDay),
       (this.scene.fog.density = (115e-7 * Math.exp(-Math.max(0, e) / 7e3) + 2e-7) / (this.visibility || 1)));

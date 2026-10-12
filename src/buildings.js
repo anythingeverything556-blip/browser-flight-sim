@@ -216,8 +216,23 @@ class Buildings {
       (this.env = null),
       (this.anisotropy = 8),
       (this.roofGain = 1),
-      (this.casterMat = applyCurvature(new THREE.MeshBasicMaterial({ colorWrite: !1 }))),
+      (this.casterMat = (() => {
+        // the shadow caster fades exactly like the visible building (altitude and distance dither), so a building that has dissolved away
+        // no longer leaves its shadow behind
+        const m = applyCurvature(new THREE.MeshBasicMaterial({ colorWrite: !1 })), prev = m.onBeforeCompile, key = m.customProgramCacheKey, self = this;
+        m.onBeforeCompile = (sh, r) => {
+          prev(sh, r); sh.uniforms.uB = self.uni.uB;
+          sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nvarying vec3 vCW;').replace('gl_Position = projectionMatrix * mvPosition;', 'gl_Position = projectionMatrix * mvPosition; vCW = wpos.xyz;');
+          sh.fragmentShader = sh.fragmentShader.replace('#include <common>', '#include <common>\nvarying vec3 vCW; uniform vec3 uB;')
+            .replace('#include <clipping_planes_fragment>', `#include <clipping_planes_fragment>
+          { float f = uB.x * (1.0 - smoothstep(uB.y, uB.z, length(vCW)));
+            if (f < 0.5) discard; }`);
+        };
+        m.customProgramCacheKey = () => (key ? key.call(m) : '') + '|bfade';
+        return m;
+      })()),
       (this.uni = {
+        uWetB: { value: 0 },
         uB: { value: new THREE.Vector3(1, 1e8, 2e8) },
         uNight: { value: 0 },
         uGain: { value: this.roofGain },
@@ -298,7 +313,7 @@ vBu = aUv; vBf = aFac; vBc = aCen;`,
             .replace(
               '#include <common>',
               `#include <common>
-          uniform vec3 uB; uniform float uNight, uGain, uImg;
+          uniform vec3 uB; uniform float uNight, uGain, uImg, uWetB;
           uniform sampler2D uRoof; uniform highp sampler2DArray uFA, uFD;
           varying vec2 vBu; varying vec4 vBf; varying vec2 vBc;
           ${sd}
@@ -338,7 +353,7 @@ vBu = aUv; vBf = aFac; vBc = aCen;`,
             }
           }`,
             )
-            .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = isRoof ? 0.9 : max(fD.g, 0.04);')
+            .replace('#include <roughnessmap_fragment>', 'float roughnessFactor = isRoof ? 0.9 : max(fD.g, 0.04); roughnessFactor = mix(roughnessFactor, isRoof ? 0.38 : roughnessFactor * 0.4, uWetB); diffuseColor.rgb *= 1.0 - 0.3 * uWetB;')
             .replace('#include <metalnessmap_fragment>', 'float metalnessFactor = isRoof ? 0.0 : fD.b * 0.45;')
             .replace(
               '#include <lights_fragment_end>',

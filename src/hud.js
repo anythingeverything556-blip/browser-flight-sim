@@ -1,3 +1,5 @@
+import { Redraw } from './workstats.js';
+
 const DEG = Math.PI / 180;
 const DASH = [4, 4];
 const SOLID = [];
@@ -20,6 +22,7 @@ class HUD {
   constructor(canvas) {
     this.c = canvas;
     this.x = canvas.getContext("2d", { alpha: true });
+    this.sched = new Redraw('hud', 30); // dynamic layer at 30 Hz; nothing at all while hidden or outside the cockpit
     this.staticCanvas = document.createElement("canvas");
     this.static = this.staticCanvas.getContext("2d", { alpha: true });
     this.visible = true;
@@ -105,9 +108,11 @@ class HUD {
     const k = this.scale;
     const cx = w * 0.5;
     const cy = h * 0.47;
+    const act = this.sched.next(performance.now(), this.visible && state.cockpit);
+    if (act === 'skip') return;
     x.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
     x.clearRect(0, 0, w, h);
-    if (!this.visible || !state.cockpit) return;
+    if (act === 'clear') return;
 
     const tone = state.night > 0.5 ? "rgba(190, 255, 205, 0.97)" : "rgba(165, 239, 192, 0.95)";
     const soft = state.night > 0.5 ? "rgba(190, 255, 205, 0.65)" : "rgba(165, 239, 192, 0.6)";
@@ -121,7 +126,9 @@ class HUD {
     x.font = (11 * k) + "px " + '"SFMono-Regular", Consolas, monospace';
     x.textBaseline = "middle";
     x.shadowColor = "rgba(0, 0, 0, 0.7)";
-    x.shadowBlur = 2 * k;
+    // a blurred canvas shadow re-rasterises a blur for every stroke and glyph each frame; a hard offset shadow reads the same and is ~500x cheaper
+    x.shadowBlur = 0;
+    x.shadowOffsetX = x.shadowOffsetY = Math.max(1, k);
 
     this.updateTrend(state.ias);
     this.drawHeading(x, state, cx, k, tone, soft);
