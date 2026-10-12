@@ -3,88 +3,16 @@ import { ATMOS_UNIFORMS, ATM_FRAG } from './atmos.js';
 
 const Mm = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
   cu = 7e4;
-function W0(s) {
-  return () => ((s = (s * 1664525 + 1013904223) >>> 0), s / 4294967296);
-}
-function ra(s, t, e) {
-  const n = W0(e),
-    i = new Float32Array(t ** 3 * 3).map(() => n()),
-    r = new Float32Array(s ** 3),
-    a = (l) => ((l % t) + t) % t;
-  for (let l = 0, h = 0; l < s; l++)
-    for (let u = 0; u < s; u++)
-      for (let f = 0; f < s; f++, h++) {
-        const d = ((f + 0.5) / s) * t,
-          p = ((u + 0.5) / s) * t,
-          v = ((l + 0.5) / s) * t,
-          y = Math.floor(d),
-          x = Math.floor(p),
-          g = Math.floor(v);
-        let _ = 9;
-        for (let w = -1; w <= 1; w++)
-          for (let b = -1; b <= 1; b++)
-            for (let S = -1; S <= 1; S++) {
-              const E = (a(g + w) * t * t + a(x + b) * t + a(y + S)) * 3,
-                A = y + S + i[E] - d,
-                D = x + b + i[E + 1] - p,
-                N = g + w + i[E + 2] - v,
-                R = A * A + D * D + N * N;
-              R < _ && (_ = R);
-            }
-        r[h] = 1 - Math.min(1, Math.sqrt(_));
-      }
-  return r;
-}
-function wm(s, t, e) {
-  const n = W0(e),
-    i = new Float32Array(t ** 3).map(() => n()),
-    r = new Float32Array(s ** 3),
-    a = (h, u, f) => i[(((f % t) + t) % t) * t * t + (((u % t) + t) % t) * t + (((h % t) + t) % t)],
-    l = (h) => h * h * (3 - 2 * h);
-  for (let h = 0, u = 0; h < s; h++)
-    for (let f = 0; f < s; f++)
-      for (let d = 0; d < s; d++, u++) {
-        const p = (d / s) * t,
-          v = (f / s) * t,
-          y = (h / s) * t,
-          x = Math.floor(p),
-          g = Math.floor(v),
-          _ = Math.floor(y),
-          w = l(p - x),
-          b = l(v - g),
-          S = l(y - _),
-          E = a(x, g, _) + (a(x + 1, g, _) - a(x, g, _)) * w,
-          A = a(x, g + 1, _) + (a(x + 1, g + 1, _) - a(x, g + 1, _)) * w,
-          D = a(x, g, _ + 1) + (a(x + 1, g, _ + 1) - a(x, g, _ + 1)) * w,
-          N = a(x, g + 1, _ + 1) + (a(x + 1, g + 1, _ + 1) - a(x, g + 1, _ + 1)) * w;
-        r[u] = E + (A - E) * b + (D + (N - D) * b - (E + (A - E) * b)) * S;
-      }
-  return r;
-}
-function bm(s, t) {
-  const e = new Float32Array(s ** 3);
-  for (const [l, h] of t) for (let u = 0; u < e.length; u++) e[u] += l[u] * h;
-  let n = 1e9,
-    i = -1e9;
-  for (const l of e) (l < n && (n = l), l > i && (i = l));
-  const r = new Uint8Array(e.length);
-  for (let l = 0; l < e.length; l++) r[l] = Math.round(((e[l] - n) / (i - n)) * 255);
-  const a = new THREE.Data3DTexture(r, s, s, s);
-  return (
-    (a.format = 1028),
-    (a.type = 1009),
-    (a.unpackAlignment = 1),
-    (a.wrapS = a.wrapT = a.wrapR = 1e3),
-    (a.minFilter = a.magFilter = 1006),
-    (a.generateMipmaps = !1),
-    (a.needsUpdate = !0),
-    a
-  );
+import { makeCloudNoise } from './cloud-noise.js';
+function tex3(r, n) {
+  const a = new THREE.Data3DTexture(r, n, n, n);
+  return ((a.format = 1028), (a.type = 1009), (a.unpackAlignment = 1), (a.wrapS = a.wrapT = a.wrapR = 1e3), (a.minFilter = a.magFilter = 1006), (a.generateMipmaps = !1), (a.needsUpdate = !0), a);
 }
 const G2 = `
 uniform highp sampler2D tDepth; uniform highp sampler3D tShape, tDetail;
-uniform mat4 uProjInv, uCamRot; uniform vec3 uCamFwd; uniform vec2 uOff;
-uniform float uLogF, uCamAlt, uBase, uTop, uCover;
+uniform vec4 uCarve[12]; uniform int uCarveN; // tunnels the aircraft has cut through the cloud: xyz camera-relative, w radius
+uniform mat4 uProjInv, uCamRot; uniform vec3 uCamFwd; uniform vec2 uOff, uTan;
+uniform float uLogF, uCamAlt, uBase, uTop, uCover, uEvo; // uEvo: slow drift of the noise field through itself, so cloud shapes grow and fade
 varying vec2 vUv;
 ${ATM_FRAG}
 float hg(float c, float g) { float g2 = g * g; return (1.0 - g2) / (12.5663706 * pow(1.0 + g2 - 2.0 * g * c, 1.5)); }
@@ -92,8 +20,8 @@ float h21(vec2 p) { p = fract(p * vec2(0.1031, 0.1030)); p += dot(p, p.yx + 33.3
 float vn2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
 // large-scale coverage: where clouds cluster and where gaps open
-float weather(vec2 xz) { vec2 p = xz / 26000.0; return 0.55 * vn2(p) + 0.3 * vn2(p * 2.7 + 7.1) + 0.15 * vn2(p * 6.3 + 3.3); }
-float density(vec3 rel, float h, bool fine) {
+float weather(vec2 xz) { vec2 p = xz / 26000.0; return 0.3 * vn2(xz / 110000.0 + 19.0) + 0.3 * vn2(p) + 0.25 * vn2(p * 2.7 + 7.1) + 0.15 * vn2(p * 6.3 + 3.3); }
+float density(vec3 rel, float h, float fine) {
   float hn = (h - uBase) / (uTop - uBase);
   if (hn <= 0.0 || hn >= 1.0) return 0.0;
   vec3 wp = vec3(rel.x + uOff.x, h, rel.z + uOff.y);
@@ -102,18 +30,22 @@ float density(vec3 rel, float h, bool fine) {
   float prof = smoothstep(0.0, 0.08, hn) * (1.0 - smoothstep(top * 0.45, top, hn));
   // two lookups at non-commensurate scales, the second rotated, so the 64^3 tile never shows as a grid from altitude
   vec3 wr = vec3(0.8 * wp.x - 0.6 * wp.z, wp.y, 0.6 * wp.x + 0.8 * wp.z);
-  float s = texture(tShape, wp * vec3(1.0 / 5600.0, 1.0 / 3800.0, 1.0 / 5600.0)).r * 0.62
-          + texture(tShape, wr * vec3(1.0 / 14300.0, 1.0 / 5100.0, 1.0 / 14300.0) + 0.37).r * 0.38;
+  vec3 w3 = vec3(0.28 * wp.x + 0.96 * wp.z, wp.y, -0.96 * wp.x + 0.28 * wp.z); // a third scale at another angle, so the 64-cell noise tile never reads as a repeat
+  float s = texture(tShape, wp * vec3(1.0 / 5600.0, 1.0 / 3800.0, 1.0 / 5600.0) + vec3(0.0, uEvo, 0.0)).r * 0.45
+          + texture(tShape, wr * vec3(1.0 / 14300.0, 1.0 / 5100.0, 1.0 / 14300.0) + vec3(0.37, 0.37 + uEvo * 0.7, 0.37)).r * 0.3
+          + texture(tShape, w3 * vec3(1.0 / 41000.0, 1.0 / 6700.0, 1.0 / 41000.0) + vec3(0.71, 0.13 + uEvo * 0.5, 0.29)).r * 0.25;
   float d = clamp((s * prof - (1.0 - cov)) / max(cov, 0.1), 0.0, 1.0);
-  if (fine && d > 0.0) {
+  if (fine > 0.0 && d > 0.0) {
     float e = texture(tDetail, wp / 900.0).r;
-    d = clamp((d - e * 0.55 * (1.0 - d)) * 2.0, 0.0, 1.0); // wispy, billowy edges; cores stay solid
+    // wispy, billowy edges; cores stay solid. The detail repeats every 900 m, so a sample spacing near that or wider aliases into shimmer (the
+    // flicker of far clouds): the caller fades it out as the march step grows.
+    d = mix(d, clamp((d - e * 0.55 * (1.0 - d)) * 2.0, 0.0, 1.0), fine);
   }
   return d;
 }
 void main() {
-  vec4 v = uProjInv * vec4(vUv * 2.0 - 1.0, 1.0, 1.0);
-  vec3 dir = normalize(mat3(uCamRot) * (v.xyz / v.w));
+  // view ray from the field of view: inverting the projection at the far plane loses all precision once near is a few cm and far is 12,000 km
+  vec3 dir = normalize(mat3(uCamRot) * vec3((vUv * 2.0 - 1.0) * uTan, -1.0));
   float dz = texture2D(tDepth, vUv).r;
   float sceneT = dz > 0.99999 ? 1e12 : (exp2(dz * uLogF) - 1.0) / max(dot(dir, uCamFwd), 1e-4);
   vec3 O = vec3(0.0, ATM_RP + uCamAlt, 0.0);
@@ -121,7 +53,8 @@ void main() {
   float t0, t1;
   if (uCamAlt < uBase) { t0 = si.y; t1 = sg.x > 0.0 ? -1.0 : so.y; }
   else if (uCamAlt < uTop) { t0 = 0.0; t1 = si.x > 0.0 ? si.x : so.y; }
-  else { t0 = so.x; t1 = so.x < 0.0 ? -1.0 : (si.x > 0.0 ? si.x : so.y); }
+  // above the layer: only a forward hit counts. Looking up, both roots are behind the camera, and a negative t0 made the march run backwards through the clouds behind
+  else { t0 = max(so.x, 0.0); t1 = so.x < 0.0 ? -1.0 : (si.x > 0.0 ? si.x : so.y); }
   t1 = min(t1, min(sceneT, t0 + ${cu}.0));
   if (t1 <= t0) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
   float L = t1 - t0, j = h21(gl_FragCoord.xy * 1.37 + 17.0); // white-noise jitter: IGN's diagonal pattern shows as stripes once upsampled
@@ -132,10 +65,11 @@ void main() {
     // samples bunch up near the entry point, where detail is visible
     float u = (float(i) + j) / float(STEPS), t = t0 + L * u * u, dt = L * (2.0 * u + 1.0 / float(STEPS)) / float(STEPS);
     vec3 p = dir * t; float h = length(O + p) - ATM_RP;
-    float d = density(p, h, true);
+    float d = density(p, h, 1.0 - smoothstep(120.0, 420.0, dt));
+    if (uCarveN > 0 && d > 0.0) { float k = 1.0; for (int c = 0; c < 12; c++) { if (c >= uCarveN) break; vec4 cv = uCarve[c]; k = min(k, smoothstep(cv.w * 0.35, cv.w, length(p - cv.xyz))); } d *= k; }
     if (d > 0.003) {
       float sig = 0.05 * d, od = 0.0, ls = 60.0; vec3 q = p;
-      for (int k = 0; k < LSTEPS; k++) { q += uAtmSun * ls; od += density(q, length(O + q) - ATM_RP, false) * ls; ls *= 1.9; }
+      for (int k = 0; k < LSTEPS; k++) { q += uAtmSun * ls; od += density(q, length(O + q) - ATM_RP, 0.0) * ls; ls *= 1.9; }
       float Tl = exp(-0.05 * od), hn = clamp((h - uBase) / (uTop - uBase), 0.0, 1.0);
       // single scattering + a cheap multiple-scattering floor (keeps cloud interiors from going black)
       vec3 Lsc = sunC * (ph * Tl + 0.03 * pow(Tl, 0.25)) + ambC * (0.5 + 0.5 * hn) + uAtmNight * 0.5;
@@ -167,6 +101,8 @@ void main() {
   }
   gl_FragColor = acc / ws;
 }`;
+// seconds for the cloud noise field to drift once through its own height (one period); larger = calmer clouds
+const EVO_SECONDS = 300;
 class VolumetricClouds {
   constructor(t) {
     ((this.renderer = t),
@@ -196,20 +132,25 @@ class VolumetricClouds {
       })),
       (this._fwd = new THREE.Vector3()));
   }
+  // the noise volumes come from a worker (about a second of arithmetic); until they arrive render() draws no clouds
+  // resolution of the cloud march only (not the picture): lets the game shed cloud cost under load without softening the imagery
+  setScale(sc) {
+    sc = Math.max(0.25, Math.min(1, sc)); if (Math.abs(sc - this.scale) < 0.01) return; this.scale = sc;
+    this._sizeLow();
+  }
+  // the march target is scale x the picture, but never larger than scale x the screen's own pixels
+  _sizeLow() {
+    const k = this.nativeW ? Math.min(1, this.nativeW / this.w) : 1;
+    this.lowRT.setSize(Math.max(1, Math.round(this.w * this.scale * k)), Math.max(1, Math.round(this.h * this.scale * k)));
+  }
   _noise() {
-    this.tex = {
-      shape: bm(64, [
-        [ra(64, 4, 11), 0.45],
-        [ra(64, 8, 23), 0.25],
-        [wm(64, 8, 5), 0.2],
-        [wm(64, 16, 9), 0.1],
-      ]),
-      detail: bm(32, [
-        [ra(32, 4, 31), 0.55],
-        [ra(32, 8, 41), 0.3],
-        [ra(32, 16, 53), 0.15],
-      ]),
-    };
+    if (this.noiseBusy) return; this.noiseBusy = true;
+    const done = (d) => { this.tex = { shape: tex3(d.shape, 64), detail: tex3(d.detail, 32) }; this.noiseBusy = false; };
+    try {
+      const w = new Worker(new URL('./cloud-noise-worker.js', import.meta.url), { type: 'module' });
+      w.onmessage = (e) => { done(e.data); w.terminate(); };
+      w.onerror = () => { w.terminate(); done(makeCloudNoise()); };
+    } catch { done(makeCloudNoise()); }
   }
   setQuality({ scale: t = 0.5, steps: e = 48, lightSteps: n = 5 }) {
     ((this.scale = t),
@@ -228,11 +169,15 @@ class VolumetricClouds {
             uCamRot: { value: new THREE.Matrix4() },
             uCamFwd: { value: new THREE.Vector3() },
             uOff: { value: new THREE.Vector2() },
+            uTan: { value: new THREE.Vector2(1, 1) },
             uLogF: { value: 1 },
             uCamAlt: { value: 0 },
             uBase: { value: 2e3 },
             uTop: { value: 3500 },
             uCover: { value: 0.3 },
+            uEvo: { value: 0 },
+            uCarve: { value: Array.from({ length: 12 }, () => new THREE.Vector4()) },
+            uCarveN: { value: 0 },
           },
           vertexShader: Mm,
           fragmentShader: G2,
@@ -244,11 +189,15 @@ class VolumetricClouds {
   setSize(t, e) {
     ((this.w = t),
       (this.h = e),
-      this.lowRT.setSize(Math.max(1, Math.round(t * this.scale)), Math.max(1, Math.round(e * this.scale))),
+      this._sizeLow(),
       this.outRT.setSize(t, e));
   }
+  // tunnels cut by the aircraft: pts = [{ x, y, z (camera-relative, metres), r }]; at most 12, nearest first is best
+  setCarve(pts) {
+    this.carvePts = pts; this.carveN = Math.min(12, pts.length);
+  }
   render(t, { camera: e, depthTexture: n, camAlt: i, camXZ: r, coverage: a, base: l, time: h, wind: u }) {
-    (this.march || this.setQuality({}), this.tex || this._noise());
+    if ((this.march || this.setQuality({}), !this.tex)) { this._noise(); return null; }
     const f = t.getRenderTarget(),
       d = this.march.uniforms,
       p = Math.log2(e.far + 1);
@@ -256,12 +205,16 @@ class VolumetricClouds {
       (d.tShape.value = this.tex.shape),
       (d.tDetail.value = this.tex.detail),
       d.uProjInv.value.copy(e.projectionMatrixInverse),
+      d.uTan.value.set(1 / e.projectionMatrix.elements[0], 1 / e.projectionMatrix.elements[5]),
       d.uCamRot.value.extractRotation(e.matrixWorld),
       d.uCamFwd.value.copy(this._fwd.set(0, 0, -1).applyQuaternion(e.quaternion)),
       d.uOff.value.set(r.x - u.x * h, r.y - u.y * h),
       (d.uLogF.value = p),
       (d.uCamAlt.value = i),
       (d.uCover.value = a),
+      (d.uEvo.value = h / EVO_SECONDS),
+      (d.uCarveN.value = this.carveN || 0),
+      this.carveN && this.carvePts.forEach((q, i) => i < 12 && d.uCarve.value[i].set(q.x, q.y, q.z, q.r)),
       (d.uBase.value = l),
       (d.uTop.value = l + 900 + 1700 * a),
       (this.quad.material = this.march),
@@ -280,6 +233,27 @@ class VolumetricClouds {
       this.outRT.texture
     );
   }
+  // coarse cloud density (0..1) at the camera, the same field the shader marches through: tells the cockpit it is inside a cloud
+  densityAt(y, cover, base, time = 0) {
+    if (!this.tex || !this.march || cover <= 0.01) return 0;
+    const top = base + 900 + 1700 * cover, hn = (y - base) / (top - base);
+    if (hn <= 0 || hn >= 1) return 0;
+    const u = this.march.uniforms.uOff.value, wx = u.x, wz = u.y, fr = (v) => v - Math.floor(v);
+    const h21 = (a, b) => { a = fr(a * 0.1031); b = fr(b * 0.103); const d = a * (b + 33.33) + b * (a + 33.33); a += d; b += d; return fr((a + b) * a); };
+    const vn = (a, b) => { const ia = Math.floor(a), ib = Math.floor(b); let fa = a - ia, fb = b - ib; fa = fa * fa * (3 - 2 * fa); fb = fb * fb * (3 - 2 * fb);
+      return (h21(ia, ib) * (1 - fa) + h21(ia + 1, ib) * fa) * (1 - fb) + (h21(ia, ib + 1) * (1 - fa) + h21(ia + 1, ib + 1) * fa) * fb; };
+    const px = wx / 26000, pz = wz / 26000;
+    const cov = Math.min(1, Math.max(0, cover * (0.45 + 1.1 * (0.3 * vn(wx / 110000 + 19, wz / 110000 + 19) + 0.3 * vn(px, pz) + 0.25 * vn(px * 2.7 + 7.1, pz * 2.7 + 7.1) + 0.15 * vn(px * 6.3 + 3.3, pz * 6.3 + 3.3)))));
+    const topf = 0.4 + 0.6 * cov, sm = (e0, e1, v) => { const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+    const prof = sm(0, 0.08, hn) * (1 - sm(topf * 0.45, topf, hn)), D = this.tex.shape.image.data, N = 64;
+    const tri = (a, b, c) => { const fx = (((a * N - 0.5) % N) + N) % N, fy = (((b * N - 0.5) % N) + N) % N, fz = (((c * N - 0.5) % N) + N) % N, x0 = Math.floor(fx), y0 = Math.floor(fy), z0 = Math.floor(fz), tx = fx - x0, ty = fy - y0, tz = fz - z0;
+      const g = (i, j, k) => D[((k % N) * N + (j % N)) * N + (i % N)] / 255, l = (p, q, t) => p + (q - p) * t;
+      return l(l(l(g(x0, y0, z0), g(x0 + 1, y0, z0), tx), l(g(x0, y0 + 1, z0), g(x0 + 1, y0 + 1, z0), tx), ty), l(l(g(x0, y0, z0 + 1), g(x0 + 1, y0, z0 + 1), tx), l(g(x0, y0 + 1, z0 + 1), g(x0 + 1, y0 + 1, z0 + 1), tx), ty), tz); };
+    const wrx = 0.8 * wx - 0.6 * wz, wrz = 0.6 * wx + 0.8 * wz;
+    const evo = time / EVO_SECONDS, w3x = 0.28 * wx + 0.96 * wz, w3z = -0.96 * wx + 0.28 * wz;
+    const sh = tri(wx / 5600, y / 3800 + evo, wz / 5600) * 0.45 + tri(wrx / 14300 + 0.37, y / 5100 + 0.37 + evo * 0.7, wrz / 14300 + 0.37) * 0.3 + tri(w3x / 41000 + 0.71, y / 6700 + 0.13 + evo * 0.5, w3z / 41000 + 0.29) * 0.25;
+    return Math.min(1, Math.max(0, (sh * prof - (1 - cov)) / Math.max(cov, 0.1)));
+  }
   dispose() {
     (this.lowRT.dispose(),
       this.outRT.dispose(),
@@ -289,4 +263,4 @@ class VolumetricClouds {
   }
 }
 
-export { VolumetricClouds };
+export { VolumetricClouds, EVO_SECONDS };

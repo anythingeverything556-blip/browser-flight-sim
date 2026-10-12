@@ -2,12 +2,13 @@ import * as THREE from 'three';
 import { D2R, R_EARTH, lat2ty, lon2tx, tx2lon, ty2lat } from './geo.js';
 import { esriUrl } from './imagery-sources.js';
 import { SHADOW_LAYER, SHADOW_UNIFORMS, sd } from './shadows.js';
+import { OCC_UNIFORMS, OCC_DECL, OCC_TEST } from './occlusion.js';
 
 const jS = 'https://tiles.openfreemap.org/planet',
   ZS = (s, t) => esriUrl(17, s, t),
   Un = 15,
   KS = 14,
-  YS = 2,
+  YS = 5, // concurrent satellite-tile fetches for tree colour (a chunk needs 16; 2 made far chunks take many seconds)
   JS = 2,
   Kh = [900, 1500],
   QS = 5e3,
@@ -309,14 +310,14 @@ float vn(vec3 x){ vec3 i = floor(x), f = fract(x); f = f * f * (3.0 - 2.0 * f);
 #include <logdepthbuf_pars_vertex>
 #include <fog_pars_vertex>
 attribute vec3 iPos; attribute vec4 iA; attribute vec4 iCol;
-uniform float uTime, uWind; uniform vec4 uLod;
+uniform float uTime, uWind; uniform vec4 uLod; uniform vec3 uBiome;
 varying vec3 vNW, vTint, vMV, vVC, vPL, vR, vUp, vTC; varying vec2 vQ, vUv; varying float vFade, vTrunk;
 #ifndef IMPOSTOR
 attribute vec4 aVC;
 #endif
 void main() {
   float h = iA.x, rad = iA.y, yaw = iA.z, ph = iPos.x * 0.21 + iPos.z * 0.17;
-  vTint = pow(iCol.rgb, vec3(2.2));
+  vTint = pow(iCol.rgb, vec3(2.2)) * uBiome;
   vec4 wpos, mvPosition;
 #ifdef IMPOSTOR
   vec3 cen = iPos + vec3(0.0, h * 0.5, 0.0);
@@ -367,6 +368,7 @@ varying vec3 vNW, vTint, vMV, vVC, vPL, vR, vUp, vTC; varying vec2 vQ, vUv; vary
 #include <fog_pars_fragment>
 ${sT}
 ${sd}
+${OCC_DECL}
 float dith(vec2 fc) { return fract(52.9829189 * fract(dot(fc, vec2(0.06711056, 0.00583715)))); }
 vec3 shade(vec3 Nv, vec3 V, vec3 tint, float ao) {
   mat3 iv = transpose(mat3(viewMatrix));
@@ -374,16 +376,25 @@ vec3 shade(vec3 Nv, vec3 V, vec3 tint, float ao) {
   vec3 S = normalize((viewMatrix * vec4(uSun, 0.0)).xyz), U = viewMatrix[1].xyz;
   float sunVis = smoothstep(0.0, 0.14, uSun.y), ndl = dot(Nv, S), up = dot(Nv, U);
   float wrap = clamp((ndl + 0.5) / 1.5, 0.0, 1.0);
-  float amb = 0.36 + 0.14 * up, sk = 0.62 * sunVis;
+  float amb = 0.52 + 0.16 * up, sk = 0.62 * sunVis;
   float ref = 0.5 + sk * clamp((uSun.y + 0.5) / 1.5, 0.12, 1.0);
-  float lit = clamp((amb + sk * wrap * wrap * (1.4 - 0.4 * wrap) * sh) / ref, 0.28, 1.5);
+  float lit = clamp((amb + sk * wrap * wrap * (1.4 - 0.4 * wrap) * sh) / ref, 0.42, 1.7);
   float back = pow(clamp(-dot(V, S), 0.0, 1.0), 3.0) * (1.0 - wrap) * sunVis * sh;
   vec3 col = tint * lit * ao + tint * vec3(0.8, 1.0, 0.25) * back * 0.55;
-  return col * uDay;
+  return col * uDay * 1.22;
 }
 void main() {
+#ifndef SHADOW_CASTER
+  ${OCC_TEST}
+#endif
+#ifdef SHADOW_CASTER
+  // shadow maps get a hard cut-off, not the dither the picture uses: a dither pattern that changes with every metre the camera moves is
+  // exactly what shadow shimmer looks like
+  if (vFade * uFade * uBorn < 0.5) discard;
+#else
   float hs = dith(gl_FragCoord.xy);
   if (hs >= vFade * uFade * uBorn) discard;
+#endif
   #include <logdepthbuf_fragment>
   vec3 V = normalize(-vMV), col;
 #ifdef IMPOSTOR
@@ -408,6 +419,7 @@ void main() {
 class Trees {
   constructor(t, e, n, i) {
     ((this.scene = t),
+      (this.biome = new THREE.Vector3(1, 1, 1)),
       (this.geo = e),
       (this.terrain = n),
       (this.db = i),
@@ -448,13 +460,14 @@ class Trees {
           uLod: { value: new THREE.Vector4(800, 1e3, 2e3, 2500) },
           uSun: { value: new THREE.Vector3(0, 1, 0) },
           uDay: { value: 1 },
+          uBiome: { value: new THREE.Vector3(1, 1, 1) },
           uFade: { value: 1 },
           uBorn: { value: 1 },
           uAtlas: { value: null },
         },
       ])),
       (this.uniforms.uAtlas.value = iT()),
-      Object.assign(this.uniforms, SHADOW_UNIFORMS));
+      Object.assign(this.uniforms, SHADOW_UNIFORMS, OCC_UNIFORMS));
     const r = (u, f) => {
         const d = new THREE.ShaderMaterial({
           uniforms: this.uniforms,
@@ -485,7 +498,7 @@ class Trees {
       l.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2)),
       l.setIndex([0, 1, 2, 0, 2, 3]),
       (this.quad = l));
-    const h = Math.max(1, Math.min(2, (navigator.hardwareConcurrency || 2) - 2));
+    const h = Math.max(1, Math.min(3, (navigator.hardwareConcurrency || 2) - 1));
     this.workers = Array.from({ length: h }, () => {
       const u = new Worker(new URL('./trees-worker.js', import.meta.url), { type: 'module' }),
         f = { w: u, busy: null };
@@ -602,7 +615,7 @@ class Trees {
     const t = [...this.chunks.values()]
         .filter((n) => n.state === 'loading' && n.todo.length)
         .sort((n, i) => n.dist - i.dist),
-      e = this.terrain.stats.imgWait > 30 ? 1 : this.maxImg;
+      e = this.terrain.stats.imgWait > 30 ? 3 : this.maxImg; // terrain imagery has priority, but trees must not starve behind it
     for (const n of t) {
       for (; this.imgActive < e && n.todo.length;) {
         const i = n.todo.shift(),
@@ -678,6 +691,8 @@ class Trees {
               W: e.W,
               H: e.H,
               lat: e.clat,
+              lon: e.clon,
+              date: new Date(),
               elev: this.terrain.heightAt(e.clat, e.clon) ?? 0,
               vt: i,
               imgs: a.length - (i ? 1 : 0) ? n : null,
@@ -809,6 +824,7 @@ class Trees {
     if (
       ((h.uTime.value = a / 1e3),
       (h.uWind.value = this.wind),
+      h.uBiome.value.copy(this.biome || h.uBiome.value),
       h.uLod.value.set(d, d * 1.25, f * 0.78, f),
       (h.uFade.value = 1 - O0(Kh[0], Kh[1], i)),
       r && (h.uSun.value.copy(r.sunDir), (h.uDay.value = r.daylight)),

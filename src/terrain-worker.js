@@ -88,7 +88,16 @@ async function Eb(s, t, e) {
   let E = 0;
   for (let D = 3; D < S.length; D += 4) E += S[D];
   const A = E / (255 * fs * fs);
-  return A < 5e-4 ? { water: 0 } : A > 0.9995 ? { water: 2 } : { water: 1, bmp: w.transferToImageBitmap() };
+  if (A < 5e-4) return { water: 0 };
+  if (A > 0.9995) return { water: 2 };
+  // 16 x 16 coarse land/water grid for the flight model (is the aircraft over water?): a cell is water where most of its pixels are
+  const grid = new Uint8Array(256), cell = fs / 16;
+  for (let gy = 0; gy < 16; gy++) for (let gx = 0; gx < 16; gx++) {
+    let sum = 0;
+    for (let yy = 0; yy < cell; yy += 2) for (let xx = 0; xx < cell; xx += 2) sum += S[((gy * cell + yy) * fs + gx * cell + xx) * 4 + 3];
+    grid[gy * 16 + gx] = sum > 127 * (cell / 2) * (cell / 2) ? 1 : 0;
+  }
+  return { water: 1, bmp: w.transferToImageBitmap(), grid };
 }
 const Hh = new Map(),
   a0 = 2e4,
@@ -257,7 +266,7 @@ async function handle(s, t) {
   if (s.type === 'mask') {
     try {
       const i = await Eb(s.z, s.x, s.y);
-      t({ id: s.id, water: i.water, bmp: i.bmp }, i.bmp ? [i.bmp] : []);
+      t({ id: s.id, water: i.water, bmp: i.bmp, grid: i.grid }, i.bmp ? [i.bmp] : []);
     } catch (i) {
       t({ id: s.id, error: String((i && i.message) || i) });
     }

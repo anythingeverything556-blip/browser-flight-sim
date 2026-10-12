@@ -1,5 +1,6 @@
 import { PbfReader } from 'pbf';
 import { VectorTile } from '@mapbox/vector-tile';
+import { getTreeClimateVariant } from './treeclimate.js';
 
 const w = 1024,
   lt = 3,
@@ -123,12 +124,22 @@ function Jt(e, t) {
   const n = Math.ceil(t.W / lt),
     r = Math.ceil(t.H / lt),
     s = new Uint8Array(n * r);
+  let tags = {};
   if (!e) return { mask: s, mw: n, mh: r, have: !1 };
   const i = new VectorTile(new PbfReader(new Uint8Array(e))),
     o = ((i.layers.landcover || i.layers.transportation || i.layers.building || { extent: 4096 }).extent || 4096) / 2,
     y = t.sx * o,
     c = t.sy * o,
     l = (h) => h.map((u) => u.map((g) => ({ x: ((g.x - y) / o) * n, y: ((g.y - c) / o) * r }))),
+    captureTreeTags = (properties, kind) => {
+      const candidate = {};
+      for (const key of ['leaf_type', 'leaf_cycle', 'genus', 'species', 'natural', 'landuse', 'wood'])
+        if (typeof properties[key] === 'string') candidate[key] = properties[key];
+      if (kind === 'wood' && !candidate.natural) candidate.natural = 'wood';
+      if (kind === 'forest' && !candidate.landuse) candidate.landuse = 'forest';
+      if (kind === 'mangrove' && !candidate.wood) candidate.wood = 'mangrove';
+      if (Object.keys(candidate).length >= Object.keys(tags).length) tags = candidate;
+    },
     m = (h, u) => {
       const g = i.layers[h];
       if (g)
@@ -159,9 +170,13 @@ function Jt(e, t) {
                   : g === 'sand' || g === 'rock' || g === 'ice'
                     ? NLC
                     : 0;
+      if (g === 'wood') captureTreeTags(u, 'wood');
+      if (u.subclass === 'mangrove') captureTreeTags(u, 'mangrove');
       f && j(s, n, r, l(h.loadGeometry()), f);
     }),
     m('landuse', (h, u) => {
+      if (h.type === 3 && (u.class === 'forest' || u.class === 'wood'))
+        captureTreeTags(u, u.class === 'wood' ? 'wood' : 'forest');
       h.type === 3 &&
         (u.class === 'forest' || u.class === 'wood'
           ? j(s, n, r, l(h.loadGeometry()), ct)
@@ -193,7 +208,7 @@ function Jt(e, t) {
       const f = Ht[String(u.class).replace(/_construction$/, '')];
       if (f && h.type === 2) for (const V of g) Bt(s, n, r, V, f / lt, mt);
     }),
-    { mask: s, mw: n, mh: r, have: !0 }
+    { mask: s, mw: n, mh: r, have: !0, tags }
   );
 }
 function Yt(e) {
@@ -262,7 +277,7 @@ function Yt(e) {
 function Qt(e) {
   const t = performance.now(),
     n = zt((e.x15 * 73856093) ^ (e.y15 * 19349663)),
-    { mask: r, mw: s, mh: i } = Jt(e.vt, e),
+    { mask: r, mw: s, mh: i, tags: treeTags = {} } = Jt(e.vt, e),
     a = performance.now() - t,
     o = e.imgs ? Yt(e.imgs) : null,
     y = performance.now() - t,
@@ -271,6 +286,7 @@ function Qt(e) {
     m = c / w,
     h = Math.abs(e.lat),
     u = e.elev || 0,
+    variant = getTreeClimateVariant(e.lat, e.lon, u, e.date || 172, treeTags),
     g = h < 24,
     f = h > 52,
     V = (d, p) => {
@@ -454,6 +470,10 @@ function Qt(e) {
     (g && !C && I < (S ? 0.08 : 0.38) && B < 6.5) || (h < 31 && h > 24 && I < 0.12 && !S)
       ? (H = 2)
       : gt < N * 0.78 + (N > 0.5 ? 0.1 : 0) && (H = 1);
+    if (variant.biome === 'temperate-conifer' || variant.biome === 'boreal-conifer' || variant.biome === 'desert-scrub')
+      H = variant.shapeIndex;
+    else if (variant.biome === 'tropical' && H === 1) H = 0;
+    else if (variant.biome === 'savanna' && H === 1 && b < 0.72) H = 0;
     let K, J;
     (H === 2
       ? ((K = 7 + b * 9), (J = 3.2 + O * 1.6))
@@ -466,6 +486,8 @@ function Qt(e) {
           : ((J = Math.max(2, Math.min(8, B * 1.05 || 3.2 + O * 2))),
             (K = Math.min(14, Math.max(5.5, 4.6 + J * 1.15 + b * 3)))),
       H === 1 && ((J *= 0.72), S && (K *= 1.05)));
+    ((K *= variant.heightScale),
+      (J *= variant.crownScale * Math.sqrt(variant.densityFactor * variant.seasonalFactor)));
     let kt, Vt, St;
     const rt = Kt[H];
     if (P) {
@@ -478,7 +500,10 @@ function Qt(e) {
         ne = (b - 0.5) * 0.12;
       ((kt = (rt[0] + ne) * Y), (Vt = rt[1] * Y), (St = rt[2] * Y));
     }
-    st[H].push([p, x, K, J, I * 6.2832, kt, Vt, St, H + 3 * (b < 0.5 ? 0 : 1)]);
+    ((kt = Math.min(1, kt * 1.1 * Math.pow(variant.color[0], 1 / 2.2))),
+      (Vt = Math.min(1, Vt * 1.1 * Math.pow(variant.color[1], 1 / 2.2))),
+      (St = Math.min(1, St * 1.1 * Math.pow(variant.color[2], 1 / 2.2))),
+      st[H].push([p, x, K, J, I * 6.2832, kt, Vt, St, H + 3 * (b < 0.5 ? 0 : 1)]));
   }
   const wt = st[0].length + st[1].length + st[2].length,
     Ft = new Float32Array(wt * 2),
