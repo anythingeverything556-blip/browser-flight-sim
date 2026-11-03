@@ -1,4 +1,5 @@
 import { destination } from './geo.js';
+import { esc } from './esc.js';
 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -91,12 +92,16 @@ class MapPanel {
       n = this.map.getBounds();
     if (!t && this.drawn && this.drawn.z === e && this.drawn.b.contains(n)) return;
     const i = n.pad(0.15);
-    ((this.drawn = { z: e, b: i }), this.aptLayer.clearLayers());
+    if (!this.aptMarks || this.drawn?.z !== e || this.aptCount !== this.db.list.length) { this.aptLayer.clearLayers(); this.aptMarks = new Map(); this.aptCount = this.db.list.length; } // markers depend on the zoom: rebuild only when it changes, otherwise add what scrolled in and drop what scrolled out
+    this.drawn = { z: e, b: i };
+    const want = new Set();
     let r = 0;
     for (const a of this.db.list) {
       if ((a.type === 2 && e < 8) || (a.type === 1 && e < 6) || !i.contains([a.lat, a.lon])) continue;
       if (++r > 900) break;
-      const l = a.mil ? '#ff8a3d' : a.type === 0 ? '#4fc3ff' : a.type === 1 ? '#8fd18f' : '#c9c9c9';
+      want.add(a);
+      if (this.aptMarks.has(a)) continue;
+      const g = Ue.layerGroup(), l = a.mil ? '#ff8a3d' : a.type === 0 ? '#4fc3ff' : a.type === 1 ? '#8fd18f' : '#c9c9c9';
       if (e >= 10)
         for (const u of a.rawRunways)
           Ue.polyline(
@@ -111,7 +116,7 @@ class MapPanel {
               opacity: 0.95,
               interactive: !1,
             },
-          ).addTo(this.aptLayer);
+          ).addTo(g);
       const h = Ue.circleMarker([a.lat, a.lon], {
         renderer: this.renderer,
         radius: a.type === 0 ? 6 : a.type === 1 ? 4.5 : 3.5,
@@ -123,15 +128,18 @@ class MapPanel {
       (h.on('click', (u) => {
         (Ue.DomEvent.stop(u), this.cb.onAirport(a));
       }),
-        h.bindTooltip(`${a.ident} ${a.name}`, { direction: 'top', offset: [0, -4] }),
-        h.addTo(this.aptLayer),
+        h.bindTooltip(esc(`${a.ident} ${a.name}`), { direction: 'top', offset: [0, -4] }),
+        h.addTo(g),
         e >= 8 &&
           (a.type === 0 || e >= 9) &&
           Ue.marker([a.lat, a.lon], {
-            icon: Ue.divIcon({ className: 'apt-label', html: a.ident, iconSize: [40, 14], iconAnchor: [-6, 7] }),
+            icon: Ue.divIcon({ className: 'apt-label', html: esc(a.ident), iconSize: [40, 14], iconAnchor: [-6, 7] }),
             interactive: !1,
-          }).addTo(this.aptLayer));
+          }).addTo(g));
+      g.addTo(this.aptLayer);
+      this.aptMarks.set(a, g);
     }
+    for (const [a, g] of this.aptMarks) if (!want.has(a)) { this.aptLayer.removeLayer(g); this.aptMarks.delete(a); }
   }
   mapClick(t) {
     const e = document.createElement('div');
@@ -161,7 +169,7 @@ class MapPanel {
           draggable: !0,
           icon: Ue.divIcon({
             className: 'wp-marker' + (n === this.nav.active ? ' active' : ''),
-            html: `<span>${n + 1}</span><b>${e.name}</b>`,
+            html: `<span>${n + 1}</span><b>${esc(e.name)}</b>`,
             iconSize: [20, 20],
             iconAnchor: [10, 10],
           }),
@@ -173,21 +181,53 @@ class MapPanel {
           i.addTo(this.wpLayer));
       }));
   }
+  // Live ADS-B traffic on the map: one marker per aircraft, rotated to its track, shaped by its type class, dead-reckoned between polls.
+  setTraffic(list, show) {
+    if (!this.trafficLayer) { this.trafficLayer = Ue.layerGroup(); this.trafficMarks = new Map(); }
+    if (!show) { if (this.map.hasLayer(this.trafficLayer)) this.map.removeLayer(this.trafficLayer); return; }
+    if (!this.map.hasLayer(this.trafficLayer)) this.trafficLayer.addTo(this.map);
+    const SHAPES = {
+      airliner: 'M16 1 L17.6 11 L30 19 L30 21.6 L17.6 17.6 L17.2 26 L21 29 L21 30.6 L16 29.6 L11 30.6 L11 29 L14.8 26 L14.4 17.6 L2 21.6 L2 19 L14.4 11 Z',
+      small: 'M16 3 L17.4 12 L28 14 L28 16.4 L17.4 16 L17 26 L21 28 L21 29.6 L16 28.8 L11 29.6 L11 28 L15 26 L14.6 16 L4 16.4 L4 14 L14.6 12 Z',
+      heli: 'M16 4 L18 10 L18 20 L17 27 L19 29 L13 29 L15 27 L14 20 L14 10 Z M3 15 L29 17 L29 18 L3 16 Z',
+      jet: 'M16 2 L18 12 L27 25 L27 27 L18 24 L17 29 L16 30 L15 29 L14 24 L5 27 L5 25 L14 12 Z',
+    };
+    const shapeOf = (c) => (c === 'helicopter' ? 'heli' : c === 'ga' || c === 'turboprop' ? 'small' : c === 'fighter' || c === 'bizjet' ? 'jet' : 'airliner');
+    const now = performance.now() / 1000, seen = new Set();
+    for (const [id, e] of list) {
+      if (e.lat == null) continue;
+      seen.add(id);
+      const dtp = Math.min(40, now - e.at), th = (e.trk * Math.PI) / 180, m = e.vel * dtp;
+      const la = e.lat + (Math.cos(th) * m) / 111320, lo = e.lon + (Math.sin(th) * m) / (111320 * Math.max(0.2, Math.cos((e.lat * Math.PI) / 180)));
+      let mk = this.trafficMarks.get(id);
+      const label = `${esc(e.call || String(id).toUpperCase())}${e.type ? ' · ' + esc(e.type) : ''}<br>${Math.round((+e.alt * 3.28084) / 100) * 100} ft · ${Math.round(+e.vel * 1.94384)} kt`; // escaped: the fields come from third-party ADS-B JSON
+      if (!mk) {
+        const size = e.typeClass === 'widebody' ? 26 : e.typeClass === 'ga' || e.typeClass === 'helicopter' ? 16 : 20;
+        mk = Ue.marker([la, lo], { interactive: true, keyboard: false, zIndexOffset: 400, icon: Ue.divIcon({ className: 'tr-marker', iconSize: [size, size], iconAnchor: [size / 2, size / 2],
+          html: `<div class="tr-rot"><svg viewBox="0 0 32 32" width="${size}" height="${size}"><path d="${SHAPES[shapeOf(e.typeClass)]}"/></svg></div>` }) });
+        mk.bindTooltip(label, { direction: 'top', offset: [0, -8], className: 'tr-tip' }); mk.addTo(this.trafficLayer); this.trafficMarks.set(id, mk);
+      } else { mk.setLatLng([la, lo]); if (mk.getTooltip()) mk.setTooltipContent(label); }
+      const el = mk.getElement && mk.getElement(), rot = el && el.querySelector('.tr-rot'); if (rot) rot.style.transform = `rotate(${e.trk}deg)`;
+    }
+    for (const [id, mk] of this.trafficMarks) if (!seen.has(id)) { this.trafficLayer.removeLayer(mk); this.trafficMarks.delete(id); }
+  }
+  applyMarker() {
+    this.marker.setLatLng(this.pos);
+    const a = this.marker.getElement && this.marker.getElement(), l = a && a.querySelector('.ac-rot');
+    if (l) l.style.transform = `rotate(${this.heading || 0}deg)`;
+  }
   update(t, e, n, i, r) {
-    ((this.pos = [t, e]), this.marker.setLatLng(this.pos));
-    const a = this.marker.getElement && this.marker.getElement(),
-      l = a && a.querySelector('.ac-rot');
-    if (
-      (l && (l.style.transform = `rotate(${n}deg)`),
-      (!this.last || Math.abs(this.last[0] - t) + Math.abs(this.last[1] - e) > 0.003) &&
-        (this.last && Ue.latLng(this.last).distanceTo(this.pos) > 4e3 && this.segs.push([]),
-        this.segs[this.segs.length - 1].push(this.pos),
-        this.segs[this.segs.length - 1].length > 3e3 && this.segs[this.segs.length - 1].shift(),
-        this.trail.setLatLngs(this.segs),
-        (this.last = this.pos)),
-      !r)
-    )
-      return;
+    this.pos = [t, e]; this.heading = n;
+    if (!this.last || Math.abs(this.last[0] - t) + Math.abs(this.last[1] - e) > 0.003) {
+      if (this.last && Ue.latLng(this.last).distanceTo(this.pos) > 4e3) this.segs.push([]);
+      const seg = this.segs[this.segs.length - 1];
+      seg.push(this.pos);
+      if (seg.length > 3e3) seg.shift();
+      this.last = this.pos; this.trailDirty = true;
+    }
+    if (!r) return; // map closed: keep recording the trail but skip every Leaflet projection and DOM write until it is shown
+    this.applyMarker();
+    if (this.trailDirty) { this.trail.setLatLngs(this.segs); this.trailDirty = false; }
     const h = Math.hypot(i.x, i.z),
       u = ((Math.atan2(i.x, -i.z) * 180) / Math.PI + 360) % 360;
     if (h > 5) {
@@ -217,11 +257,13 @@ class MapPanel {
     (this.setFollow(!1), this.map.setView([t, e], n));
   }
   clearTrail() {
-    ((this.segs = [[]]), this.trail.setLatLngs(this.segs), (this.last = null));
+    ((this.segs = [[]]), this.trail.setLatLngs(this.segs), (this.last = null), (this.trailDirty = !1));
   }
   shown() {
     setTimeout(() => {
       (this.map.invalidateSize(),
+        this.pos && this.applyMarker(),
+        this.trailDirty && (this.trail.setLatLngs(this.segs), (this.trailDirty = !1)),
         this.follow && this.pos && this.map.setView(this.pos, this.map.getZoom(), { animate: !1 }),
         this.drawAirports(!0),
         this.drawRoute());

@@ -86,11 +86,11 @@ float cloudShade(vec3 rel) {
   if (uCsMap.w < 0.5) return 1.0;
   vec2 q = (rel.xz + uCsMap.xy) * uCsMap.z + 0.5;
   float e = min(min(q.x, 1.0 - q.x), min(q.y, 1.0 - q.y));
-  float a = mix(1.0, texture2D(uCsTex, q).r, smoothstep(0.0, 0.05, e));
+  float a = mix(1.0, textureLod(uCsTex, q, 0.0).r, smoothstep(0.0, 0.05, e));
   if (uCsMap2.w > 0.5 && uCsMix < 0.999) {
     vec2 q2 = (rel.xz + uCsMap2.xy) * uCsMap2.z + 0.5;
     float e2 = min(min(q2.x, 1.0 - q2.x), min(q2.y, 1.0 - q2.y));
-    a = mix(mix(1.0, texture2D(uCsTex2, q2).r, smoothstep(0.0, 0.05, e2)), a, uCsMix);
+    a = mix(mix(1.0, textureLod(uCsTex2, q2, 0.0).r, smoothstep(0.0, 0.05, e2)), a, uCsMix);
   }
   return a;
 }
@@ -289,4 +289,24 @@ function terrainMaterial() {
   );
 }
 
-export { TERRAIN_UNIFORMS, terrainMaterial };
+const TILE_UNIFORMS = ['uMap', 'uMask', 'uTint', 'uTile', 'uWater', 'uFade', 'uFadeDir'];
+let shared = null;
+function sharedTerrainMaterial() {
+  if (shared) return shared;
+  const m = (shared = terrainMaterial()), wrappers = [];
+  for (const k of Object.keys(m.uniforms)) {
+    if (TILE_UNIFORMS.includes(k)) continue;
+    const src = m.uniforms[k], w = { get value() { return src.value; }, set value(v) { src.value = v; }, needsUpdate: true };
+    m.uniforms[k] = w; wrappers.push(w);
+  }
+  m.userData.white = Ko; m.userData.gate = { pass: -1, target: null, fresh: false, wrappers };
+  return m;
+}
+function gateTerrainUniforms(m, pass, target) {
+  const g = m.userData.gate;
+  if (g.pass !== pass || g.target !== target) { g.pass = pass; g.target = target; g.fresh = true; for (const w of g.wrappers) w.needsUpdate = true; return true; }
+  if (g.fresh) { g.fresh = false; for (const w of g.wrappers) { const v = w.value; w.needsUpdate = v === null || v === undefined || v.isTexture === true; } }
+  return false;
+}
+
+export { TERRAIN_UNIFORMS, terrainMaterial, sharedTerrainMaterial, gateTerrainUniforms };

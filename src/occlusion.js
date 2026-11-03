@@ -108,6 +108,7 @@ export class CockpitOcclusion {
   add(mesh) { if (isOccluder(mesh)) { mesh.layers.enable(OCC_LAYER); this.count++; return true; } return false; }
   addAll(root) { let n = 0; root.traverse((o) => { if (this.add(o)) n++; }); return n; }
 
+  // off under reversed depth (round 6): nothing writes gl_FragDepth there, so the GPU's own early-Z already skips what lies behind the panel
   supported(renderer) {
     if (this._ok === null) this._ok = !!renderer.capabilities.isWebGL2 && !!renderer.capabilities.logarithmicDepthBuffer && (renderer.extensions.has('EXT_color_buffer_float') || renderer.extensions.has('EXT_color_buffer_half_float'));
     return this._ok;

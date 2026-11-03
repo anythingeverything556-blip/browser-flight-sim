@@ -135,8 +135,8 @@ class HUD {
     this.drawBank(x, state.bank || 0, cx, cy, k, soft);
     const ppd = clamp((h * 0.5 / Math.tan(clamp(state.fov || 65, 30, 100) * DEG * 0.5)) * DEG, 5, 22);
     this.drawPitch(x, state, cx, cy, ppd, k, tone, soft);
-    this.drawTape(x, "left", state.ias, state.metric ? 20 : 10, state.metric ? "KM/H" : "IAS · KT", this.iasTrend, cx, cy, k, tone, soft);
-    this.drawTape(x, "right", state.alt, state.metric ? 100 : state.alt > 20000 ? 500 : 100, state.metric ? "ALT · M" : "ALT · FT", state.vs, cx, cy, k, tone, soft);
+    this.drawTape(x, "left", state.ias, state.metric ? 20 : 10, state.metric ? "KM/H" : "IAS · KT", this.iasTrend, cx, cy, k, tone, soft, state.metric ? 3.3 : 1.8);
+    this.drawTape(x, "right", state.alt, state.metric ? 100 : state.alt > 20000 ? 500 : 100, state.metric ? "ALT · M" : "ALT · FT", state.vs, cx, cy, k, tone, soft, state.metric ? 0.4 : 80);
     this.drawFlightPath(x, state, cx, cy, ppd, k, tone);
     this.drawAp(x, state.ap, state.apHdg, cx, k, tone, soft);
     this.drawNavCue(x, state.navCue || state.nav, cx, cy, k, tone, soft);
@@ -286,7 +286,7 @@ class HUD {
     x.restore();
   }
 
-  drawTape(x, side, value, step, label, trend, cx, cy, k, tone, soft) {
+  drawTape(x, side, value, step, label, trend, cx, cy, k, tone, soft, trendMin) {
     const panelW = 72 * k;
     const panelH = 292 * k;
     const left = Math.max(84, 90 * k);
@@ -337,7 +337,7 @@ class HUD {
     x.font = "bold " + (value > 9999 ? 10 : 13) * k + "px " + '"SFMono-Regular", Consolas, monospace';
     x.textAlign = "center";
     x.fillText(String(Math.round(value)), panelX + panelW * 0.5, cy);
-    if (Math.abs(trend) > (isLeft ? 1.8 : 80)) {
+    if (Math.abs(trend) > trendMin) {
       const direction = trend > 0 ? -1 : 1;
       const tx = isLeft ? panelX + panelW - 4 * k : panelX + 4 * k;
       x.fillStyle = "#f2c36f";
@@ -421,9 +421,9 @@ class HUD {
 
   drawReadouts(x, state, cx, cy, k, tone, soft) {
     const y = Math.min(this.h - 62 * k, cy + 183 * k);
-    const boxW = 58 * k;
-    const gap = 5 * k;
-    const total = boxW * 6 + gap * 5;
+    const boxW = 52 * k;
+    const gap = 4 * k;
+    const total = boxW * 7 + gap * 6;
     const start = cx - total * 0.5;
     const mach = Number.isFinite(state.mach) ? state.mach.toFixed(2) : "0.00";
     const aoa = ((state.alpha || 0) / DEG).toFixed(1) + "°";
@@ -436,6 +436,7 @@ class HUD {
     this.drawMini(x, start + (boxW + gap) * 3, y, boxW, k, "V/S", gs, tone, soft);
     this.drawMini(x, start + (boxW + gap) * 4, y, boxW, k, "AGL", agl, tone, soft);
     this.drawMini(x, start + (boxW + gap) * 5, y, boxW, k, "THR", throttle, tone, soft);
+    this.drawMini(x, start + (boxW + gap) * 6, y, boxW, k, "TAS", format(state.tas, 0), tone, soft);
   }
 
   drawMini(x, left, top, width, k, label, value, tone, soft) {

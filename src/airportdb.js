@@ -21,6 +21,7 @@ export class Runway {
     this.hdg = (Math.atan2(dx, dy) / D2R + 360) % 360;
     this.sinH = Math.sin(this.hdg * D2R); this.cosH = Math.cos(this.hdg * D2R);
     this.elev = (this.ea + this.eb) / 2;
+    this.reach = Math.hypot(this.len / 2 + 750, this.width / 2 + 570) + 1; this.flatH = 0; // every point with flatten() != null lies inside this circle around the centre
     this.ends = [
       { ident: this.leIdent, start: this.a, hdg: this.hdg, elev: this.ea, rwy: this, idx: 0 },
       { ident: this.heIdent, start: this.b, hdg: (this.hdg + 180) % 360, elev: this.eb, rwy: this, idx: 1 },
@@ -40,11 +41,21 @@ export class Runway {
   surfaceAt(s) { const k = Math.min(1, Math.max(0, s / this.len + 0.5)); return this.ea + (this.eb - this.ea) * k; }
   // returns { f, h }: f = 0 on the levelled strip, 1 where natural terrain resumes; null when far
   flatten(lat, lon) {
-    const { s, t } = this.local(lat, lon);
+    const f = this.flatF(lat, lon);
+    return f < 0 ? null : { f, h: this.flatH };
+  }
+  // allocation-free flatten: returns f (or -1 when far) and leaves the strip height in this.flatH; the cheap northing/easting box test rejects almost every call before the rotation
+  flatF(lat, lon) {
+    const n = (lat - this.lat) * D2R * R_EARTH;
+    if (n > this.reach || n < -this.reach) return -1;
+    const e = (((lon - this.lon + 540) % 360) - 180) * D2R * R_EARTH * this.cos;
+    if (e > this.reach || e < -this.reach) return -1;
+    const s = e * this.sinH + n * this.cosH, t = e * this.cosH - n * this.sinH;
     const ds = Math.max(0, Math.abs(s) - (this.len / 2 + 300)), dt = Math.max(0, Math.abs(t) - (this.width / 2 + 120));
     const d = Math.hypot(ds, dt);
-    if (d > 450) return null;
-    return { f: smooth(0, 450, d), h: this.surfaceAt(s) };
+    if (d > 450) return -1;
+    this.flatH = this.surfaceAt(s);
+    return smooth(0, 450, d);
   }
   spawn(endIdx, mode) {
     const end = this.ends[endIdx];
@@ -154,10 +165,9 @@ export class AirportDB {
   async load(url, onProgress) {
     const res = await fetch(url);
     const data = await res.json();
-    this.list = data.map((r) => new Airport(r));
+    // a runway whose ends are far from its airport is a data error: drop it rather than draw it across a continent; an airport left with no runway cannot be spawned at, toured or listed (every caller reads longest/runways[0]), so it is dropped too
+    this.list = data.map((r) => new Airport(r)).filter((a) => (a.rawRunways = (a.rawRunways || []).filter((r) => haversine(a.lat, a.lon, r[2], r[3]) < 25000 && haversine(a.lat, a.lon, r[4], r[5]) < 25000)).length > 0);
     for (const a of this.list) {
-      // a runway whose ends are far from its airport is a data error: drop it rather than draw it across a continent
-      a.rawRunways = a.rawRunways.filter((r) => haversine(a.lat, a.lon, r[2], r[3]) < 25000);
       if (!this.byIdent.has(a.ident.toUpperCase())) this.byIdent.set(a.ident.toUpperCase(), a);
       if (a.iata && !this.byIdent.has(a.iata)) this.byIdent.set(a.iata.toUpperCase(), a);
       const k = `${Math.floor(a.lat)},${Math.floor(a.lon)}`;
@@ -212,16 +222,36 @@ export class AirportDB {
     for (const a of near) for (const r of a.runways) if (!r.group) scene.add(r.buildLights(geo));
     this.active = near; this.activeKey = key; this.geoVersion = geo.version;
     this.activeRunways = near.flatMap((a) => a.runways);
+    this.setActiveBox();
     return true;
   }
-  flatten(lat, lon, h) {
-    let best = null;
-    for (const r of this.activeRunways || []) {
-      const f = r.flatten(lat, lon);
-      if (f && (!best || f.f < best.f)) best = f;
+  // one box around every active runway (longitude relative to the first runway so the antimeridian does not matter): most terrain samples are outside it and return before any runway maths
+  setActiveBox() {
+    const rs = this.activeRunways;
+    if (!rs.length) { this.box = null; return; }
+    let la0 = Infinity, la1 = -Infinity, lo0 = Infinity, lo1 = -Infinity;
+    const ref = rs[0].lon;
+    for (const r of rs) {
+      const dlat = r.reach / R_EARTH / D2R, dlon = r.reach / (R_EARTH * Math.max(0.01, r.cos)) / D2R, rl = ref + (((r.lon - ref + 540) % 360) - 180);
+      la0 = Math.min(la0, r.lat - dlat); la1 = Math.max(la1, r.lat + dlat); lo0 = Math.min(lo0, rl - dlon); lo1 = Math.max(lo1, rl + dlon);
     }
-    if (!best) return h;
-    return h === null ? best.h : best.h * (1 - best.f) + h * best.f;
+    this.box = { la0: la0 - 1e-4, la1: la1 + 1e-4, lo0: lo0 - 1e-4, lo1: lo1 + 1e-4, ref };
+  }
+  flatten(lat, lon, h) {
+    const runways = this.activeRunways, box = this.box;
+    if (!runways || !runways.length) return h;
+    if (box) {
+      if (lat < box.la0 || lat > box.la1) return h;
+      const dl = box.ref + (((lon - box.ref + 540) % 360) - 180);
+      if (dl < box.lo0 || dl > box.lo1) return h;
+    }
+    let bestF = 2, bestH = 0;
+    for (let i = 0; i < runways.length; i++) {
+      const r = runways[i], f = r.flatF(lat, lon);
+      if (f >= 0 && f < bestF) { bestF = f; bestH = r.flatH; }
+    }
+    if (bestF > 1) return h;
+    return h === null ? bestH : bestH * (1 - bestF) + h * bestF;
   }
   positionLights(cw, night) {
     LIGHT_MAT.uniforms.uNight.value = night;

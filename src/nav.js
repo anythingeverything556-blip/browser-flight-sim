@@ -91,7 +91,7 @@ class Navigation {
         y = (n * n) / (9.80665 * Math.tan((bankDeg ?? (n > 340 ? 35 : 25)) * D2R)),
         x = this.wps[this.active + 1],
         g = x ? Math.abs(gT(bearing(r.lat, r.lon, x.lat, x.lon) - l)) : 0,
-        _ = x ? Math.max(1e3, y * Math.tan((Math.min(150, g) * D2R) / 2)) : 300;
+        _ = x ? Math.min(Math.max(1e3, y * Math.tan((Math.min(150, g) * D2R) / 2)), Math.max(300, 0.5 * Math.min(haversine(r.lat, r.lon, x.lat, x.lon), haversine(a.lat, a.lon, r.lat, r.lon)))) : 300;
       i.turnInS = x && g > 8 ? Math.max(0, (h - _) / Math.max(n, 1)) : null; i.turnDeg = x ? g : 0; i.turnRadiusNm = y / 1852;
       h < _ || v < 0
         ? x

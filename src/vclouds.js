@@ -1,4 +1,6 @@
+import { cloudTop, clearSkyEdge, CLEAR_SKY_WIDTH } from './cloudlayer.js';
 import * as THREE from 'three';
+import { DEPTH_GLSL, depthK, isReversed } from './depth.js';
 import { ATMOS_UNIFORMS, ATM_FRAG } from './atmos.js';
 
 const Mm = 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
@@ -10,9 +12,10 @@ function tex3(r, n) {
 }
 const G2 = `
 uniform highp sampler2D tDepth; uniform highp sampler3D tShape, tDetail;
-uniform vec4 uCarve[12]; uniform int uCarveN; // tunnels the aircraft has cut through the cloud: xyz camera-relative, w radius
+uniform float uStepN; uniform vec4 uCarve[12]; uniform int uCarveN; // tunnels the aircraft has cut through the cloud: xyz camera-relative, w radius
 uniform mat4 uProjInv, uCamRot; uniform vec3 uCamFwd; uniform vec2 uOff, uTan;
-uniform float uLogF, uCamAlt, uBase, uTop, uCover, uEvo; // uEvo: slow drift of the noise field through itself, so cloud shapes grow and fade
+${DEPTH_GLSL}
+uniform float uCamAlt, uBase, uTop, uCover, uEvo; // uEvo: slow drift of the noise field through itself, so cloud shapes grow and fade
 varying vec2 vUv;
 ${ATM_FRAG}
 float hg(float c, float g) { float g2 = g * g; return (1.0 - g2) / (12.5663706 * pow(1.0 + g2 - 2.0 * g * c, 1.5)); }
@@ -21,33 +24,34 @@ float vn2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f)
   return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
 // large-scale coverage: where clouds cluster and where gaps open
 float weather(vec2 xz) { vec2 p = xz / 26000.0; return 0.3 * vn2(xz / 110000.0 + 19.0) + 0.3 * vn2(p) + 0.25 * vn2(p * 2.7 + 7.1) + 0.15 * vn2(p * 6.3 + 3.3); }
-float density(vec3 rel, float h, float fine) {
+float density(vec3 rel, float h, float fine, float wv) {
   float hn = (h - uBase) / (uTop - uBase);
   if (hn <= 0.0 || hn >= 1.0) return 0.0;
   vec3 wp = vec3(rel.x + uOff.x, h, rel.z + uOff.y);
-  float cov = clamp(uCover * (0.45 + 1.1 * weather(wp.xz)), 0.0, 1.0);
+  float cov = clamp(uCover * (0.45 + 1.1 * wv), 0.0, 1.0);
+  float clearLo = mix(0.38, 0.35, smoothstep(0.85, 1.0, uCover));
   float top = mix(0.4, 1.0, cov); // sparse cumulus stay low, heavy cover builds up
   float prof = smoothstep(0.0, 0.08, hn) * (1.0 - smoothstep(top * 0.45, top, hn));
   // two lookups at non-commensurate scales, the second rotated, so the 64^3 tile never shows as a grid from altitude
   vec3 wr = vec3(0.8 * wp.x - 0.6 * wp.z, wp.y, 0.6 * wp.x + 0.8 * wp.z);
   vec3 w3 = vec3(0.28 * wp.x + 0.96 * wp.z, wp.y, -0.96 * wp.x + 0.28 * wp.z); // a third scale at another angle, so the 64-cell noise tile never reads as a repeat
-  float s = texture(tShape, wp * vec3(1.0 / 5600.0, 1.0 / 3800.0, 1.0 / 5600.0) + vec3(0.0, uEvo, 0.0)).r * 0.45
-          + texture(tShape, wr * vec3(1.0 / 14300.0, 1.0 / 5100.0, 1.0 / 14300.0) + vec3(0.37, 0.37 + uEvo * 0.7, 0.37)).r * 0.3
-          + texture(tShape, w3 * vec3(1.0 / 41000.0, 1.0 / 6700.0, 1.0 / 41000.0) + vec3(0.71, 0.13 + uEvo * 0.5, 0.29)).r * 0.25;
-  float d = clamp((s * prof - (1.0 - cov)) / max(cov, 0.1), 0.0, 1.0);
+  float s = textureLod(tShape, wp * vec3(1.0 / 5600.0, 1.0 / 3800.0, 1.0 / 5600.0) + vec3(0.0, uEvo, 0.0), 0.0).r * 0.45
+          + textureLod(tShape, wr * vec3(1.0 / 14300.0, 1.0 / 5100.0, 1.0 / 14300.0) + vec3(0.37, 0.37 + uEvo * 0.7, 0.37), 0.0).r * 0.3
+          + textureLod(tShape, w3 * vec3(1.0 / 41000.0, 1.0 / 6700.0, 1.0 / 41000.0) + vec3(0.71, 0.13 + uEvo * 0.5, 0.29), 0.0).r * 0.25;
+  float d = clamp((s * prof - (1.0 - cov)) / max(cov, 0.1), 0.0, 1.0) * smoothstep(clearLo, clearLo + 0.08, wv);
   if (fine > 0.0 && d > 0.0) {
-    float e = texture(tDetail, wp / 900.0).r;
+    float e = textureLod(tDetail, wp / 900.0, 0.0).r;
     // wispy, billowy edges; cores stay solid. The detail repeats every 900 m, so a sample spacing near that or wider aliases into shimmer (the
     // flicker of far clouds): the caller fades it out as the march step grows.
     d = mix(d, clamp((d - e * 0.55 * (1.0 - d)) * 2.0, 0.0, 1.0), fine);
   }
   return d;
 }
-void main() {
+vec4 cumulus() {
   // view ray from the field of view: inverting the projection at the far plane loses all precision once near is a few cm and far is 12,000 km
   vec3 dir = normalize(mat3(uCamRot) * vec3((vUv * 2.0 - 1.0) * uTan, -1.0));
   float dz = texture2D(tDepth, vUv).r;
-  float sceneT = dz > 0.99999 ? 1e12 : (exp2(dz * uLogF) - 1.0) / max(dot(dir, uCamFwd), 1e-4);
+  float sceneT = depthSky(dz) ? 1e12 : depthW(dz) / max(dot(dir, uCamFwd), 1e-4);
   vec3 O = vec3(0.0, ATM_RP + uCamAlt, 0.0);
   vec2 si = atmRaySphere(O, dir, ATM_RP + uBase), so = atmRaySphere(O, dir, ATM_RP + uTop), sg = atmRaySphere(O, dir, ATM_RP);
   float t0, t1;
@@ -56,20 +60,22 @@ void main() {
   // above the layer: only a forward hit counts. Looking up, both roots are behind the camera, and a negative t0 made the march run backwards through the clouds behind
   else { t0 = max(so.x, 0.0); t1 = so.x < 0.0 ? -1.0 : (si.x > 0.0 ? si.x : so.y); }
   t1 = min(t1, min(sceneT, t0 + ${cu}.0));
-  if (t1 <= t0) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+  if (t1 <= t0) return vec4(0.0, 0.0, 0.0, 1.0);
   float L = t1 - t0, j = h21(gl_FragCoord.xy * 1.37 + 17.0); // white-noise jitter: IGN's diagonal pattern shows as stripes once upsampled
   float cosT = dot(dir, uAtmSun), ph = mix(hg(cosT, 0.6), hg(cosT, -0.25), 0.3);
   vec3 sunC = uAtmSunCol * 2.0, ambC = uAtmAmb * 3.14159 * 0.9;
-  float T = 1.0, tw = 0.0, ts = 0.0; vec3 S = vec3(0.0);
+  float T = 1.0, tw = 0.0, ts = 0.0, lastOd = 0.0; vec3 S = vec3(0.0);
   for (int i = 0; i < STEPS; i++) {
+    if (float(i) >= uStepN) break; // fewer steps when the camera is far above or below the layer (marchSteps)
     // samples bunch up near the entry point, where detail is visible
-    float u = (float(i) + j) / float(STEPS), t = t0 + L * u * u, dt = L * (2.0 * u + 1.0 / float(STEPS)) / float(STEPS);
+    float u = (float(i) + j) / uStepN, t = t0 + L * u * u, dt = L * (2.0 * u + 1.0 / uStepN) / uStepN;
     vec3 p = dir * t; float h = length(O + p) - ATM_RP;
-    float d = density(p, h, 1.0 - smoothstep(120.0, 420.0, dt));
+    float wv = weather(p.xz + uOff);
+    float d = density(p, h, 1.0 - smoothstep(120.0, 420.0, dt), wv);
     if (uCarveN > 0 && d > 0.0) { float k = 1.0; for (int c = 0; c < 12; c++) { if (c >= uCarveN) break; vec4 cv = uCarve[c]; k = min(k, smoothstep(cv.w * 0.35, cv.w, length(p - cv.xyz))); } d *= k; }
     if (d > 0.003) {
-      float sig = 0.05 * d, od = 0.0, ls = 60.0; vec3 q = p;
-      for (int k = 0; k < LSTEPS; k++) { q += uAtmSun * ls; od += density(q, length(O + q) - ATM_RP, 0.0) * ls; ls *= 1.9; }
+      float sig = 0.05 * d, od = lastOd, ls = 60.0; vec3 q = p;
+      if (T > 0.3) { od = 0.0; for (int k = 0; k < LSTEPS; k++) { q += uAtmSun * ls; od += density(q, length(O + q) - ATM_RP, 0.0, wv) * ls; ls *= 1.9; } lastOd = od; }
       float Tl = exp(-0.05 * od), hn = clamp((h - uBase) / (uTop - uBase), 0.0, 1.0);
       // single scattering + a cheap multiple-scattering floor (keeps cloud interiors from going black)
       vec3 Lsc = sunC * (ph * Tl + 0.03 * pow(Tl, 0.25)) + ambC * (0.5 + 0.5 * hn) + uAtmNight * 0.5;
@@ -79,30 +85,61 @@ void main() {
       if (T < 0.02) break;
     }
   }
-  if (tw < 1e-4) { gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0); return; }
+  if (tw < 1e-4) return vec4(0.0, 0.0, 0.0, 1.0);
   float tm = ts / tw, a = (1.0 - T) * (1.0 - smoothstep(${cu * 0.55}.0, ${cu}.0, tm - t0));
   vec3 col = atmAerial(atmTone(S / tw), dir * tm);
-  gl_FragColor = vec4(col * a, 1.0 - a);
+  return vec4(col * a, 1.0 - a);
+}
+vec4 cirrus(vec3 dir, float sceneT, vec3 O) {
+  float R = ATM_RP + 9500.0;
+  vec2 hit = atmRaySphere(O, dir, R);
+  float t = length(O) < R ? hit.y : hit.x;
+  if (t <= 0.0 || t > 420000.0 || t > sceneT) return vec4(0.0, 0.0, 0.0, 1.0);
+  vec2 xz = (dir * t).xz + uOff;
+  float streakMask = smoothstep(0.40, 0.60, weather(xz * 1.6 + 5.0));
+  float st = texture(tShape, vec3(xz.x / 26000.0 + uEvo * 0.3, 0.37, xz.y / 7000.0)).r * 0.6 + texture(tShape, vec3(xz.x / 9500.0 + 0.2, 0.61, xz.y / 3000.0 + 0.3)).r * 0.4;
+  float a = clamp((st - 0.47) * 3.4, 0.0, 1.0) * streakMask * 0.55 * (1.0 - 0.6 * uCover) * (1.0 - smoothstep(200000.0, 420000.0, t));
+  if (a < 0.002) return vec4(0.0, 0.0, 0.0, 1.0);
+  float cosT = dot(dir, uAtmSun), ph = mix(hg(cosT, 0.6), hg(cosT, -0.25), 0.3);
+  vec3 S = uAtmSunCol * 2.0 * (ph * 0.8 + 0.12) + uAtmAmb * 3.14159 * 0.8 + uAtmNight * 0.5;
+  vec3 col = atmAerial(atmTone(S), dir * t);
+  return vec4(col * a, 1.0 - a);
+}
+void main() {
+  vec3 dir = normalize(mat3(uCamRot) * vec3((vUv * 2.0 - 1.0) * uTan, -1.0));
+  float dz = texture2D(tDepth, vUv).r;
+  float sceneT = depthSky(dz) ? 1e12 : depthW(dz) / max(dot(dir, uCamFwd), 1e-4);
+  vec3 O = vec3(0.0, ATM_RP + uCamAlt, 0.0);
+  vec4 c = cumulus(), ci = cirrus(dir, sceneT, O);
+  gl_FragColor = vec4(c.rgb + c.a * ci.rgb, c.a * ci.a);
 }`,
   V2 = `
-uniform sampler2D tLow; uniform highp sampler2D tDepth; uniform vec2 uLowRes; uniform float uLogF;
+uniform sampler2D tLow; uniform highp sampler2D tDepth; uniform vec2 uLowRes;
+${DEPTH_GLSL}
+// half-rate march (off by default): on the frames without a march, where this pixel's view ray was on the last march's screen (rotation only;
+// the layer is far enough that the camera's own travel in one frame does not show)
+uniform float uReproj; uniform mat4 uCamRot, uPrevRotInv; uniform vec2 uTan, uPrevTan;
 varying vec2 vUv;
-float lz(vec2 uv) { return texture2D(tDepth, uv).r * uLogF; } // log2(1 + w): depth comparisons in log space
+vec2 prevUv(vec2 uv) { vec3 d = mat3(uPrevRotInv) * (mat3(uCamRot) * vec3((uv * 2.0 - 1.0) * uTan, -1.0)); return d.z < -1e-4 ? (d.xy / -d.z) / uPrevTan * 0.5 + 0.5 : uv; }
+float lz(vec2 uv) { return log2(1.0 + depthW(textureLod(tDepth, uv, 0.0).r)); } // log2(1 + w): depth comparisons in log space
 void main() {
   float zc = lz(vUv);
-  vec2 st = vUv * uLowRes - 0.5, i0 = floor(st + 0.5);
+  vec2 st = (uReproj > 0.5 ? prevUv(vUv) : vUv) * uLowRes - 0.5, i0 = floor(st + 0.5);
   vec4 acc = vec4(0.0); float ws = 0.0;
   // 3x3 tent around the nearest low-res texel: upsamples and smooths the march jitter in one pass
   for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
     vec2 c = i0 + vec2(float(i), float(j)), cuv = (c + 0.5) / uLowRes, dd = abs(c - st);
     float wb = max(0.0, 1.5 - dd.x) * max(0.0, 1.5 - dd.y);
     float w = wb / (0.02 + abs(lz(cuv) - zc)) + 1e-5;
-    acc += texture2D(tLow, cuv) * w; ws += w;
+    acc += textureLod(tLow, cuv, 0.0) * w; ws += w;
   }
   gl_FragColor = acc / ws;
 }`;
 // seconds for the cloud noise field to drift once through its own height (one period); larger = calmer clouds
 const EVO_SECONDS = 300;
+// march steps for a camera this far outside the layer: the full count inside it or within 2 km, half at 15 km and beyond (from the
+// top of the climb the layer is a thin band far below, its detail already faded out by the step length, and the jitter + upsample hide the coarser march)
+const marchSteps = (steps, camAlt, base, top) => { const d = Math.max(base - camAlt, camAlt - top, 0), k = Math.min(1, Math.max(0, (d - 2000) / 13000)); return Math.max(12, Math.round(steps * (1 - 0.5 * k * k * (3 - 2 * k)))); };
 class VolumetricClouds {
   constructor(t) {
     ((this.renderer = t),
@@ -123,14 +160,23 @@ class VolumetricClouds {
           tLow: { value: null },
           tDepth: { value: null },
           uLowRes: { value: new THREE.Vector2() },
-          uLogF: { value: 1 },
+          uDepthK: { value: new THREE.Vector2(1, 0) },
+          uReproj: { value: 0 },
+          uCamRot: { value: new THREE.Matrix4() },
+          uPrevRotInv: { value: new THREE.Matrix4() },
+          uTan: { value: new THREE.Vector2(1, 1) },
+          uPrevTan: { value: new THREE.Vector2(1, 1) },
         },
         vertexShader: Mm,
         fragmentShader: V2,
         depthTest: !1,
         depthWrite: !1,
       })),
-      (this._fwd = new THREE.Vector3()));
+      (this._fwd = new THREE.Vector3()),
+      (this.halfRate = !1), // march every other frame, the frames between reproject the last march (settings.cloudHalfRate; off by default)
+      (this.frame = 0),
+      (this.marches = 0),
+      (this._marchedAt = null));
   }
   // the noise volumes come from a worker (about a second of arithmetic); until they arrive render() draws no clouds
   // resolution of the cloud march only (not the picture): lets the game shed cloud cost under load without softening the imagery
@@ -170,7 +216,7 @@ class VolumetricClouds {
             uCamFwd: { value: new THREE.Vector3() },
             uOff: { value: new THREE.Vector2() },
             uTan: { value: new THREE.Vector2(1, 1) },
-            uLogF: { value: 1 },
+            uDepthK: { value: new THREE.Vector2(1, 0) },
             uCamAlt: { value: 0 },
             uBase: { value: 2e3 },
             uTop: { value: 3500 },
@@ -178,6 +224,7 @@ class VolumetricClouds {
             uEvo: { value: 0 },
             uCarve: { value: Array.from({ length: 12 }, () => new THREE.Vector4()) },
             uCarveN: { value: 0 },
+            uStepN: { value: e },
           },
           vertexShader: Mm,
           fragmentShader: G2,
@@ -200,8 +247,10 @@ class VolumetricClouds {
     if ((this.march || this.setQuality({}), !this.tex)) { this._noise(); return null; }
     const f = t.getRenderTarget(),
       d = this.march.uniforms,
-      p = Math.log2(e.far + 1);
-    ((d.tDepth.value = n),
+      p = depthK(e, isReversed(t), this._dk || (this._dk = new THREE.Vector2())),
+      lw = this.lowRT.width, lh = this.lowRT.height, m = this._marchedAt,
+      skip = this.halfRate && m && (this.frame++ & 1) === 1 && m.w === lw && m.h === lh && m.mat === this.march;
+    skip || (this.marches++, (this._marchedAt = { w: lw, h: lh, mat: this.march }), (d.tDepth.value = n),
       (d.tShape.value = this.tex.shape),
       (d.tDetail.value = this.tex.detail),
       d.uProjInv.value.copy(e.projectionMatrixInverse),
@@ -209,23 +258,28 @@ class VolumetricClouds {
       d.uCamRot.value.extractRotation(e.matrixWorld),
       d.uCamFwd.value.copy(this._fwd.set(0, 0, -1).applyQuaternion(e.quaternion)),
       d.uOff.value.set(r.x - u.x * h, r.y - u.y * h),
-      (d.uLogF.value = p),
+      d.uDepthK.value.copy(p),
       (d.uCamAlt.value = i),
       (d.uCover.value = a),
       (d.uEvo.value = h / EVO_SECONDS),
       (d.uCarveN.value = this.carveN || 0),
       this.carveN && this.carvePts.forEach((q, i) => i < 12 && d.uCarve.value[i].set(q.x, q.y, q.z, q.r)),
       (d.uBase.value = l),
-      (d.uTop.value = l + 900 + 1700 * a),
+      (d.uTop.value = cloudTop(l, a)),
+      (d.uStepN.value = marchSteps(this.steps, i, l, d.uTop.value)),
       (this.quad.material = this.march),
       t.setRenderTarget(this.lowRT),
       t.render(this.quad, this.cam));
     const v = this.up.uniforms;
+    // current view for the reprojection; on a march frame the last march's view is this one (the mapping is the identity)
+    v.uCamRot.value.extractRotation(e.matrixWorld); v.uTan.value.set(1 / e.projectionMatrix.elements[0], 1 / e.projectionMatrix.elements[5]);
+    if (!skip) { v.uPrevRotInv.value.copy(v.uCamRot.value).transpose(); v.uPrevTan.value.copy(v.uTan.value); }
+    v.uReproj.value = this.halfRate ? 1 : 0;
     return (
       (v.tLow.value = this.lowRT.texture),
       (v.tDepth.value = n),
       v.uLowRes.value.set(this.lowRT.width, this.lowRT.height),
-      (v.uLogF.value = p),
+      v.uDepthK.value.copy(p),
       (this.quad.material = this.up),
       t.setRenderTarget(this.outRT),
       t.render(this.quad, this.cam),
@@ -236,14 +290,15 @@ class VolumetricClouds {
   // coarse cloud density (0..1) at the camera, the same field the shader marches through: tells the cockpit it is inside a cloud
   densityAt(y, cover, base, time = 0) {
     if (!this.tex || !this.march || cover <= 0.01) return 0;
-    const top = base + 900 + 1700 * cover, hn = (y - base) / (top - base);
+    const top = cloudTop(base, cover), hn = (y - base) / (top - base);
     if (hn <= 0 || hn >= 1) return 0;
     const u = this.march.uniforms.uOff.value, wx = u.x, wz = u.y, fr = (v) => v - Math.floor(v);
     const h21 = (a, b) => { a = fr(a * 0.1031); b = fr(b * 0.103); const d = a * (b + 33.33) + b * (a + 33.33); a += d; b += d; return fr((a + b) * a); };
     const vn = (a, b) => { const ia = Math.floor(a), ib = Math.floor(b); let fa = a - ia, fb = b - ib; fa = fa * fa * (3 - 2 * fa); fb = fb * fb * (3 - 2 * fb);
       return (h21(ia, ib) * (1 - fa) + h21(ia + 1, ib) * fa) * (1 - fb) + (h21(ia, ib + 1) * (1 - fa) + h21(ia + 1, ib + 1) * fa) * fb; };
     const px = wx / 26000, pz = wz / 26000;
-    const cov = Math.min(1, Math.max(0, cover * (0.45 + 1.1 * (0.3 * vn(wx / 110000 + 19, wz / 110000 + 19) + 0.3 * vn(px, pz) + 0.25 * vn(px * 2.7 + 7.1, pz * 2.7 + 7.1) + 0.15 * vn(px * 6.3 + 3.3, pz * 6.3 + 3.3)))));
+    const wv = 0.3 * vn(wx / 110000 + 19, wz / 110000 + 19) + 0.3 * vn(px, pz) + 0.25 * vn(px * 2.7 + 7.1, pz * 2.7 + 7.1) + 0.15 * vn(px * 6.3 + 3.3, pz * 6.3 + 3.3);
+    const cov = Math.min(1, Math.max(0, cover * (0.45 + 1.1 * wv))), clearLo = clearSkyEdge(cover);
     const topf = 0.4 + 0.6 * cov, sm = (e0, e1, v) => { const t = Math.min(1, Math.max(0, (v - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
     const prof = sm(0, 0.08, hn) * (1 - sm(topf * 0.45, topf, hn)), D = this.tex.shape.image.data, N = 64;
     const tri = (a, b, c) => { const fx = (((a * N - 0.5) % N) + N) % N, fy = (((b * N - 0.5) % N) + N) % N, fz = (((c * N - 0.5) % N) + N) % N, x0 = Math.floor(fx), y0 = Math.floor(fy), z0 = Math.floor(fz), tx = fx - x0, ty = fy - y0, tz = fz - z0;
@@ -252,7 +307,8 @@ class VolumetricClouds {
     const wrx = 0.8 * wx - 0.6 * wz, wrz = 0.6 * wx + 0.8 * wz;
     const evo = time / EVO_SECONDS, w3x = 0.28 * wx + 0.96 * wz, w3z = -0.96 * wx + 0.28 * wz;
     const sh = tri(wx / 5600, y / 3800 + evo, wz / 5600) * 0.45 + tri(wrx / 14300 + 0.37, y / 5100 + 0.37 + evo * 0.7, wrz / 14300 + 0.37) * 0.3 + tri(w3x / 41000 + 0.71, y / 6700 + 0.13 + evo * 0.5, w3z / 41000 + 0.29) * 0.25;
-    return Math.min(1, Math.max(0, (sh * prof - (1 - cov)) / Math.max(cov, 0.1)));
+    const gap = Math.min(1, Math.max(0, (wv - clearLo) / CLEAR_SKY_WIDTH));
+    return Math.min(1, Math.max(0, (sh * prof - (1 - cov)) / Math.max(cov, 0.1))) * gap * gap * (3 - 2 * gap);
   }
   dispose() {
     (this.lowRT.dispose(),
@@ -263,4 +319,4 @@ class VolumetricClouds {
   }
 }
 
-export { VolumetricClouds, EVO_SECONDS };
+export { VolumetricClouds, EVO_SECONDS, marchSteps };

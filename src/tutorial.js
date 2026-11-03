@@ -11,7 +11,7 @@ export const STEPS = [
     text: 'Press 9 for full afterburner. E and Q change the throttle (so do + and −, or PgUp and PgDn) and 0 is idle. The engines take a few seconds to spool up.',
     done: (c) => c.throttle > 0.9 },
   { id: 'roll', title: 'Take-off roll',
-    text: 'Keep the nose wheel on the centre line with A and D. At about 190 kt you will rotate.',
+    text: 'Keep the nose wheel on the centre line with A and D. The real jet rotated at about 180 kt and lifted off near 210 kt. Prefer to let the computer do it? Press T for an automatic take-off.',
     live: (c) => `Speed ${Math.round(c.iasKt)} kt`,
     hint: (c) => (c.xtk == null || !c.onGround ? '' : c.xtk > 8 ? 'Right of the centre line. Steer left with A.' : c.xtk < -8 ? 'Left of the centre line. Steer right with D.' : ''),
     done: (c) => c.iasKt >= 185 || !c.onGround },
@@ -25,10 +25,10 @@ export const STEPS = [
     hint: (c) => (c.gearDown && c.agl > 400 ? 'The gear is still down. Press G.' : ''),
     done: (c) => !c.gearDown },
   { id: 'climb', title: 'Climb',
-    text: 'Hold roughly 10 degrees nose up. Speed matters more than height: if the speed falls away, lower the nose. A climb that is too steep stalls the wing.',
+    text: 'Keep the nose low, about 5 to 8 degrees, until the speed builds to about 400 kt. Then pull up to 15 to 20 degrees and hold roughly 400 kt. The real Blackbird reached 25,000 ft in about two minutes this way. Watch the speed more than the height: if it falls away, lower the nose.',
     live: (c) => `Pitch ${Math.round(c.pitchDeg)}°  Speed ${Math.round(c.iasKt)} kt  Altitude ${Math.round(c.altFt / 100) * 100} ft`,
-    hint: (c) => (c.pitchDeg > 20 ? 'Too steep. The wing will stall and you will lose height. Lower the nose with W.'
-      : c.iasKt < 250 ? 'Speed is dropping. Lower the nose with W.' : c.pitchDeg < 3 ? 'Raise the nose a little with S.' : ''),
+    hint: (c) => (c.pitchDeg > 25 ? 'Too steep. The wing will stall and you will lose height. Lower the nose with W.'
+      : c.iasKt < 300 ? 'Speed is dropping. Lower the nose with W.' : c.iasKt > 500 && c.pitchDeg < 12 ? 'Fast and shallow. You can raise the nose to about 15 degrees with S and climb much faster.' : c.pitchDeg < 3 ? 'Raise the nose a little with S.' : ''),
     done: (c) => c.altFt > 6000 },
   { id: 'trim', title: 'Throttle back',
     text: 'Afterburner burns fuel very quickly. Pull the throttle back to about 85 percent with Q and watch the THROTTLE readout.',
@@ -65,7 +65,7 @@ export class Tutorial {
       this.final += dt;
       if (this.final > 12) { this.stop(); return null; }
       return { label: 'Tutorial', title: 'Tutorial complete', ok: true, next: false,
-        text: 'You have flown a take-off, a climb and the autopilot. For landings, pick Landing 1 or Landing 2 under Mission in Flight setup, then press R.' };
+        text: 'You have flown a take-off, a climb and the autopilot. Next, try T for an automatic take-off, J for a go-around, and the Climb to cruise button in the A/P panel. After landing use C for the drag chute and B for the brakes. For landings, pick Landing 1 or Landing 2 under Mission in Flight setup, then press R.' };
     }
     const st = STEPS[this.i], label = `Step ${this.i + 1} of ${STEPS.length}`;
     if (!this.entered) { this.entered = true; st.enter && st.enter(c, this.s); }
@@ -75,6 +75,6 @@ export class Tutorial {
       return { label, title: st.title, ok: true, next: false, text: 'Done.' };
     }
     if (st.done(c, this.s)) { this.passed = true; this.pt = 0; }
-    return { label, title: st.title, text: st.text, live: st.live ? st.live(c) : '', hint: st.hint ? st.hint(c) : '', ok: false, next: true };
+    return { label, title: st.title, text: st.text, live: st.live ? st.live(c) : '', hint: st.hint && !c.crashed && c.started !== false ? st.hint(c) : '', ok: false, next: true };
   }
 }

@@ -1,12 +1,14 @@
 // Live weather: fetch the current METAR for an airport and turn it into the simulator's weather settings.
-const COVER = { SKC: 0, CLR: 0, NSC: 0, NCD: 0, FEW: 0.25, SCT: 0.55, BKN: 0.8, OVC: 1, VV: 1 };
+const COVER = { SKC: 0, CLR: 0, NSC: 0, NCD: 0, FEW: 0.25, SCT: 0.55, BKN: 0.8, OVC: 1, VV: 1, OVX: 1 }; // OVX: aviationweather JSON's sky obscured (vertical visibility)
 
 const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
 const weatherIntensity = (token) => {
   const t = token.replace(/^[+-]/, '').replace(/^VC/, '');
   const intensity = token[0] === '-' ? 0.32 : token[0] === '+' ? 0.95 : 0.62;
-  if (/TS/.test(t)) return 1;
-  if (/RA|DZ|SN|SG|PL|GR|GS|IC/.test(t)) {
+  // blowing / drifting snow, sand or dust is lifted off the ground, not falling: no precipitation (it was read as heavy rain)
+  const p = t.replace(/^(?:BL|DR)(?:SN|SA|DU|PY)$/, '');
+  if (/TS/.test(p)) return 1;
+  if (/RA|DZ|SN|SG|PL|GR|GS|IC/.test(p)) {
     const snow = /SN|SG|PL|GR|GS|IC/.test(t);
     const shower = /SH/.test(t);
     return clamp(intensity + (shower ? 0.08 : 0) + (snow ? -0.12 : 0), 0.18, 0.98);
@@ -25,7 +27,7 @@ export function parseMetar(report) {
   if (wind) {
     const [, direction, speed, gust, unit] = wind.match(/^(\d{3}|VRB)(\d{2,3})(?:G(\d{2,3}))?(KT|MPS|KMH)$/);
     const factor = unit === 'MPS' ? 1.943844 : unit === 'KMH' ? 0.539957 : 1;
-    wdir = direction === 'VRB' || direction === '000' ? 'VRB' : Number(direction);
+    wdir = direction === 'VRB' || direction === '000' ? 'VRB' : Number(direction) <= 360 ? Number(direction) : null; // 999 is not a direction
     wspd = Math.round(Number(speed) * factor);
     wgst = gust ? Math.round(Number(gust) * factor) : 0;
   }
@@ -53,20 +55,23 @@ export function parseMetar(report) {
     }
   }
 
-  const clouds = tokens.filter((t) => /^(FEW|SCT|BKN|OVC|VV)\d{3}(?:CB|TCU)?$/.test(t)).map((t) => {
-    const [, cover, base] = t.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3})/);
-    return { cover, base: Number(base) * 100 };
+  // VV/// (sky obscured, height not measured) is full cover on the ground: it used to give no cloud at all in dense fog
+  const clouds = tokens.filter((t) => /^(FEW|SCT|BKN|OVC|VV)(?:\d{3}|\/\/\/)(?:CB|TCU)?$/.test(t)).map((t) => {
+    const [, cover, base] = t.match(/^(FEW|SCT|BKN|OVC|VV)(\d{3}|\/\/\/)/);
+    return { cover, base: base === '///' ? (cover === 'VV' ? 0 : null) : Number(base) * 100 };
   });
-  const wxTokens = tokens.filter((t) => t === 'VCTS' || /^[+-]?(?:VC)?(?:MI|PR|BC|DR|BL|SH|TS|FZ)*(?:DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|SS|DS)+$/.test(t));
+  const wxTokens = tokens.filter((t) => t === 'VCTS' || /^[+-]?TS$/.test(t) || /^[+-]?(?:VC)?(?:MI|PR|BC|DR|BL|SH|TS|FZ)*(?:DZ|RA|SN|SG|IC|PL|GR|GS|UP|BR|FG|FU|VA|DU|SA|HZ|PY|PO|SQ|FC|SS|DS)+$/.test(t));
   const wxString = wxTokens.join(' ');
   const weather = wxTokens.map((token) => token.replace(/^[+-]/, '').replace(/^VC/, ''));
   const rainIntensity = wxTokens.reduce((best, token) => Math.max(best, weatherIntensity(token)), 0);
-  const fog = wxTokens.some((t) => /FG/.test(t)) ? 0.85 : wxTokens.some((t) => /BR/.test(t)) ? 0.4 : 0;
+  // haze, smoke, dust, sand, ash and blowing snow thin the air too (they were ignored)
+  const fog = wxTokens.some((t) => /FG/.test(t)) ? 0.85 : wxTokens.some((t) => /BR/.test(t)) ? 0.4 : wxTokens.some((t) => /HZ|FU|DU|SA|VA|BLSN|DRSN|SS|DS|PY/.test(t)) ? 0.25 : 0;
   const thunder = wxTokens.some((t) => /TS/.test(t));
 
   const temperatureToken = tokens.find((t) => /^M?\d{2}\/(?:M?\d{2}|\/\/)$/.test(t));
   const tempParts = temperatureToken ? temperatureToken.split('/') : [];
-  const celsius = (s) => s === '//' ? null : Number(s.replace('M', '-'));
+  // automated stations send 12/, M/M, ///// or no group at all: no temperature is null, never a throw (it broke the ATIS and showed "No live weather")
+  const celsius = (s) => (typeof s === 'string' && /^M?\d{1,2}$/.test(s) ? Number(s.replace('M', '-')) : null);
   const altimeterToken = tokens.find((t) => /^(?:A\d{4}|Q\d{4})$/.test(t));
   const altim = altimeterToken ? (altimeterToken[0] === 'A' ? Number(altimeterToken.slice(1)) / 100 * 33.8638866667 : Number(altimeterToken.slice(1))) : null;
 
@@ -98,7 +103,7 @@ export function interpretMetar(m, elevM = 0) {
   const thunder = has('TS'), precip = has('RA') || has('DZ') || has('SH') || has('SN') || thunder;
   const heavy = /\+/.test(wx), light = /-/.test(wx);
   const rain = Number.isFinite(m.rainIntensity) ? m.rainIntensity : thunder ? 1 : precip ? (heavy ? 0.95 : light ? 0.32 : 0.62) : 0;
-  const fog = Number.isFinite(m.fog) ? m.fog : has('FG') ? 0.85 : has('BR') ? 0.4 : Math.max(0, Math.min(0.7, 1 - sm / 3));
+  const fog = Number.isFinite(m.fog) ? m.fog : has('FG') ? 0.85 : has('BR') ? 0.4 : /HZ|FU|DU|SA|VA|BLSN|DRSN/.test(wx) ? Math.max(0.25, Math.min(0.7, 1 - sm / 3)) : Math.max(0, Math.min(0.7, 1 - sm / 3));
   const wspd = m.wspd || 0, gust = m.wgst || 0;
   return {
     windDir: m.wdir === 'VRB' || m.wdir == null ? 0 : m.wdir, windKt: wspd, gustKt: gust, sm, coverage,
@@ -116,7 +121,7 @@ const timeout = (ms) => new Promise((_, rj) => setTimeout(() => rj(new Error('ti
 
 // nearest published METAR within maxKm of a point (many airports, and most of the world's small ones, issue none)
 export async function nearestMetar(lat, lon, base = '/', maxKm = 150) {
-  const d = 1.4 / Math.max(0.35, Math.cos(lat * Math.PI / 180));
+  const d = Math.min(3.95, 1.4 / Math.max(0.35, Math.cos(lat * Math.PI / 180))); // the proxy allows 8° of longitude: 2 x 4 plus rounding was refused above ~69.5°
   const r = await fetch(`${base}api/metar?bbox=${(lat - 1.4).toFixed(2)},${(lon - d).toFixed(2)},${(lat + 1.4).toFixed(2)},${(lon + d).toFixed(2)}`, { cache: 'no-store' });
   if (!r.ok) throw new Error('METAR service answered ' + r.status);
   const j = await r.json(); let best = null;

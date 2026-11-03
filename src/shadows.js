@@ -1,7 +1,11 @@
 import * as THREE from 'three';
 import { stat } from './workstats.js';
+import { isReversed } from './depth.js';
 
-const SHADOW_LAYER = 2,
+// the jet is drawn into the finest cascade only (every frame, so its shadow never lags); in the coarser cascades it was redrawn every 2 to 90 frames while it
+// moved 100-300 m/s, so its shadow on the ground stood still and then jumped. Above ~130 m a smooth contact shadow takes over (aircraft.js).
+const AC_SHADOW_LAYER = 3,
+  SHADOW_LAYER = 2,
   SHADOW_UNIFORMS = {
     uSh0: { value: null },
     uSh1: { value: null },
@@ -52,12 +56,15 @@ float worldShadow(vec3 rel, vec3 n) { return 1.0; }
 #endif
 `,
   Nb = new THREE.Matrix4().set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 0.5, 0.5, 0, 0, 0, 1),
+  // reversed depth: clip z is already 0..1 (1 nearest the sun), so z passes through; the compare is >= and the bias moves toward the sun (uShZ < 0)
+  NbR = new THREE.Matrix4().set(0.5, 0, 0, 0.5, 0, 0.5, 0, 0.5, 0, 0, 1, 0, 0, 0, 0, 1),
   qp = 900;
 class WorldShadows {
   constructor(t, e) {
     this.roots = t;
+    this.rev = isReversed(e);
     const n = new THREE.DepthTexture(1, 1, 1015);
-    ((n.compareFunction = 515),
+    ((n.compareFunction = this.rev ? 518 : 515),
       (n.minFilter = n.magFilter = 1006),
       (this.dummy = new THREE.WebGLRenderTarget(1, 1, { depthTexture: n, format: 1028, generateMipmaps: !1 })));
     const i = e.getRenderTarget();
@@ -66,9 +73,11 @@ class WorldShadows {
     ((this.count = 0),
       (this.size = 0),
       (this.splits = []),
-      (this.cams = [0, 1, 2].map(() => {
+      (this.cams = [0, 1, 2].map((i) => {
         const r = new THREE.OrthographicCamera();
-        return (r.layers.set(SHADOW_LAYER), r);
+        r._reversedDepth = this.rev; // three flips it at the first draw; set up front so a cascade with nothing drawn still gets the matching matrix
+        r.layers.set(SHADOW_LAYER); if (i === 0) r.layers.enable(AC_SHADOW_LAYER);
+        return r;
       })),
       (this.rts = []),
       (this.active = !1),
@@ -108,7 +117,6 @@ class WorldShadows {
     const age = this.frame - this.lastFrame[E], R = this.R[E], k = this.every || 1;
     if (age >= (E === 0 ? 1 : E === 1 ? 24 : 90) * k) return true;
     if (E === 0) return true; // holds the aircraft and the finest ground shadows: every frame
-    if (E === 1 && agl < 600 && age >= 2 * k) return true; // aircraft shadow lands in cascade 1 near the ground
     if (cam.distanceToSquared(this.ats[E]) > (0.05 * R) ** 2) return true;
     // the slices follow where the camera looks: a head turn or a zoom moves what must be covered
     if (fwd.dot(this.fwdAt[E]) < 0.9992 || Math.abs(fov - this.fovAt[E]) > 0.5) return true;
@@ -123,7 +131,7 @@ class WorldShadows {
     }
     for (this.fresh = [!1, !1, !1]; this.rts.length < t;) {
       const r = new THREE.DepthTexture(e, e, 1015);
-      ((r.compareFunction = 515),
+      ((r.compareFunction = this.rev ? 518 : 515),
         (r.minFilter = r.magFilter = 1006),
         this.rts.push(
           new THREE.WebGLRenderTarget(e, e, { depthTexture: r, format: 1028, type: 1009, generateMipmaps: !1 }),
@@ -211,11 +219,11 @@ class WorldShadows {
         t.clear(!0, !0, !1),
         t.render(e, k),
         (l[`uSh${E}`].value = this.rts[E].depthTexture),
-        l[`uShM${E}`].value.multiplyMatrices(Nb, k.projectionMatrix).multiply(k.matrixWorldInverse),
+        l[`uShM${E}`].value.multiplyMatrices(this.rev ? NbR : Nb, k.projectionMatrix).multiply(k.matrixWorldInverse),
         this.mats[E].copy(l[`uShM${E}`].value),
         this.ats[E].copy(i), this.sunAt[E].copy(a), (this.sigAt[E] = sig), (this.lastFrame[E] = this.frame), (this.R[E] = R), this.fwdAt[E].copy(x), (this.fovAt[E] = n.fov),
         l.uShB.value.setComponent(E + 1, C),
-        l.uShZ.value.setComponent(E, (C * 1.2 + 0.05) / (k.far - k.near)));
+        l.uShZ.value.setComponent(E, ((this.rev ? -1 : 1) * (C * 1.2 + 0.05)) / (k.far - k.near)));
     }
     (t.setRenderTarget(w), (t.shadowMap.autoUpdate = b));
     for (let E = 0; E < _.length; E += 2) _[E].material = _[E + 1];
@@ -227,4 +235,4 @@ class WorldShadows {
   }
 }
 
-export { SHADOW_LAYER, SHADOW_UNIFORMS, WorldShadows, sd };
+export { AC_SHADOW_LAYER, SHADOW_LAYER, SHADOW_UNIFORMS, WorldShadows, sd };

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { isReversed } from './depth.js';
 import {
   ATMOS_UNIFORMS,
   ATM_FRAG,
@@ -81,7 +82,8 @@ class Environment {
       (this.moonDir = new THREE.Vector3(0, 1, 0)));
     const n = this.sun.shadow;
     (n.mapSize.set(2048, 2048),
-      (n.bias = -4e-4),
+      (n.bias = isReversed(e) ? 4e-4 : -4e-4), // reversed depth: the shadow compare is >= (nearer the sun = larger), so the bias flips sign
+      (n.camera._reversedDepth = isReversed(e)),
       (n.normalBias = 0.04),
       Object.assign(n.camera, { left: -22, right: 22, top: 22, bottom: -22, near: 1, far: 200 }),
       n.camera.updateProjectionMatrix(),
@@ -132,6 +134,7 @@ class Environment {
       this.envScene.add(this.groundDome),
       (this.envKey = ''),
       (this.envRT = null),
+      (this.envRTSize = 0),
       (this.envSize = 256));
     const i = 2500,
       r = new Float32Array(i * 3);
@@ -246,8 +249,20 @@ class Environment {
     ((this.envAt = performance.now()),
       (this.envKey = t),
       this.groundDome.material.color.setRGB(0.16, 0.15, 0.12).multiplyScalar(this.daylight));
-    const e = this.pmrem.fromScene(this.envScene, 0, 0.1, 2e3, { size: this.envSize });
-    (this.envRT && this.envRT.dispose(), (this.envRT = e), (this.scene.environment = e.texture));
+    const n = this.pmrem,
+      a = n._allocateTargets;
+    this.envRT && this.envRTSize === this.envSize && (n._allocateTargets = () => this.envRT);
+    let e;
+    try {
+      e = n.fromScene(this.envScene, 0, 0.1, 2e3, { size: this.envSize });
+    } finally {
+      n._allocateTargets = a;
+    }
+    (e !== this.envRT && (this.envRT && this.envRT.dispose(), (this.envRT = e), (this.envRTSize = this.envSize)),
+      (this.scene.environment = e.texture));
+  }
+  dispose() {
+    (this.envRT && this.envRT.dispose(), (this.envRT = null), (this.scene.environment = null), this.pmrem.dispose());
   }
 }
 

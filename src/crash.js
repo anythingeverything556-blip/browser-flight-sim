@@ -1,11 +1,15 @@
 import * as THREE from 'three';
+import { whenIdle } from './warmup.js';
+import { DEPTH_GLSL } from './depth.js';
 
 // Crash physics: instead of freezing on impact, the airframe becomes one or more free rigid bodies (it breaks up on a hard
 // impact or an in-flight overstress, slides in one piece after a gear-up or collapsed-gear landing) that tumble, bounce
 // and slide on the terrain with Coulomb friction, plus a fuel fireball, burning wreckage, a smoke column and sparks.
 // Coordinates are the flight model's world frame (x east, y up, z south, metres); everything is drawn camera-relative.
 const G = 9.81;
-const BURN_S = 45;
+// what "a lot of fuel" and "fast" mean for each aircraft; main.js passes the Skyhawk's
+const MAX_SPIN = 25; // rad/s, about 4 turns a second: a hard tumble for a wreck piece
+export const SR71_SCALE = { fuelCap: 36300, speedRef: 280, sinkRef: 58, size: 1 };
 
 // ---------- particles: one instanced billboard mesh per blend mode ----------
 // Billboards are shaped by per-particle rotated fractal noise, so fire licks and smoke billows instead of fading as round
@@ -31,7 +35,8 @@ void main() {
 const PFRAG = `
 #include <common>
 #include <logdepthbuf_pars_fragment>
-uniform float uBillow, uSoft, uLogF; uniform vec2 uRes; uniform highp sampler2D tDepth;
+uniform float uBillow, uSoft; uniform vec2 uRes; uniform highp sampler2D tDepth;
+${DEPTH_GLSL}
 varying vec4 vCol; varying vec2 vQ; varying vec2 vP; varying vec2 vMisc; varying vec3 vSunV; varying float vW; varying float vSize;
 float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
 float vn(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
@@ -47,7 +52,7 @@ void main() {
   // drawn after the cloud composite, so occlusion by terrain and buildings is tested here against the scene depth
   float vis = 1.0;
   if (uSoft > 0.5) {
-    float sceneW = exp2(texture2D(tDepth, gl_FragCoord.xy / uRes).r * uLogF) - 1.0;
+    float sceneW = depthW(textureLod(tDepth, gl_FragCoord.xy / uRes, 0.0).r);
     vis = clamp((sceneW - vW) / max(1.0, vSize * 0.35), 0.0, 1.0);
     if (vis <= 0.0) discard;
   }
@@ -81,7 +86,7 @@ class Particles {
     this.aMisc = new THREE.InstancedBufferAttribute(new Float32Array(max * 2), 2).setUsage(THREE.DynamicDrawUsage);
     g.setAttribute('iPos', this.aPos); g.setAttribute('iCol', this.aCol); g.setAttribute('iSize', this.aSize); g.setAttribute('iMisc', this.aMisc);
     g.instanceCount = 0;
-    this.uniforms = { uBillow: { value: 1.0 }, uSunW: { value: SUN_W.clone() }, uSoft: { value: 0 }, uLogF: { value: 1 }, uRes: { value: new THREE.Vector2(1, 1) }, tDepth: { value: null } };
+    this.uniforms = { uBillow: { value: 1.0 }, uSunW: { value: SUN_W.clone() }, uSoft: { value: 0 }, uDepthK: { value: new THREE.Vector2(1, 0) }, uRes: { value: new THREE.Vector2(1, 1) }, tDepth: { value: null } };
     this.mesh = new THREE.Mesh(g, new THREE.ShaderMaterial({
       uniforms: this.uniforms, vertexShader: PVERT, fragmentShader: PFRAG,
       defines: additive ? { ADDITIVE: '' } : {}, transparent: true, depthWrite: false,
@@ -95,13 +100,14 @@ class Particles {
     if (this.mesh.parent) this.mesh.parent.remove(this.mesh);
     scene.add(this.mesh); this.uniforms.uSoft.value = soft ? 1 : 0;
   }
-  // kind: 0 fire, 1 soot/smoke, 2 sparks, 3 dust, 4 flash
-  emit(x, y, z, vx, vy, vz, life, s0, s1, kind) {
+  // kind: 0 fire, 1 soot/smoke, 2 sparks, 3 dust, 4 flash, 5 fireball flame, 6 fire-lit soot rolling out of a fireball
+  // delay: seconds before the particle appears (it waits invisible and still), so a burst can stage its own smoke
+  emit(x, y, z, vx, vy, vz, life, s0, s1, kind, delay = 0) {
     if (this.n >= this.max) return;
     const i = this.n++;
     this.p[i * 3] = x; this.p[i * 3 + 1] = y; this.p[i * 3 + 2] = z;
     this.v[i * 3] = vx; this.v[i * 3 + 1] = vy; this.v[i * 3 + 2] = vz;
-    this.age[i] = 0; this.life[i] = life; this.s0[i] = s0; this.s1[i] = s1; this.kind[i] = kind; this.tint[i] = Math.random();
+    this.age[i] = -delay; this.life[i] = life; this.s0[i] = s0; this.s1[i] = s1; this.kind[i] = kind; this.tint[i] = Math.random();
     this.rot[i] = Math.random() * 6.2832; this.spin[i] = (Math.random() - 0.5) * (kind === 1 ? 0.7 : 1.8);
   }
   update(dt, camWorld, wind, day, sunDir) {
@@ -118,14 +124,29 @@ class Particles {
         this.life[j] = this.life[i]; this.s0[j] = this.s0[i]; this.s1[j] = this.s1[i]; this.kind[j] = k; this.tint[j] = this.tint[i];
         this.rot[j] = this.rot[i]; this.spin[j] = this.spin[i];
       }
-      this.age[j] = age; this.rot[j] += this.spin[j] * dt;
+      this.age[j] = age;
+      if (age < 0) { C[j * 4 + 3] = 0; P[j * 3] = P[j * 3 + 1] = P[j * 3 + 2] = 0; continue; } // waiting for its delayed start
+      this.rot[j] += this.spin[j] * dt;
       const t = age / this.life[j], v = this.v;
-      if (k === 1) { // smoke: rises, slows, drifts with the wind and billows out as it climbs
-        v[j * 3] += (wind.x - v[j * 3]) * dt * 0.35; v[j * 3 + 2] += (wind.z - v[j * 3 + 2]) * dt * 0.35; v[j * 3 + 1] = v[j * 3 + 1] * Math.exp(-dt * 0.12) + 0.9 * dt;
+      if (k === 1 || k === 6) {
+        // smoke plume: hot gas is buoyant at first and cools as it entrains air, so the rise slows to a gentle drift;
+        // near the ground the fire's own inflow shelters it from the wind, higher up it bends over and is carried off
+        const lift = 0.55 + (k === 6 ? 5.5 : 3.4) * Math.exp(-age / (k === 6 ? 3 : 5.5));
+        const shear = 0.45 + 0.85 * Math.min(1, age / 14), pull = dt * (0.22 + 0.25 * Math.min(1, age / 6));
+        const swirl = Math.sin(age * 0.8 + this.tint[j] * 31) * 0.9 * dt; // slow eddies so the column billows instead of streaming
+        v[j * 3] += (wind.x * shear - v[j * 3]) * pull + swirl; v[j * 3 + 2] += (wind.z * shear - v[j * 3 + 2]) * pull - swirl;
+        v[j * 3 + 1] = v[j * 3 + 1] * Math.exp(-dt * 0.32) + lift * dt;
+      } else if (k === 5) { // fireball: blasts out, air drag stops the shell within a second, then the hot ball rolls upward
+        const dr = Math.exp(-dt * 2.4);
+        v[j * 3] = v[j * 3] * dr + wind.x * 0.4 * (1 - dr); v[j * 3 + 2] = v[j * 3 + 2] * dr + wind.z * 0.4 * (1 - dr);
+        v[j * 3 + 1] = v[j * 3 + 1] * Math.exp(-dt * 1.6) + (4 + 14 * Math.min(1, age / 0.8)) * dt;
       } else if (k === 2) { v[j * 3 + 1] -= G * dt; } // sparks fall
       else if (k === 3) { v[j * 3] *= Math.exp(-dt * 0.65); v[j * 3 + 1] = v[j * 3 + 1] * Math.exp(-dt * 0.25) - 2.4 * dt; v[j * 3 + 2] *= Math.exp(-dt * 0.65); }
       else if (k === 4) { /* flash: stays put */ }
-      else { v[j * 3] *= Math.exp(-dt * 1.3); v[j * 3 + 1] = v[j * 3 + 1] * Math.exp(-dt * 1.3) + 7 * dt; v[j * 3 + 2] *= Math.exp(-dt * 1.3); } // fire: buoyant
+      else { // fire: buoyant, leaning downwind
+        const dr = Math.exp(-dt * 1.3);
+        v[j * 3] = v[j * 3] * dr + wind.x * 0.35 * (1 - dr); v[j * 3 + 1] = v[j * 3 + 1] * dr + 7 * dt; v[j * 3 + 2] = v[j * 3 + 2] * dr + wind.z * 0.35 * (1 - dr);
+      }
       for (let c = 0; c < 3; c++) this.p[j * 3 + c] += v[j * 3 + c] * dt;
       P[j * 3] = this.p[j * 3] - camWorld.x; P[j * 3 + 1] = this.p[j * 3 + 1] - camWorld.y; P[j * 3 + 2] = this.p[j * 3 + 2] - camWorld.z;
       S[j] = this.s0[j] + (this.s1[j] - this.s0[j]) * Math.sqrt(t);
@@ -134,6 +155,13 @@ class Particles {
       if (k === 0) { // white-yellow core -> orange -> deep red -> gone, each particle a slightly different flame
         const h = 1 - t, e = 0.95 + 1.0 * h * h;
         C[o] = e; C[o + 1] = e * (0.16 + 0.5 * h * h + 0.1 * r); C[o + 2] = e * (0.02 + 0.22 * h * h * h * h); C[o + 3] = Math.min(1, t * 8) * Math.pow(h, 1.2) * (0.34 + 0.26 * r);
+      } else if (k === 5) { // white-hot core, a long orange plateau, then a dull red roll that fades into the soot around it
+        const h = 1 - t, e = 1.15 + 1.9 * h * h * h;
+        C[o] = e; C[o + 1] = e * (0.17 + 0.58 * h * h + 0.08 * r); C[o + 2] = e * (0.025 + 0.32 * Math.pow(h, 6));
+        C[o + 3] = Math.min(1, t * 14) * (t < 0.5 ? 1 : Math.pow((1 - t) / 0.5, 1.5)) * (0.42 + 0.24 * r);
+      } else if (k === 6) { // soot lit orange from inside by the fireball, going black, then grey and thin as it climbs
+        const glow = Math.max(0, 1 - t * 9), g = (0.03 + 0.12 * t * t + 0.03 * r) * (0.35 + 0.65 * day);
+        C[o] = g + 0.95 * glow; C[o + 1] = g * 0.9 + 0.36 * glow; C[o + 2] = g * 0.78 + 0.06 * glow; C[o + 3] = Math.min(1, t * 6) * Math.pow(1 - t, 0.7) * 0.95;
       } else if (k === 1) {
         // soot black near the fire, greying and thinning as it rises; a warm brown tinge low down
         const warm = Math.max(0, 1 - t * 3), g = (0.035 + 0.14 * t * t + 0.03 * r) * (0.35 + 0.65 * day);
@@ -184,6 +212,14 @@ function worldBoxInRoot(mesh, rootInverse) {
   return _box.copy(g.boundingBox).applyMatrix4(rel);
 }
 
+// model bounds in root space from each mesh's own box. Box3.setFromObject boxed the model in world axes, so the breakup zones, and with them the
+// index runs warmPieces() draws ahead of time, changed with the jet's attitude at impact (identical when the jet is level and heading along x)
+function modelBoundsInRoot(model, rootInverse) {
+  const out = new THREE.Box3();
+  model.traverse((o) => { if (o.isMesh && o.geometry && o.geometry.attributes.position) out.union(worldBoxInRoot(o, rootInverse)); });
+  return out;
+}
+
 function readComponent(attr, index, component) {
   if (component === 0) return attr.getX(index);
   if (component === 1) return attr.getY(index);
@@ -222,10 +258,12 @@ function surfaceKey(x, z, name, bounds, plan) {
   return longitudinalKey(x, bounds, plan.fuselageSegments);
 }
 
-function addSplitMesh(mesh, name, rootInverse, modelBounds, plan, records, createdGeometries) {
+function addSplitMesh(mesh, name, rootInverse, modelBounds, plan, records, createdGeometries, noCache = false) {
   const g = mesh.geometry, pos = g.attributes.position;
-  if (!pos) return;
+  if (!pos) return 'none';
   const rel = new THREE.Matrix4().multiplyMatrices(rootInverse, mesh.matrixWorld);
+  const cached = noCache ? null : splitReady(mesh, rel);
+  if (cached) { addCachedSplit(cached, mesh, name, modelBounds, plan, records); return 'cached'; }
   _normalMat.getNormalMatrix(rel);
   const attrs = Object.entries(g.attributes);
   const indices = g.index ? g.index.array : null;
@@ -286,6 +324,152 @@ function addSplitMesh(mesh, name, rootInverse, modelBounds, plan, records, creat
     createdGeometries.push(frag);
     rec.parts.push({ geometry: frag, material: mesh.material, matrix: null, split: true });
   }
+  return 'split';
+}
+
+// why a split mesh would miss the precomputed cache (for wreck.startStats; '' = it would hit)
+function splitMissReason(mesh, rel) {
+  const c = splitCache.get(mesh.geometry), g = mesh.geometry;
+  if (!c) return 'not prepared';
+  if (g.groups.length) return 'groups';
+  if (Array.isArray(mesh.material)) return 'material array';
+  if (Object.keys(g.attributes).length !== 2 || !g.attributes.normal) return 'attributes ' + Object.keys(g.attributes).join(',');
+  let worst = 0; for (let i = 0; i < 16; i++) worst = Math.max(worst, Math.abs(c.rel.elements[i] - rel.elements[i]));
+  const t = (m) => [12, 13, 14].map((i) => +m.elements[i].toFixed(3)).join(',');
+  return splitReady(mesh, rel) ? '' : 'matrix moved ' + worst.toExponential(1) + ' (prepared t ' + t(c.rel) + ', now ' + t(rel) + ', prepared sx ' + c.rel.elements[0].toFixed(4) + ', now ' + rel.elements[0].toFixed(4) + ')';
+}
+
+// The fuselage and wing breakup splits ~250k triangles by where they sit, which took ~1.9 s on the main thread at the moment of impact. The geometry never changes,
+// so it is turned into a triangle soup in root space (positions and normals, three vertices per triangle) sorted by the coordinate the bins are cut on: a bin is then one
+// contiguous run and impact is a binary search plus a copy. Built in small time slices while the browser is idle (see Wreck.prepare); a mesh that is not ready yet is split
+// the old way.
+const splitCache = new WeakMap();
+const splitAxis = (name) => (/^SR71_Wing_[LR]/.test(name) ? 'wing' : /^SR71_Fuselage/.test(name) ? 'fuse' : null);
+const sortable = (keys) => {
+  const n = keys.length, bits = new Uint32Array(keys.buffer, keys.byteOffset, n * 2);
+  let order = new Uint32Array(n), tmp = new Uint32Array(n);
+  for (let i = 0; i < n; i++) order[i] = i;
+  for (let i = 0; i < n; i++) { const hi = bits[2 * i + 1], neg = hi >>> 31; if (neg) { bits[2 * i] = ~bits[2 * i] >>> 0; bits[2 * i + 1] = ~hi >>> 0; } else bits[2 * i + 1] = (hi ^ 0x80000000) >>> 0; }
+  return { bits, order, tmp, restore() { for (let i = 0; i < n; i++) { const hi = bits[2 * i + 1]; if (hi >>> 31) bits[2 * i + 1] = (hi ^ 0x80000000) >>> 0; else { bits[2 * i] = ~bits[2 * i] >>> 0; bits[2 * i + 1] = ~hi >>> 0; } } } };
+};
+function* radixPass(st, word, shift) {
+  const { bits, order, tmp } = st, n = order.length, count = new Uint32Array(65537);
+  for (let i = 0; i < n; i++) count[((bits[2 * order[i] + word] >>> shift) & 0xffff) + 1]++;
+  for (let i = 0; i < 65536; i++) count[i + 1] += count[i];
+  for (let i = 0; i < n; i++) { const o = order[i]; tmp[count[(bits[2 * o + word] >>> shift) & 0xffff]++] = o; }
+  st.order = tmp; st.tmp = order;
+  yield;
+}
+
+// mesh-to-root matrix from the local matrices in between. It does not depend on when the world matrices were last brought up to date: prepare()
+// builds the caches in idle slices over several frames while the render loop moves and turns the root, and an inverse root world matrix taken
+// when prepare() was called against a mesh world matrix read frames later gave every cache a wrong matrix, so in a browser every impact split
+// ~250k triangles again (1.2-2.0 s of wreck.start). Node never moved the root between the slices, so its tests hit the cache.
+function relToRoot(mesh, root, out) {
+  out.identity();
+  for (let o = mesh; o !== root; o = o.parent) {
+    if (!o) return null;
+    if (o.matrixAutoUpdate) o.updateMatrix();
+    out.premultiply(o.matrix);
+  }
+  return out;
+}
+
+function* buildSplitCache(mesh, root, axis) {
+  const g = mesh.geometry, pos = g.attributes.position;
+  const rel = relToRoot(mesh, root, new THREE.Matrix4());
+  if (!rel) return null;
+  const me = rel.elements;
+  const indices = g.index ? g.index.array : null, drawStart = g.drawRange.start || 0;
+  const end = Math.min(indices ? indices.length : pos.count, Number.isFinite(g.drawRange.count) ? drawStart + g.drawRange.count : (indices ? indices.length : pos.count));
+  const nv = pos.count, wp = new Float64Array(nv * 3);
+  for (let i = 0; i < nv; i++) {
+    const x = pos.getX(i), y = pos.getY(i), z = pos.getZ(i), w = 1 / (me[3] * x + me[7] * y + me[11] * z + me[15]);
+    wp[3 * i] = (me[0] * x + me[4] * y + me[8] * z + me[12]) * w; wp[3 * i + 1] = (me[1] * x + me[5] * y + me[9] * z + me[13]) * w; wp[3 * i + 2] = (me[2] * x + me[6] * y + me[10] * z + me[14]) * w;
+    if ((i & 0x7fff) === 0x7fff) yield;
+  }
+  const T = Math.max(0, Math.floor((end - drawStart) / 3)), tri = new Uint32Array(T * 3), keys = new Float64Array(T);
+  for (let t = 0; t < T; t++) {
+    const a = drawStart + t * 3, i0 = indices ? indices[a] : a, i1 = indices ? indices[a + 1] : a + 1, i2 = indices ? indices[a + 2] : a + 2;
+    tri[3 * t] = i0; tri[3 * t + 1] = i1; tri[3 * t + 2] = i2;
+    keys[t] = axis === 'wing' ? (wp[3 * i0 + 2] + wp[3 * i1 + 2] + wp[3 * i2 + 2]) / 3 : (wp[3 * i0] + wp[3 * i1] + wp[3 * i2]) / 3;
+    if ((t & 0x3fff) === 0x3fff) yield;
+  }
+  if (axis === 'wing') for (let t = 0; t < T; t++) keys[t] = Math.abs(keys[t]);
+  const st = sortable(keys);
+  yield; yield* radixPass(st, 0, 0); yield* radixPass(st, 0, 16); yield* radixPass(st, 1, 0); yield* radixPass(st, 1, 16);
+  st.restore();
+  // the pieces draw runs of this sorted index over the mesh's own position and normal buffers, which the GPU already holds for the intact jet:
+  // nothing is copied at impact and the only upload is this index (~3 MB, once; it is kept for the next crash)
+  const order = st.order, sortedKeys = new Float64Array(T), sorted = new Uint32Array(T * 3), rootPos = new Float32Array(nv * 3);
+  for (let k = 0; k < T; k++) {
+    const t = order[k]; sortedKeys[k] = keys[t];
+    sorted[3 * k] = tri[3 * t]; sorted[3 * k + 1] = tri[3 * t + 1]; sorted[3 * k + 2] = tri[3 * t + 2];
+    if ((k & 0x3fff) === 0x3fff) yield;
+  }
+  for (let i = 0; i < nv * 3; i++) rootPos[i] = wp[i];
+  // root-space box of every SPLIT_BLOCK sorted triangles, so a run's box at impact reads a few hundred vertices, not the whole run
+  const nb = Math.ceil(T / SPLIT_BLOCK), blocks = new Float32Array(nb * 6);
+  for (let b = 0; b < nb; b++) {
+    let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+    for (let o = b * SPLIT_BLOCK * 3, e = Math.min(T, (b + 1) * SPLIT_BLOCK) * 3; o < e; o++) { const v = sorted[o] * 3, x = rootPos[v], y = rootPos[v + 1], z = rootPos[v + 2]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z; }
+    blocks.set([x0, y0, z0, x1, y1, z1], b * 6);
+    if ((b & 63) === 63) yield;
+  }
+  return { axis, T, keys: sortedKeys, index: new THREE.BufferAttribute(sorted, 1), rootPos, blocks, rel: rel.clone(), relInverse: rel.clone().invert(), frags: new Map(),
+    bytes: sorted.byteLength + rootPos.byteLength + sortedKeys.byteLength + blocks.byteLength };
+}
+
+const splitReady = (mesh, rel) => {
+  const c = splitCache.get(mesh.geometry), g = mesh.geometry;
+  if (!c || g.groups.length || Array.isArray(mesh.material) || Object.keys(g.attributes).length !== 2 || !g.attributes.normal) return null;
+  // rotation to 1e-5, translation to 1 mm: rel = inverse(root) x mesh loses digits once the jet is far from the world origin (at 1,000 km every
+  // breakup missed the cache and split ~250k triangles at impact, 1.1 of a 2.1 s wreck.start in a browser profile)
+  for (let i = 0; i < 16; i++) if (Math.abs(c.rel.elements[i] - rel.elements[i]) > (i >= 12 && i <= 14 ? 1e-3 : 1e-5)) return null;
+  return c;
+};
+
+const SPLIT_BLOCK = 256;
+// root-space box of sorted triangles [t0, t1): whole blocks from the cache's block boxes, the partial blocks at either end vertex by vertex
+function runBox(c, t0, t1, out) {
+  const ix = c.index.array, rp = c.rootPos, bl = c.blocks;
+  let x0 = Infinity, y0 = Infinity, z0 = Infinity, x1 = -Infinity, y1 = -Infinity, z1 = -Infinity;
+  const tris = (a, e) => { for (let o = a * 3, end = e * 3; o < end; o++) { const v = ix[o] * 3, x = rp[v], y = rp[v + 1], z = rp[v + 2]; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y; if (z < z0) z0 = z; if (z > z1) z1 = z; } };
+  const b0 = Math.ceil(t0 / SPLIT_BLOCK), b1 = Math.floor(t1 / SPLIT_BLOCK);
+  if (b0 >= b1) tris(t0, t1);
+  else {
+    tris(t0, b0 * SPLIT_BLOCK); tris(b1 * SPLIT_BLOCK, t1);
+    for (let b = b0; b < b1; b++) { const k = b * 6; if (bl[k] < x0) x0 = bl[k]; if (bl[k + 1] < y0) y0 = bl[k + 1]; if (bl[k + 2] < z0) z0 = bl[k + 2]; if (bl[k + 3] > x1) x1 = bl[k + 3]; if (bl[k + 4] > y1) y1 = bl[k + 4]; if (bl[k + 5] > z1) z1 = bl[k + 5]; }
+  }
+  return out.set(out.min.set(x0, y0, z0), out.max.set(x1, y1, z1));
+}
+
+function addCachedSplit(c, mesh, name, modelBounds, plan, records) {
+  const keyAt = (i) => (c.axis === 'wing' ? surfaceKey(0, c.keys[i], name, modelBounds, plan) : surfaceKey(c.keys[i], 0, name, modelBounds, plan));
+  const g = mesh.geometry;
+  for (let i = 0; i < c.T;) {
+    const key = keyAt(i);
+    let lo = i + 1, hi = c.T;
+    while (lo < hi) { const mid = (lo + hi) >> 1; if (keyAt(mid) === key) lo = mid + 1; else hi = mid; }
+    // one geometry per run, kept with the cache and reused by later crashes. Never disposed: its position and normal are the intact jet's own
+    // buffers, and disposing it would free them on the GPU
+    const runKey = i + ':' + lo;
+    let frag = c.frags.get(runKey);
+    if (!frag) {
+      frag = new THREE.BufferGeometry();
+      frag.setIndex(c.index); frag.setAttribute('position', g.attributes.position); frag.setAttribute('normal', g.attributes.normal);
+      frag.setDrawRange(i * 3, (lo - i) * 3);
+      frag.userData.rootBox = runBox(c, i, lo, new THREE.Box3());
+      // mesh-space bounds set here: a lazy computeBoundingSphere would walk the whole shared position buffer, not this run
+      frag.boundingBox = frag.userData.rootBox.clone().applyMatrix4(c.relInverse);
+      frag.boundingSphere = frag.boundingBox.getBoundingSphere(new THREE.Sphere());
+      c.frags.set(runKey, frag);
+    }
+    const rec = recordFor(records, key); rec.box.union(frag.userData.rootBox);
+    // drawn like a whole mesh: mesh matrix = piece offset x mesh-to-root (the vertices stay in mesh space, as the elevon shader expects)
+    rec.parts.push({ geometry: frag, material: mesh.material, matrix: c.rel, split: false });
+    i = lo;
+  }
 }
 
 function addWholeMesh(mesh, rootInverse, rec) {
@@ -316,6 +500,7 @@ class Piece {
     this.area = Math.max(1.2, (d.x * d.y + d.x * d.z + d.y * d.z) * 0.11);
     this.burn = 0; this.contact = false; this.slide = 0; this.key = '';
     this.mu = 0.48; this.markX = pos.x; this.markZ = pos.z; this.skidTravel = 0;
+    this.safePos = pos.clone(); this.safeQ = quat.clone();
   }
 
   sampleGround(groundAt) {
@@ -328,6 +513,7 @@ class Piece {
   }
 
   step(h, rho, onSpark) {
+    this.safePos.copy(this.pos); this.safeQ.copy(this.q);
     const m = this.m, kTotal = m * 1700, k = kTotal / this.pts.length;
     const damp = 2 * 0.78 * Math.sqrt(kTotal * m) / this.pts.length;
     const F = _force.set(0, -m * G, 0), T = _torque.set(0, 0, 0);
@@ -364,11 +550,22 @@ class Piece {
     _torqueBody.copy(T).applyQuaternion(_qi.copy(this.q).invert());
     const I = this.I, w = this.w;
     const gx = w.y * w.z * (I.z - I.y), gy = w.z * w.x * (I.x - I.z), gz = w.x * w.y * (I.y - I.x);
-    w.x += (_torqueBody.x - gx) / I.x * h; w.y += (_torqueBody.y - gy) / I.y * h; w.z += (_torqueBody.z - gz) / I.z * h;
+    // the gyroscopic term only turns the spin, it never adds energy; explicit Euler does, so hold the energy it had
+    const e0 = I.x * w.x * w.x + I.y * w.y * w.y + I.z * w.z * w.z;
+    w.x -= gx / I.x * h; w.y -= gy / I.y * h; w.z -= gz / I.z * h;
+    const e1 = I.x * w.x * w.x + I.y * w.y * w.y + I.z * w.z * w.z;
+    if (e1 > e0 && e1 > 0) w.multiplyScalar(Math.sqrt(e0 / e1));
+    w.x += _torqueBody.x / I.x * h; w.y += _torqueBody.y / I.y * h; w.z += _torqueBody.z / I.z * h;
     w.multiplyScalar(Math.exp(-(this.contact ? 0.9 : 0.08) * h));
-    const ang = w.length() * h;
+    // backstop: a runaway spin once reached millions of rad/s, then NaN, and the NaN fire it emitted blanked the frame
+    const wl = w.length();
+    if (wl > MAX_SPIN) w.multiplyScalar(MAX_SPIN / wl);
+    const ang = Math.min(wl, MAX_SPIN) * h;
     if (ang > 1e-8) this.q.multiply(_q.setFromAxisAngle(_v.copy(w).normalize(), ang)).normalize();
     if (this.contact && this.vel.lengthSq() < 0.04 && w.lengthSq() < 0.004) { this.vel.multiplyScalar(0.88); w.multiplyScalar(0.86); }
+    if (!Number.isFinite(this.pos.x + this.pos.y + this.pos.z + this.vel.x + this.vel.y + this.vel.z + w.x + w.y + w.z + this.q.w)) {
+      this.pos.copy(this.safePos); this.q.copy(this.safeQ); this.vel.set(0, 0, 0); w.set(0, 0, 0);
+    }
   }
 }
 
@@ -377,16 +574,18 @@ class DebrisField {
     this.max = max; this.count = 0; this.p = new Float32Array(max * 3); this.v = new Float32Array(max * 3);
     this.rot = new Float32Array(max * 3); this.spin = new Float32Array(max * 3);
     this.scale = new Float32Array(max); this.age = new Float32Array(max); this.life = new Float32Array(max);
-    this.ground = new Float32Array(max); this.sampleIn = new Float32Array(max);
+    this.ground = new Float32Array(max); this.sampleIn = new Float32Array(max); this.trail = new Uint8Array(max);
     const geo = new THREE.OctahedronGeometry(0.5, 0); geo.scale(1, 0.16, 0.72);
     const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.55, roughness: 0.62, flatShading: true });
     this.mesh = new THREE.InstancedMesh(geo, mat, max);
     this.mesh.count = 0; this.mesh.frustumCulled = false; this.mesh.castShadow = false; this.mesh.receiveShadow = false;
     this.mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage); scene.add(this.mesh);
   }
-  emit(x, y, z, vx, vy, vz, size, life, tint = 0.6) {
+  // trail: 1 = a burning fragment that streams flame and smoke while it flies
+  emit(x, y, z, vx, vy, vz, size, life, tint = 0.6, trail = 0) {
     if (this.count >= this.max) return;
     const i = this.count++, j = i * 3;
+    this.trail[i] = trail;
     this.p[j] = x; this.p[j + 1] = y; this.p[j + 2] = z;
     this.v[j] = vx; this.v[j + 1] = vy; this.v[j + 2] = vz;
     this.rot[j] = Math.random() * Math.PI; this.rot[j + 1] = Math.random() * Math.PI; this.rot[j + 2] = Math.random() * Math.PI;
@@ -483,13 +682,84 @@ class GroundEffects {
 export class Wreck {
   constructor(scene) {
     this.scene = scene; this.group = new THREE.Group(); scene.add(this.group);
-    this.fire = new Particles(scene, 1800, true); this.smoke = new Particles(scene, 3000, false);
+    this.fire = new Particles(scene, 2600, true); this.smoke = new Particles(scene, 4400, false);
     this.setOverlay = (ov) => { for (const q of [this.fire, this.smoke]) q.attach(ov || scene, !!ov); };
     this.fragments = new DebrisField(scene, 200); this.ground = new GroundEffects(scene, 144);
     // always present (at zero) so adding it never recompiles every lit material at the moment of a crash
     this.light = new THREE.PointLight(0xff8a3a, 0, 0, 2); scene.add(this.light);
     this.pieces = []; this.active = false; this.t = 0; this.createdGeometries = [];
+    this.bursts = []; this.events = []; this.flashT = -1e6; this.flashK = 0; this.scale = SR71_SCALE;
     this._spark = (x, y, z, vp) => this.fire.emit(x, y, z, vp.x * 0.36 + (Math.random() - 0.5) * 8, 2 + Math.random() * 6, vp.z * 0.36 + (Math.random() - 0.5) * 8, 0.3 + Math.random() * 0.25, 0.5, 0.22, 2);
+  }
+
+  // Builds the fuselage/wing split caches in idle time (~6 ms slices). Resolves with { meshes, tris, bytes, ms } once every mesh is ready.
+  prepare(visual, budgetMs = 6) {
+    const model = visual.model, root = visual.root, jobs = [];
+    model.traverse((o) => {
+      if (!o.isMesh || !o.geometry || !o.geometry.attributes.position || !o.geometry.attributes.normal || o.userData.shadowProxy || splitCache.has(o.geometry)) return;
+      const axis = splitAxis(meshRootName(o, model)); if (axis) jobs.push({ mesh: o, axis });
+    });
+    const stats = { meshes: 0, tris: 0, bytes: 0, ms: 0 };
+    this.prepared = new Promise((resolve) => {
+      const next = () => {
+        const job = jobs.shift(); if (!job) { resolve(stats); return; }
+        const gen = buildSplitCache(job.mesh, root, job.axis), slice = () => {
+          const t0 = performance.now();
+          for (;;) {
+            const r = gen.next();
+            if (r.done) { if (r.value) { splitCache.set(job.mesh.geometry, r.value); stats.meshes++; stats.tris += r.value.T; stats.bytes += r.value.bytes; } stats.ms += performance.now() - t0; next(); return; }
+            if (performance.now() - t0 > budgetMs) break;
+          }
+          stats.ms += performance.now() - t0;
+          whenIdle(slice, 2000);
+        };
+        whenIdle(slice, 2000);
+      };
+      next();
+    });
+    return this.prepared;
+  }
+
+  // The first frames after impact made a vertex array object for every new piece geometry (runs of the sorted index over the jet's own buffers;
+  // three makes one per geometry and program at its first draw) and uploaded the ~3 MB sorted index. Builds the runs of every breakup plan here,
+  // once the split caches exist, and draws each run once, scaled to nothing, with the jet's own materials and the real scene's lights (so the
+  // programs, and with them the VAOs, are the ones the impact draws with). target: the scene pass's target (post.sceneRT, or null on Low).
+  warmPieces(visual, renderer, scene, camera, target) {
+    const t0 = performance.now(), model = visual.model, root = visual.root;
+    root.updateMatrixWorld(true);
+    const rootInverse = new THREE.Matrix4().copy(root.matrixWorld).invert();
+    model.updateMatrixWorld(true);
+    const modelBounds = modelBoundsInRoot(model, rootInverse);
+    // every plan _plan() can return: fuselage runs depend on fuselageSegments only, wing runs on wingSections only
+    const plans = [['hard-landing', 0.4], ['hard-landing', 0.51], ['hard-landing', 0.6], ['fast-shallow', 1], ['steep-impact', 1], ['structural-failure', 1]].map(([outcome, score]) => this._plan({ outcome, score }));
+    const frags = new Map();
+    model.traverse((o) => {
+      if (!o.isMesh || o.userData.shadowProxy || !splitCache.has(o.geometry)) return;
+      const c = splitCache.get(o.geometry), name = meshRootName(o, model), fuse = /^SR71_Fuselage/.test(name), wing = /^SR71_Wing_[LR]/.test(name);
+      for (const plan of plans) {
+        if (!(fuse && plan.fuselageSegments > 1) && !(wing && plan.wingSections > 1)) continue;
+        const records = new Map(); addCachedSplit(c, o, name, modelBounds, plan, records);
+        for (const rec of records.values()) for (const p of rec.parts) if (!p.geometry.userData.warmed) frags.set(p.geometry, p.material);
+      }
+    });
+    const stats = this.warmStats = { runs: frags.size, ms: 0 };
+    if (!frags.size) return stats;
+    const L = 30, group = new THREE.Group(), lights = [];
+    for (const [geo, mat] of frags) { const m = new THREE.Mesh(geo, mat); m.layers.set(L); m.frustumCulled = false; m.scale.setScalar(0); group.add(m); }
+    group.layers.set(L); scene.add(group);
+    scene.traverse((o) => { if (o.isLight) { lights.push([o, o.layers.mask]); o.layers.enable(L); } });
+    const camMask = camera.layers.mask, bg = scene.background, auto = renderer.autoClear, shAuto = renderer.shadowMap.autoUpdate, prevRT = renderer.getRenderTarget();
+    try {
+      camera.layers.set(L); scene.background = null; renderer.autoClear = false; renderer.shadowMap.autoUpdate = false;
+      renderer.setRenderTarget(target); renderer.render(scene, camera);
+      for (const geo of frags.keys()) geo.userData.warmed = true;
+    } finally {
+      camera.layers.mask = camMask; scene.background = bg; renderer.autoClear = auto; renderer.shadowMap.autoUpdate = shAuto; renderer.setRenderTarget(prevRT);
+      for (const [o, mask] of lights) o.layers.mask = mask;
+      scene.remove(group);
+    }
+    stats.ms = Math.round(performance.now() - t0);
+    return stats;
   }
 
   _classify(visual, fdm, kind, vel, up) {
@@ -500,7 +770,8 @@ export class Wreck {
     const airspeed = c.airspeed === undefined ? ((fdm.out && fdm.out.V) || speed) : c.airspeed;
     const mach = c.mach === undefined ? ((fdm.out && fdm.out.M) || 0) : c.mach;
     const g = Math.abs(c.loadFactor === undefined ? ((fdm.out && fdm.out.nz) || 1) : c.loadFactor);
-    const horizontal = Math.hypot(vel.x, vel.z), yaw = c.yaw || 0;
+    const horizontal = Math.hypot(vel.x, vel.z), yaw = c.yaw || 0, sc = this.scale || SR71_SCALE;
+    const ks = sc.speedRef / 280, kz = sc.sinkRef / 58;
     const course = Math.atan2(vel.z, vel.x), yawError = speed > 5 ? Math.atan2(Math.sin(yaw - course), Math.cos(yaw - course)) : 0;
     const attitude = clamp(pitch / 0.95 + bank / 1.1 + Math.abs(yawError) / 1.3 + Math.max(0, 0.65 - up.y) * 0.65, 0, 1.5);
     let outcome, score;
@@ -509,13 +780,13 @@ export class Wreck {
       score = clamp(0.68 + failure * 0.32, 0.7, 1);
       outcome = 'structural-failure';
     } else {
-      score = clamp(0.08 + 0.32 * clamp(speed / 280, 0, 1) + 0.42 * clamp(sink / 58, 0, 1) + 0.12 * attitude + (gear < 0.45 ? 0.04 : 0), 0, 1);
+      score = clamp(0.08 + 0.32 * clamp(speed / sc.speedRef, 0, 1) + 0.42 * clamp(sink / sc.sinkRef, 0, 1) + 0.12 * attitude + (gear < 0.45 ? 0.04 : 0), 0, 1);
       const upright = up.y > 0.76 && pitch < 0.42 && bank < 0.62 && Math.abs(yawError) < 0.65;
-      if (speed < 125 && sink < 9 && upright) {
+      if (speed < 125 * ks && sink < 9 * kz && upright) {
         outcome = 'belly-slide'; score = Math.min(0.29, score);
-      } else if (sink > 40 || up.y < 0.13 || (speed > 285 && sink > 19)) {
+      } else if (sink > 40 * kz || up.y < 0.13 || (speed > 285 * ks && sink > 19 * kz)) {
         outcome = 'steep-impact'; score = Math.max(0.78, score);
-      } else if (horizontal > 175 && sink < 24) {
+      } else if (horizontal > 175 * ks && sink < 24 * kz) {
         outcome = 'fast-shallow'; score = Math.max(0.72, score + 0.22);
       } else {
         outcome = 'hard-landing'; score = Math.max(0.34, score);
@@ -544,7 +815,7 @@ export class Wreck {
     const model = visual.model, root = visual.root, records = new Map();
     root.updateMatrixWorld(true);
     const rootInverse = new THREE.Matrix4().copy(root.matrixWorld).invert();
-    const modelBounds = new THREE.Box3().setFromObject(model).applyMatrix4(rootInverse);
+    const modelBounds = modelBoundsInRoot(model, rootInverse);
     const gearRoots = [];
     if (visual.gearGroup && info.gear > 0.22) {
       for (const child of visual.gearGroup.children) {
@@ -556,21 +827,38 @@ export class Wreck {
         }
       }
     }
+    const whole = (name, mesh) => {
+      const box = worldBoxInRoot(mesh, rootInverse), cen = box.getCenter(_center);
+      const key = info.outcome === 'belly-slide' ? 'body' : surfaceKey(cen.x, cen.z, name, modelBounds, plan);
+      addWholeMesh(mesh, rootInverse, recordFor(records, key));
+    };
+    // parts under a hidden group (the cockpit interior outside the cockpit view, 111 meshes) are not drawn and do not break up: copying them was
+    // a good part of the impact frame
+    const shown = (o) => { for (let q = o; q && q !== model; q = q.parent) if (!q.visible) return false; return true; };
+    // which split meshes took the precomputed cache and which were split triangle by triangle at impact (and why): wreck.startStats
+    const stats = this.startStats = { cached: 0, perTriangle: 0, misses: [] };
+    const split = (o, name) => {
+      const t0 = performance.now(), how = addSplitMesh(o, name, rootInverse, modelBounds, plan, records, this.createdGeometries);
+      if (how === 'cached') stats.cached++;
+      else if (how === 'split') { stats.perTriangle++; stats.misses.push({ name: o.name || name, root: name, tris: Math.round((o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3), ms: Math.round(performance.now() - t0), why: splitMissReason(o, new THREE.Matrix4().multiplyMatrices(rootInverse, o.matrixWorld)) }); }
+    };
     model.traverse((o) => {
-      if (!o.isMesh || !o.geometry || !o.visible) return;
+      if (!o.isMesh || !o.geometry || !shown(o) || o.userData.shadowProxy) return;
       if (gearRoots.some((gear) => within(o, gear))) return;
       const name = meshRootName(o, model);
+      if (o.userData.mergedParts) {
+        for (const part of o.userData.mergedParts) whole(name, { geometry: part.geometry, material: part.material, matrixWorld: new THREE.Matrix4().multiplyMatrices(o.matrixWorld, part.matrix) });
+        return;
+      }
       if (info.outcome !== 'belly-slide' && plan.fuselageSegments > 1 && /^SR71_Fuselage/.test(name)) {
-        addSplitMesh(o, name, rootInverse, modelBounds, plan, records, this.createdGeometries);
+        split(o, name);
         return;
       }
       if (info.outcome !== 'belly-slide' && plan.wingSections > 1 && /^SR71_Wing_[LR]/.test(name)) {
-        addSplitMesh(o, name, rootInverse, modelBounds, plan, records, this.createdGeometries);
+        split(o, name);
         return;
       }
-      const box = worldBoxInRoot(o, rootInverse), cen = box.getCenter(_center);
-      const key = info.outcome === 'belly-slide' ? 'body' : surfaceKey(cen.x, cen.z, name, modelBounds, plan);
-      addWholeMesh(o, rootInverse, recordFor(records, key));
+      whole(name, o);
     });
 
     const modelCenter = modelBounds.getCenter(_center);
@@ -639,38 +927,68 @@ export class Wreck {
     }
   }
 
+  // One fireball: a flash, a shell of flame that blasts out and is stopped by drag, a hot core that rolls upward for
+  // 2-3 s, and soot that rolls out of it (lit orange at first) as the flames die. k scales a secondary burst.
+  _fireball(px, py, pz, radius, k, cvx, cvz) {
+    this.fire.emit(px, py + radius * 0.15, pz, 0, 0, 0, 0.32, radius * 1.4, radius * 3.2, 4);
+    const n = Math.round((150 + 230 * this.fireIntensity) * k);
+    for (let i = 0; i < n; i++) {
+      const a = Math.random() * Math.PI * 2, u = Math.random() * 2 - 1, d = Math.sqrt(1 - u * u);
+      const sp = radius * (0.7 + 1.6 * Math.pow(Math.random(), 0.6)); // drag stops the shell near its radius
+      this.fire.emit(px + (Math.random() - 0.5) * 4, py + 1.5, pz + (Math.random() - 0.5) * 4,
+        Math.cos(a) * d * sp + cvx * 0.14, (Math.abs(u) * 0.75 + 0.3) * sp + 3, Math.sin(a) * d * sp + cvz * 0.14,
+        2.1 + Math.random() * 1.5, radius * (0.14 + 0.14 * Math.random()), radius * (0.6 + 0.6 * Math.random()), 5);
+    }
+    // the hot core that stays bright longest and lifts the mushroom cap
+    for (let i = 0; i < 26 * k; i++) {
+      this.fire.emit(px + (Math.random() - 0.5) * radius * 0.4, py + radius * 0.2, pz + (Math.random() - 0.5) * radius * 0.4,
+        (Math.random() - 0.5) * radius * 0.4, radius * (0.3 + 0.3 * Math.random()), (Math.random() - 0.5) * radius * 0.4,
+        2.6 + Math.random() * 0.9, radius * 0.3, radius * (0.75 + 0.35 * Math.random()), 5);
+    }
+    // soot boiling out as the flame burns through, staged to appear where the fireball will have risen
+    const ns = Math.round((90 + 130 * this.fireIntensity) * k);
+    for (let i = 0; i < ns; i++) {
+      const a = Math.random() * Math.PI * 2, u = Math.random() * 1.6 - 0.4, d = Math.sqrt(Math.max(0, 1 - u * u)), rr = radius * (0.5 + 0.7 * Math.random());
+      const delay = 0.15 + Math.random() * 1.9, rise = radius * (0.2 + 0.55 * delay);
+      this.smoke.emit(px + Math.cos(a) * d * rr, py + 2 + rise + Math.max(0, u) * rr * 0.6, pz + Math.sin(a) * d * rr,
+        Math.cos(a) * d * radius * 0.35, 4 + Math.max(0, u) * radius * 0.35 + radius * 0.25, Math.sin(a) * d * radius * 0.35,
+        14 + Math.random() * 14, radius * 0.45, radius * (1.1 + 1.0 * Math.random()), 6, delay);
+    }
+    const left = this.flashK * Math.exp(-Math.max(0, this.t - this.flashT) / 0.3);
+    this.flashK = Math.max(k, left); this.flashT = this.t;
+  }
+
   _initialEffects(fdm, info) {
-    const fuelFraction = clamp(info.fuel / 36300, 0, 1);
-    const ignition = clamp((info.score - 0.16) / 0.6, 0, 1) * clamp(info.fuel / 5000, 0, 1);
+    const sc = this.scale || SR71_SCALE;
+    const fuelFraction = clamp(info.fuel / sc.fuelCap, 0, 1);
+    const ignition = clamp((info.score - 0.16) / 0.6, 0, 1) * clamp(info.fuel / (sc.fuelCap * 0.138), 0, 1);
     this.fireIntensity = ignition * (info.outcome === 'belly-slide' ? 0.18 : 0.82 + fuelFraction * 0.18);
-    if (info.outcome === 'structural-failure') this.fireIntensity *= clamp(0.38 + info.mach * 0.18 + info.airspeed / 1200, 0, 1);
+    if (info.outcome === 'structural-failure') this.fireIntensity *= clamp(0.38 + info.mach * 0.18 + info.airspeed / (1200 * sc.speedRef / 280), 0, 1);
     const fireball = this.fireIntensity > 0.44 && info.outcome !== 'structural-failure';
     const px = fdm.pos.x, py = fdm.pos.y, pz = fdm.pos.z, fi = this.fireIntensity, cv = fdm.crashVel;
     if (fireball) {
-      const radius = (10 + 52 * Math.sqrt(fuelFraction)) * (0.55 + fi * 0.65);
+      // a light aircraft's few hundred litres still make a 20-30 m ball; the jet's tanks make one ~100 m across
+      const radius = (10 + 52 * Math.sqrt(fuelFraction)) * (0.55 + fi * 0.65) * sc.size + 8 * (1 - sc.size);
       this.fireRadius = radius;
-      // the flash, then a rolling shell of flame with a hot core
-      this.fire.emit(px, py + 3, pz, 0, 0, 0, 0.24, radius * 1.2, radius * 2.6, 4);
-      const n = Math.round(130 + 200 * fi);
-      for (let i = 0; i < n; i++) {
-        const a = Math.random() * Math.PI * 2, u = Math.random() * 2 - 1, d = Math.sqrt(1 - u * u);
-        const sp = radius * (0.25 + 0.95 * Math.pow(Math.random(), 0.7));
-        this.fire.emit(px + (Math.random() - 0.5) * 6, py + 1.5, pz + (Math.random() - 0.5) * 6,
-          Math.cos(a) * d * sp + cv.x * 0.14, (Math.abs(u) * 0.8 + 0.25) * sp * 0.8 + 4, Math.sin(a) * d * sp + cv.z * 0.14,
-          1.5 + Math.random() * 1.7, radius * (0.12 + 0.15 * Math.random()), radius * (0.55 + 0.65 * Math.random()), 0);
+      this._fireball(px, py, pz, radius, 1, cv.x, cv.z);
+      // tanks and lines cooking off over the next couple of seconds: smaller fireballs, each with its own bang
+      const nb = 2 + Math.round(2 * fi * Math.random() + fi);
+      for (let i = 0; i < nb; i++) {
+        const a = Math.random() * Math.PI * 2, d = radius * (0.25 + 0.6 * Math.random());
+        this.bursts.push({ t: 0.35 + i * (0.35 + 0.35 * Math.random()), x: px + Math.cos(a) * d + cv.x * 0.08, y: py + 1, z: pz + Math.sin(a) * d + cv.z * 0.08, r: radius * (0.42 + 0.25 * Math.random()), k: 0.35 + 0.25 * Math.random() });
       }
-      // soot boiling out of the fireball: black billows that climb and spread
-      const ns = Math.round(70 + 110 * fi);
-      for (let i = 0; i < ns; i++) {
-        const a = Math.random() * Math.PI * 2, u = Math.random() * 1.6 - 0.4, d = Math.sqrt(Math.max(0, 1 - u * u)), rr = radius * (0.35 + 0.35 * Math.random());
-        this.smoke.emit(px + Math.cos(a) * d * rr, py + 3 + Math.max(0, u) * rr, pz + Math.sin(a) * d * rr, Math.cos(a) * d * radius * 0.5, 5 + Math.max(0, u) * radius * 0.5, Math.sin(a) * d * radius * 0.5, 9 + Math.random() * 11, radius * 0.3, radius * (0.9 + 0.9 * Math.random()), 1);
+      // the blast raises a skirt of dust that runs out along the ground
+      for (let i = 0; i < 48; i++) {
+        const a = (i / 48) * Math.PI * 2 + Math.random() * 0.1, sp = radius * (0.8 + 0.7 * Math.random());
+        this.smoke.emit(px + Math.cos(a) * radius * 0.3, py + 0.8, pz + Math.sin(a) * radius * 0.3, Math.cos(a) * sp, 1 + Math.random() * 2, Math.sin(a) * sp,
+          1.2 + Math.random() * 1.0, radius * 0.12, radius * (0.3 + 0.25 * Math.random()), 3);
       }
     }
     // pools of burning fuel along the slide path: low, wide flames that keep burning after the fireball is gone
     if (fi > 0.2 && info.outcome !== 'structural-failure' && info.outcome !== 'belly-slide') {
-      const sp = Math.hypot(cv.x, cv.z), dx = sp > 1 ? cv.x / sp : 1, dz = sp > 1 ? cv.z / sp : 0, len = clamp(sp * 0.9, 12, 150) * (0.5 + fi);
+      const sp = Math.hypot(cv.x, cv.z), dx = sp > 1 ? cv.x / sp : 1, dz = sp > 1 ? cv.z / sp : 0, len = clamp(sp * 0.9, 12, 150) * (0.5 + fi) * (0.4 + 0.6 * sc.size);
       for (let i = 0; i < 90; i++) {
-        const t = Math.pow(Math.random(), 0.8) * len, off = (Math.random() - 0.5) * 16;
+        const t = Math.pow(Math.random(), 0.8) * len, off = (Math.random() - 0.5) * 16 * (0.4 + 0.6 * sc.size);
         this.fire.emit(px + dx * t - dz * off, py + 0.8, pz + dz * t + dx * off, (Math.random() - 0.5) * 2, 1 + Math.random() * 3, (Math.random() - 0.5) * 2, 3 + Math.random() * 7, 3 + Math.random() * 3, 7 + Math.random() * 9, 0);
       }
     }
@@ -678,15 +996,19 @@ export class Wreck {
     for (let i = 0; i < count; i++) {
       const source = this.pieces[(Math.random() * this.pieces.length) | 0];
       const a = Math.random() * Math.PI * 2, u = Math.random() * 2 - 1;
-      const d = Math.sqrt(1 - u * u), impulse = (info.outcome === 'belly-slide' ? 2.5 : 6 + info.score * 26) * (0.35 + Math.random());
+      const d = Math.sqrt(1 - u * u), impulse = (info.outcome === 'belly-slide' ? 2.5 : 6 + info.score * 26) * (0.35 + Math.random()) * (fireball ? 1.5 : 1);
       const x = source.pos.x + Math.cos(a) * d * 1.5, y = source.pos.y + u * 1.5, z = source.pos.z + Math.sin(a) * d * 1.5;
-      this.fragments.emit(x, y, z, fdm.crashVel.x + Math.cos(a) * d * impulse, fdm.crashVel.y + u * impulse + 1, fdm.crashVel.z + Math.sin(a) * d * impulse, 0.25 + Math.random() * (0.6 + info.score * 1.1), 5 + Math.random() * 9, Math.random());
+      // with a fireball some fragments are flung burning, trailing flame and smoke along their arcs
+      const trail = fireball && i % 5 === 0 ? 1 : 0;
+      this.fragments.emit(x, y, z, fdm.crashVel.x + Math.cos(a) * d * impulse, fdm.crashVel.y + Math.abs(u) * impulse * (trail ? 1.4 : 1) + 1, fdm.crashVel.z + Math.sin(a) * d * impulse, 0.25 + Math.random() * (0.6 + info.score * 1.1), 5 + Math.random() * 9, Math.random(), trail);
     }
   }
 
   // visual: AircraftVisual; fdm: FlightModel at impact, with crashVel/crashW captured before the freeze.
-  start(visual, fdm, kind) {
+  // opts: { fuelCap, speedRef, sinkRef, size } for aircraft other than the SR-71 (see SR71_SCALE)
+  start(visual, fdm, kind, opts) {
     this.clear(visual);
+    this.scale = opts ? { ...SR71_SCALE, ...opts } : SR71_SCALE;
     const vel = fdm.crashVel || new THREE.Vector3(), wb = fdm.crashW || new THREE.Vector3();
     const up = _up.clone().applyQuaternion(fdm.quat);
     const info = this.info = this._classify(visual, fdm, kind, vel, up);
@@ -696,14 +1018,18 @@ export class Wreck {
     this.active = true; this.t = 0; this.main = null; this.fireIntensity = 0;
     this.impactPos = fdm.pos.clone(); this.impactGroundY = fdm.pos.y; this.terrainSlope = 0; this.terrainReady = false;
     this.createdGeometries.length = 0; this.pieces.length = 0;
+    const t0 = performance.now();
     this._makePieces(visual, fdm, info, this.plan, vel, wb);
+    const t1 = performance.now();
     // Hiding the aircraft hides its lights too, and three.js bakes the light count into every lit material's shader, so terrain, buildings
     // and trees would all recompile mid-crash. Zero-intensity stand-ins keep the count (and so the programs) unchanged.
     this.standIns = [];
     visual.root.traverseVisible((o) => { if (o.isLight) { const c = o.clone(); c.intensity = 0; this.scene.add(c); this.standIns.push(c); } });
     visual.root.visible = false;
+    const t2 = performance.now();
     this._initialEffects(fdm, info);
-    const fuel = clamp(info.fuel / 36300, 0, 1);
+    const st = this.startStats; st.piecesMs = Math.round(t1 - t0); st.lightsMs = Math.round(t2 - t1); st.effectsMs = Math.round(performance.now() - t2);
+    const fuel = clamp(info.fuel / this.scale.fuelCap, 0, 1);
     for (const p of this.pieces) {
       p.burn = this.fireIntensity > 0.08 ? (info.outcome === 'belly-slide' ? 5 + 7 * this.fireIntensity : (10 + 32 * fuel) * this.fireIntensity) : 0;
       if (info.outcome === 'structural-failure') p.burn = this.fireIntensity > 0.04 ? 8 + 22 * this.fireIntensity : 0;
@@ -769,15 +1095,29 @@ export class Wreck {
       this._skids(p, groundAt);
       p.g.position.set(p.pos.x - camWorld.x, p.pos.y - camWorld.y, p.pos.z - camWorld.z); p.g.quaternion.copy(p.q);
     }
-    // a tall, dark column that keeps climbing for as long as the wreck burns
-    if (this.fireIntensity > 0.08 && this.t < 75) {
-      const fade = clamp(1 - (this.t - 32) / 43, 0, 1), cx = (this.main || this.pieces[0] || { pos: this.impactPos }).pos;
-      const rate = (22 + 40 * this.fireIntensity) * fade * dt;
-      for (let i = 0; i < rate; i++) if (Math.random() < rate - i) this.smoke.emit(cx.x + (Math.random() - 0.5) * 8, cx.y + 3, cx.z + (Math.random() - 0.5) * 8, (Math.random() - 0.5) * 3, 9 + Math.random() * 8, (Math.random() - 0.5) * 3, 16 + Math.random() * 12, 8 + Math.random() * 6, 48 + Math.random() * 55 + 40 * this.fireIntensity, 1);
+    for (let i = 0; i < this.bursts.length; i++) {
+      const b = this.bursts[i];
+      if (b.done || this.t < b.t) continue;
+      b.done = true; this._fireball(b.x, b.y, b.z, b.r, b.k, 0, 0); this.events.push(b.k);
     }
-    // the fire lights its surroundings, flickering and dying with the flames
+    // burning fragments stream flame and smoke along their arcs
+    const fr = this.fragments;
+    for (let i = 0; i < fr.count; i++) {
+      if (!fr.trail[i] || fr.age[i] > 3.2 || fr.age[i] >= fr.life[i]) continue;
+      const j = i * 3, x = fr.p[j], y = fr.p[j + 1], z = fr.p[j + 2], fade = 1 - fr.age[i] / 3.2;
+      if (Math.random() < dt * 34 * fade) this.fire.emit(x, y, z, 0, 0.5, 0, 0.35 + 0.2 * Math.random(), 1.2, 3.5 * fade + 1, 0);
+      if (Math.random() < dt * 14 * fade) this.smoke.emit(x, y, z, fr.v[j] * 0.1, 1, fr.v[j + 2] * 0.1, 5 + Math.random() * 4, 1.5, 7 + 6 * fade, 1);
+    }
+    // a tall, dark column that keeps climbing for as long as the wreck burns, bending downwind as it rises
+    if (this.fireIntensity > 0.08 && this.t < 110) {
+      const fade = clamp(1 - (this.t - 45) / 65, 0, 1), cx = (this.main || this.pieces[0] || { pos: this.impactPos }).pos, sz = this.scale.size;
+      const rate = (22 + 44 * this.fireIntensity) * fade * dt * (0.55 + 0.45 * sz);
+      for (let i = 0; i < rate; i++) if (Math.random() < rate - i) this.smoke.emit(cx.x + (Math.random() - 0.5) * 8 * sz, cx.y + 3, cx.z + (Math.random() - 0.5) * 8 * sz, (Math.random() - 0.5) * 3, 8 + Math.random() * 7, (Math.random() - 0.5) * 3, 20 + Math.random() * 16, (8 + Math.random() * 6) * (0.5 + 0.5 * sz), (48 + Math.random() * 55 + 40 * this.fireIntensity) * (0.45 + 0.55 * sz), 1);
+    }
+    // the fire lights its surroundings, flickering and dying with the flames; each fireball flashes it bright
     const lk = clamp(1 - this.t / 40, 0, 1) * Math.min(1.2, this.fireIntensity), lp = (this.main || { pos: this.impactPos }).pos;
-    this.light.intensity = lk * (4200 + 1800 * Math.sin(this.t * 23) + 1300 * Math.sin(this.t * 41 + 1.3)) * (0.25 + 0.75 * clamp(1 - day * 0.7, 0, 1));
+    const flash = this.flashK * Math.exp(-Math.max(0, this.t - this.flashT) / 0.3);
+    this.light.intensity = (lk * (4200 + 1800 * Math.sin(this.t * 23) + 1300 * Math.sin(this.t * 41 + 1.3)) + flash * 26000 * this.scale.size) * (0.25 + 0.75 * clamp(1 - day * 0.7, 0, 1));
     this.light.position.set(lp.x - camWorld.x, lp.y + 8 - camWorld.y, lp.z - camWorld.z);
     this.fire.update(dt, camWorld, wind, day, sunDir); this.smoke.update(dt, camWorld, wind, day, sunDir);
     this.fragments.update(dt, groundAt, camWorld); this.ground.update(dt, camWorld);
@@ -799,7 +1139,11 @@ export class Wreck {
     this.createdGeometries.length = 0;
     this.fire.clear(); this.smoke.clear(); this.fragments.clear(); this.ground.clear();
     this.info = null; this.description = ''; this.severity = 'minor'; this.fireIntensity = 0; this.light.intensity = 0; this.fireRadius = 0;
+    this.bursts.length = 0; this.events.length = 0; this.flashT = -1e6; this.flashK = 0;
     if (visual && visual.root) visual.root.visible = true;
     if (this.standIns) { for (const l of this.standIns) this.scene.remove(l); this.standIns = null; }
   }
 }
+
+export const __split = { addSplitMesh, buildSplitCache, splitCache, splitAxis, meshRootName, surfaceKey };
+export const __fx = { Particles, Piece };

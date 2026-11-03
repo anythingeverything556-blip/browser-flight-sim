@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DEPTH_GLSL } from './depth.js';
 
 // Water on the canopy glass, drawn as real refraction like a lens: each drop bends the picture behind it (upside down inside the drop),
 // has a dark rim and a highlight, and sits on the glass in metres, so it stays put on the canopy when the head or the aircraft moves.
@@ -25,9 +26,10 @@ void main() {
 
 const FRAG = `
 precision highp float;
-uniform float uWet, uTime, uSpeed, uForce, uRate, uRain, uMode, uLogF, uLightI;
+uniform float uWet, uTime, uSpeed, uForce, uRate, uRain, uMode, uLightI;
 uniform vec2 uDir, uLightP, uRes;
 uniform highp sampler2D tDepth;
+${DEPTH_GLSL}
 uniform float uSoft;
 varying vec3 vP; varying float vZ;
 
@@ -125,7 +127,7 @@ void main() {
     return;
   }
   if (uSoft > 0.5) {
-    float sceneW = exp2(texture2D(tDepth, gl_FragCoord.xy / uRes).r * uLogF) - 1.0;
+    float sceneW = depthW(textureLod(tDepth, gl_FragCoord.xy / uRes, 0.0).r);
     if (sceneW < vZ - 0.02) { gl_FragColor = vec4(0.0); return; }
   }
   // metres in the pattern plane -> screen pixels through the screen-space derivatives of the pattern coordinates
@@ -144,7 +146,7 @@ export class GlassWater {
     this.wet = 0; this.time = 0; this.dir = new THREE.Vector2(0, 1); this.active = false; this.mode = 0; this.meshes = [];
     this.uniforms = {
       uWet: { value: 0 }, uTime: { value: 0 }, uSpeed: { value: 0 }, uForce: { value: 0.2 }, uRate: { value: 0.05 }, uRain: { value: 0 },
-      uMode: { value: 0 }, uLogF: { value: 1 }, uLightI: { value: 1 }, uDir: { value: this.dir }, uLightP: { value: new THREE.Vector2(0.3, 0.4) },
+      uMode: { value: 0 }, uDepthK: { value: new THREE.Vector2(1, 0) }, uLightI: { value: 1 }, uDir: { value: this.dir }, uLightP: { value: new THREE.Vector2(0.3, 0.4) },
       uRes: { value: new THREE.Vector2(1, 1) }, tDepth: { value: null }, uSoft: { value: 1 },
     };
     this.light = new THREE.Vector3(1, 1, 1);
@@ -204,10 +206,10 @@ export class GlassWater {
   setSize(w, h) { this.rt.setSize(w, h); }
 
   // called by PostFX after the scene pass; returns the target holding the refraction offsets, or null when there is nothing to draw
-  render(r, scene, camera, depth, logF, w, h) {
+  render(r, scene, camera, depth, dk, w, h) {
     if (this.mode !== 0 || !this.active || !this.anyVisible()) return null;
     if (this.rt.width !== w || this.rt.height !== h) this.rt.setSize(w, h);
-    const u = this.uniforms; u.tDepth.value = depth; u.uLogF.value = logF; u.uRes.value.set(w, h);
+    const u = this.uniforms; u.tDepth.value = depth; u.uDepthK.value.copy(dk); u.uRes.value.set(w, h);
     const mask = camera.layers.mask, ac = r.autoClear, bg = scene.background, a = r.getClearAlpha(), c = r.getClearColor(new THREE.Color());
     camera.layers.set(DROP_LAYER); r.autoClear = false; scene.background = null;
     r.setRenderTarget(this.rt); r.setClearColor(0x000000, 0); r.clear(true, true, false); r.render(scene, camera);

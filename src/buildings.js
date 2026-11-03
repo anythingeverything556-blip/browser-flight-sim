@@ -246,7 +246,10 @@ class Buildings {
       (this.atlases = new Map()),
       (this.imgJob = null),
       (this.imgId = 0),
-      (this.texBytes = 0));
+      (this.texBytes = 0),
+      (this.renderer = null),
+      (this.uploadBudget = 8 * 2 ** 20),
+      (this.texQ = []));
     const r = Math.max(1, Math.min(2, (navigator.hardwareConcurrency || 2) - 1));
     ((this.workers = Array.from({ length: r }, () => {
       const a = new Worker(new URL('./buildings-worker.js', import.meta.url), { type: 'module' }),
@@ -329,13 +332,14 @@ vBu = aUv; vBf = aFac; vBc = aCen;`,
               '#include <color_fragment>',
               `#include <color_fragment>
           vec4 fD = vec4(0.0, 0.9, 0.0, 0.0); vec3 fE = vec3(0.0); bool isRoof = vBf.x < -0.5;
+          vec2 bdx = dFdx(vBu), bdy = dFdy(vBu); // outside the roof/wall branch: implicit-gradient lookups in divergent flow warn on D3D (X3595)
           if (isRoof) {
-            if (uImg > 0.5) diffuseColor.rgb = texture2D(uRoof, vBu).rgb * uGain;
+            if (uImg > 0.5) diffuseColor.rgb = textureGrad(uRoof, vBu, bdx, bdy).rgb * uGain;
           } else {
             vec2 tc = vec2(vBu.x, -vBu.y);
             float lay = floor((vBu.y < 1.0 ? vBf.y : vBf.x) + 0.5);
             vec3 fl = vec3(tc, lay);
-            vec3 fa = texture(uFA, fl).rgb; fD = texture(uFD, fl);
+            vec2 tdx = vec2(bdx.x, -bdx.y), tdy = vec2(bdy.x, -bdy.y); vec3 fa = textureGrad(uFA, fl, tdx, tdy).rgb; fD = textureGrad(uFD, fl, tdx, tdy);
             vec3 tint = diffuseColor.rgb;
             if (uImg > 0.5) { // hue of the roof imagery under this building nudges the wall colour
               vec3 s = textureLod(uRoof, vBc, 4.0).rgb; float l = dot(s, vec3(0.3, 0.59, 0.11)) + 1e-3;
@@ -436,7 +440,7 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
     for (const t of [...this.tiles.values()]) this._drop(t);
     this.jobs.length = 0;
     for (const t of this.atlases.values()) t.tex.dispose();
-    (this.atlases.clear(), (this.texBytes = 0));
+    (this.atlases.clear(), (this.texQ.length = 0), (this.texBytes = 0));
   }
   _runways(t) {
     const e = [];
@@ -577,6 +581,7 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
       (n.base = new Float32Array(e.count)),
       (n.state = 'ready'),
       (n.sited = !1),
+      (n.uploaded = !1),
       (n.fine = !1),
       (n.gridI = -1),
       (n.atlas = null),
@@ -586,9 +591,40 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
     a && this._attach(n, a);
   }
   _attach(t, e) {
-    ((e.owner = t), (e.last = performance.now()), (t.atlas = e));
+    if (((e.owner = t), (e.last = performance.now()), (t.atlas = e), this.renderer && !e.ready)) {
+      this.texQ.includes(e) || this.texQ.push(e);
+      return;
+    }
+    this._showAtlas(t, e);
+  }
+  _showAtlas(t, e) {
     const n = t.mesh.material.userData.own;
     ((n.uRoof.value = e.tex), (n.uImg.value = 1), (t.mesh.material.uniformsNeedUpdate = !0));
+  }
+  _geoBytes(t) {
+    let e = 0;
+    for (const n of Object.values(t.mesh.geometry.attributes)) e += n.array.byteLength;
+    return e;
+  }
+  _uploads() {
+    let t = 0;
+    const e = [...this.tiles.values()].filter((n) => n.mesh && n.sited && !n.uploaded).sort((n, i) => n.dist - i.dist);
+    for (const n of e) {
+      const i = this._geoBytes(n);
+      if (t > 0 && t + i > this.uploadBudget) break;
+      ((t += i), (n.uploaded = !0), (n.mesh.visible = !0));
+    }
+    if (this.renderer && this.texQ.length) {
+      this.texQ = this.texQ.filter((n) => n.owner && n.owner.atlas === n && n.owner.mesh && this.atlases.get(n.key) === n && !n.ready);
+      this.texQ.sort((n, i) => n.owner.dist - i.owner.dist);
+      for (; this.texQ.length;) {
+        const n = this.texQ[0];
+        if (t > 0 && t + n.bytes > this.uploadBudget) break;
+        (this.texQ.shift(), (t += n.bytes), this.renderer.initTexture(n.tex), (n.ready = !0), this._showAtlas(n.owner, n));
+      }
+    }
+    this.stats.uploadMB = t / 2 ** 20;
+    this.stats.uploadQ = this.texQ.length;
   }
   _abortImg() {
     this.imgJob && this.imgWorker.postMessage({ type: 'abort', id: this.imgJob.id });
@@ -652,7 +688,7 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
       (i.needsUpdate = !0));
     const r = this.atlases.get(n.key);
     r && r.tex.dispose();
-    const a = { tex: i, z: t.z, bytes: Zh(t.z), last: performance.now(), owner: null };
+    const a = { tex: i, key: n.key, z: t.z, bytes: Zh(t.z), last: performance.now(), owner: null, ready: !1 };
     (this.atlases.set(n.key, a), n.mesh && this._attach(n, a), this._trim());
   }
   _trim() {
@@ -711,7 +747,12 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
       a = r.array,
       l = t.bInfo;
     let h = 1e9,
-      u = -1e9;
+      u = -1e9,
+      c = 0,
+      m = 0,
+      k = -1,
+      q = 0;
+    const flush = () => k >= 0 && (r.addUpdateRange(k * 3, (q - k) * 3), (m += q - k), (k = -1));
     for (let d = 0; d < t.count; d++) {
       const p = d * 6,
         v = l[p],
@@ -724,10 +765,17 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
       Math.hypot(_ - x, w - g) > 8 &&
         (b = Math.min(b, i(x, y), i(_, y), i(v, g), i(v, w), i(x, g), i(_, g), i(x, w), i(_, w)));
       const S = b - t.base[d];
-      if (((t.base[d] = b), b < h && (h = b), b > u && (u = b), !(Math.abs(S) < 0.01)))
-        for (let E = t.bStart[d], A = E + t.bCount[d]; E < A; E++) a[E * 3 + 1] += S;
+      if (((t.base[d] = b), b < h && (h = b), b > u && (u = b), !(Math.abs(S) < 0.01))) {
+        const E = t.bStart[d],
+          A = E + t.bCount[d];
+        for (let F = E; F < A; F++) a[F * 3 + 1] += S;
+        c++;
+        (k >= 0 && E === q) || (flush(), (k = E));
+        q = A;
+      }
     }
-    r.needsUpdate = !0;
+    flush();
+    c && (t.uploaded && m < a.length / 3 / 2 ? (r.needsUpdate = !0) : (r.clearUpdateRanges(), (r.needsUpdate = !0)));
     const f = (h + u) / 2;
     ((t.mesh.geometry.boundingSphere = new THREE.Sphere(
       new THREE.Vector3(0, f + 150, 0),
@@ -736,7 +784,7 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
       (t.sited = !0),
       (t.fine = t.fineAtStart),
       (t.gridI = -1),
-      (t.mesh.visible = !0));
+      t.uploaded && (t.mesh.visible = !0));
   }
   _evict() {
     let t = 0;
@@ -805,6 +853,7 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
       if (performance.now() > f) break;
       (g.sited && g.gridI < 0 && ((g.refitT = a), (g.gridI = -1)), this._sample(g, f) && this._applyHeights(g));
     }
+    this._uploads();
     let p = 0,
       v = 0,
       y = 0;

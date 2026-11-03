@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { DEPTH_GLSL } from './depth.js';
 
 // Rain as real 3D geometry: thousands of streaks living in a box around the camera, each with a true depth. They fall at terminal
 // velocity relative to the moving camera, are projected with perspective (near drops are long, fast and bright, far ones short and
@@ -43,7 +44,8 @@ void main() {
 const FRAG = `
 #include <common>
 #include <logdepthbuf_pars_fragment>
-uniform vec3 uTint; uniform float uSoft, uLogF; uniform vec2 uRes; uniform highp sampler2D tDepth;
+uniform vec3 uTint; uniform float uSoft; uniform vec2 uRes; uniform highp sampler2D tDepth;
+${DEPTH_GLSL}
 varying float vA; varying float vW; varying float vX;
 void main() {
   #include <logdepthbuf_fragment>
@@ -51,7 +53,7 @@ void main() {
   float a = min(1.0, vA * e * e * (3.0 - 2.0 * e));
   if (a < 0.004) discard;
   if (uSoft > 0.5) {
-    float sceneW = exp2(texture2D(tDepth, gl_FragCoord.xy / uRes).r * uLogF) - 1.0;
+    float sceneW = depthW(texture2D(tDepth, gl_FragCoord.xy / uRes).r);
     a *= clamp((sceneW - vW) / 0.4, 0.0, 1.0);
     if (a < 0.004) discard;
   }
@@ -72,7 +74,7 @@ export class RainField {
       uOff: { value: this.off }, uVel: { value: new THREE.Vector3(0, -8.5, 0) }, uRes: { value: new THREE.Vector2(1, 1) },
       uBox: { value: this.box }, uLen: { value: 0.06 }, uMaxLen: { value: 5 }, uNearCut: { value: 1.2 }, uInten: { value: 0 },
       uFar: { value: 60 }, uDropW: { value: 0.012 }, uTint: { value: new THREE.Color(0.8, 0.86, 0.94) },
-      uSoft: { value: 0 }, uLogF: { value: 1 }, tDepth: { value: null },
+      uSoft: { value: 0 }, uDepthK: { value: new THREE.Vector2(1, 0) }, tDepth: { value: null },
     };
     this.mesh = new THREE.Mesh(g, new THREE.ShaderMaterial({
       uniforms: this.uniforms, vertexShader: VERT, fragmentShader: FRAG, transparent: true, depthWrite: false, toneMapped: false, side: THREE.DoubleSide,

@@ -12,6 +12,9 @@ const VIEWS = ['cockpit', 'chase', 'orbit', 'tower', 'wing', 'flyby'],
   },
   _2 = new THREE.Vector3(11.22 - CG_MODEL.x, 3.31 - CG_MODEL.y, 0),
   y2 = new THREE.Vector3(-9.5 - CG_MODEL.x, 3.2 - CG_MODEL.y, -6.2);
+// aircraft-specific geometry (camera points relative to the CG, chase look-ahead, nearest orbit distance); the SR-71 values by default
+const GEOM = { look: 12, minDist: 25, chase: 40 };
+export function configureCameraAircraft({ eye, wing, look, minDist, chase }) { if (eye) _2.copy(eye); if (wing) y2.copy(wing); if (look) GEOM.look = look; if (minDist) GEOM.minDist = minDist; if (chase) GEOM.chase = chase; }
 class CameraRig {
   constructor(t, e) {
     ((this.camera = t),
@@ -24,16 +27,20 @@ class CameraRig {
       (this.flyPos = null),
       (this.tower = null),
       (this.shake = 0),
-      (this.shakeT = 0));
+      (this.shakeT = 0),
+      (this.blockDrag = !1)); // set by the cockpit throttle-lever drag: that drag must not also turn the view
     let n = null;
     (e.addEventListener('pointerdown', (i) => {
       (i.button === 0 || i.button === 2) && (n = { x: i.clientX, y: i.clientY });
     }),
       window.addEventListener('pointerup', () => {
-        n = null;
+        ((n = null), (this.blockDrag = !1));
+      }),
+      window.addEventListener('pointercancel', () => {
+        ((n = null), (this.blockDrag = !1));
       }),
       window.addEventListener('pointermove', (i) => {
-        if (!n) return;
+        if (!n || this.blockDrag) return;
         const r = (i.clientX - n.x) * 0.005,
           a = (i.clientY - n.y) * 0.005;
         ((n = { x: i.clientX, y: i.clientY }),
@@ -49,7 +56,7 @@ class CameraRig {
             ? (this.fov.cockpit = THREE.MathUtils.clamp(this.fov.cockpit * r, 20, 100))
             : this.view === 'tower' || this.view === 'flyby'
               ? (this.fov.other = THREE.MathUtils.clamp(this.fov.other * r, 2, 70))
-              : (this.orbit.dist = THREE.MathUtils.clamp(this.orbit.dist * r, 25, 3e3));
+              : (this.orbit.dist = THREE.MathUtils.clamp(this.orbit.dist * r, GEOM.minDist, 3e3));
         },
         { passive: !0 },
       ),
@@ -62,7 +69,7 @@ class CameraRig {
       (this.chasePos = null),
       (this.flyPos = null),
       t === 'chase' &&
-        ((this.orbit.az = Math.PI), (this.orbit.el = 0.16), (this.orbit.dist = Math.max(this.orbit.dist, 40))));
+        ((this.orbit.az = Math.PI), (this.orbit.el = 0.16), (this.orbit.dist = Math.max(this.orbit.dist, GEOM.chase))));
   }
   next(t = 1) {
     const e = VIEWS.indexOf(this.view);
@@ -95,7 +102,7 @@ class CameraRig {
       (x.lerp(g, 1 - Math.exp(-t * 3)).setLength(v),
         this.chasePos.copy(h).add(x),
         u.copy(this.chasePos),
-        (f = h.clone().addScaledVector(p, -12)),
+        (f = h.clone().addScaledVector(p, -GEOM.look)),
         (a.fov = 55),
         (a.near = 0.5));
     } else if (this.view === 'orbit') {

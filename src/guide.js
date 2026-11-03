@@ -2,8 +2,8 @@
 // completes when the jet does the thing, and the whole guide can be skipped or quit at any time. Never touches the controls.
 const K = (l, c, cls = '') => ({ l, c: [].concat(c), cls });
 const STEPS = [
-  { id: 'throttle', title: 'Add power', text: 'The engines need about 8 seconds to spool and light the afterburners. Hold B (brakes), push the throttle with Shift (Ctrl pulls it back) or drag the lever, then release B.',
-    pads: [{ rows: [[K('Shift', ['ShiftLeft', 'ShiftRight'], 'wide'), K('Ctrl', ['ControlLeft', 'ControlRight'], 'wide')]], cap: 'throttle up · down' }, { rows: [[K('B', 'KeyB'), K('9', 'Digit9'), K('0', 'Digit0')]], cap: 'brakes · full A/B · idle' }],
+  { id: 'throttle', title: 'Add power', text: 'The engines need about 8 seconds to spool and light the afterburners. Hold B (brakes), push the throttle with Shift or E (Q pulls it back) or drag the lever, then release B.',
+    pads: [{ rows: [[K('Shift', ['ShiftLeft', 'ShiftRight'], 'wide'), K('Q', 'KeyQ')]], cap: 'throttle up · down' }, { rows: [[K('B', 'KeyB'), K('9', 'Digit9'), K('0', 'Digit0')]], cap: 'brakes · full A/B · idle' }],
     live: (c) => `Throttle ${Math.round(c.throttle * 100)}%`, done: (c) => c.throttle > 0.7 },
   { id: 'steer', title: 'Keep it straight', text: 'The jet is rolling. On the ground A and D steer the nose wheel, so tap them gently to stay on the centre line.',
     pads: [{ rows: [[K('A', 'KeyA'), K('D', 'KeyD')]], cap: 'steer left · right' }],
@@ -39,14 +39,14 @@ export class Guide {
   }
   finish() {
     this.active = false; try { localStorage.setItem('guideSeen', '1'); } catch { /* ignore */ }
-    this.q('g-step').textContent = 'ALL SET'; this.q('g-title').textContent = 'You are flying the Blackbird';
-    this.q('g-text').textContent = 'Press ? or open Controls in the left dock any time to see every key. The throttle lever stays on the right edge.';
+    this.q('g-step').textContent = 'All set'; this.q('g-title').textContent = 'You are flying the Blackbird';
+    this.q('g-text').textContent = 'Press ? or open Controls in the left dock any time to see every key. Handy ones: T automatic take-off, C drag chute after landing. The throttle lever stays on the right edge.';
     this.q('g-keys').innerHTML = ''; this.q('g-live').textContent = ''; this.q('g-skip').hidden = true; this.q('g-never').hidden = true;
     this.dots(); setTimeout(() => { if (!this.active) this.el.hidden = true; this.onChange(false); }, 7000);
   }
   dots() { this.q('g-dots').innerHTML = STEPS.map((_, k) => `<i class="${this.ok[k] ? 'ok' : k === this.i ? 'on' : ''}"></i>`).join(''); }
   render() {
-    const st = STEPS[this.i]; this.q('g-step').textContent = `STEP ${this.i + 1} OF ${STEPS.length}`; this.q('g-title').textContent = st.title; this.q('g-text').textContent = st.text;
+    const st = STEPS[this.i]; this.q('g-step').textContent = `Step ${this.i + 1} of ${STEPS.length}`; this.q('g-title').textContent = st.title; this.q('g-text').textContent = st.text;
     this.q('g-skip').hidden = false; this.q('g-never').hidden = false;
     this.q('g-keys').innerHTML = st.pads.map((p) => `<div><div class="g-pad">${p.rows.map((r) => `<div class="row">${r.map((k) => `<span class="g-key hot ${k.cls}" data-c="${k.c.join(',')}">${k.l}</span>`).join('')}</div>`).join('')}</div><div class="g-cap">${p.cap}</div></div>`).join('');
     this.dots();
@@ -54,6 +54,7 @@ export class Guide {
   update(dt) {
     if (!this.active || this.i < 0 || this.i >= STEPS.length) return;
     const st = STEPS[this.i], c = this.ctx();
+    if (c.crashed || c.started === false) return; // a wreck, a respawn or a pause neither passes nor fails a step
     for (const k of this.el.querySelectorAll('.g-key')) { const codes = k.dataset.c.split(','), down = codes.some((x) => this.controls.keys.has(x)); k.classList.toggle('down', down); }
     this.q('g-live').textContent = st.live ? st.live(c) : '';
     if (st.done(c, this.s)) { this.done += dt; if (this.done > 0.8) this.next(); } else this.done = 0;

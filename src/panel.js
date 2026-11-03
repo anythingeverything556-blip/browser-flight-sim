@@ -18,7 +18,7 @@ const kl = 2048,
       major: 50,
       minor: 10,
       labelEvery: 100,
-      title: 'KEAS',
+      title: 'KIAS',
       arcs: [[450, 600, '#d22']],
     },
     g: {
@@ -235,7 +235,17 @@ const MINI = [
 
 // 3/4 of the logical 2048x1152 panel: needles and digits stay crisp (a 512x288 layer was visibly soft), and an upload is 5.3 MB at most 20 times a second
 const DYNAMIC_W = 1536, DYNAMIC_H = 864;
+// The whole 1536x864 overlay was redrawn and re-uploaded up to 20 times a second in flight (the change gate never skips: some needle always moves).
+// Now only the attitude and heading displays, which must look smooth, are redrawn at that rate, into a small canvas of just the centre column
+// (FAST_RECT, panel pixels); everything else is redrawn at most SLOW_HZ. The panel shader shows the fast canvas inside the rect, the full one elsewhere.
+const FAST_RECT = { x0: 688, y0: 124, x1: 1152, y1: 1100 }, SLOW_HZ = 6; // multiples of 4: whole pixels at the 0.75 overlay scale
+const FAST_W = Math.round((FAST_RECT.x1 - FAST_RECT.x0) * DYNAMIC_W / 2048), FAST_H = Math.round((FAST_RECT.y1 - FAST_RECT.y0) * DYNAMIC_H / 1152);
+// limits of the game's own WebGL context, handed over by main.js (setPanelHardware). Probing them with a throwaway context cost 3.7 s of a 15.7 s
+// SwiftShader boot (a second GL context on the GPU, the third counting boot.js's check); the probe stays only as the fallback.
+let hwLimits = null;
+export const setPanelHardware = (hw) => { hwLimits = hw; };
 function panelHardware() {
+  if (hwLimits) return hwLimits;
   try {
     const canvas = document.createElement('canvas');
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
@@ -257,6 +267,11 @@ const panelSignature = (state) => JSON.stringify(state, (key, value) => {
   return Math.round(value * 2) / 2;
 });
 
+const q = (v, step) => (Number.isFinite(v) ? Math.round(v / step) : v);
+const fastSignature = (t) => { const n = t.nav || {};
+  return `${q(t.pitch, 0.002)}|${q(t.bank, 0.002)}|${q(t.hdg, 0.1)}|${q(t.slip, 0.0002)}|${q(t.fdPitch, 0.002)}|${q(t.fdRoll, 0.002)}|${t.apOn}|${t.apHdgOn}|${q(t.apHdg, 1)}|`
+    + `${n.valid}|${n.ilsValid}|${n.ident}|${q(n.course, 0.5)}|${q(n.brgDeg, 0.5)}|${q(n.distNm, 0.1)}|${q(n.gsDev, 0.01)}|${q(n.locDev, 0.01)}|${q(n.xtkNm, 0.01)}`; };
+
 class CockpitPanel {
   constructor() {
     const hw = panelHardware();
@@ -270,6 +285,13 @@ class CockpitPanel {
     this.dynamicTexture.minFilter = THREE.LinearFilter;
     this.dynamicTexture.magFilter = THREE.LinearFilter;
     this.dynamicTexture.generateMipmaps = false;
+    this.fastCanvas = document.createElement('canvas'); this.fastCanvas.width = FAST_W; this.fastCanvas.height = FAST_H;
+    this.fastCtx = this.fastCanvas.getContext('2d');
+    this.fastTexture = new THREE.CanvasTexture(this.fastCanvas);
+    this.fastTexture.colorSpace = THREE.SRGBColorSpace; this.fastTexture.minFilter = THREE.LinearFilter; this.fastTexture.magFilter = THREE.LinearFilter; this.fastTexture.generateMipmaps = false;
+    // the rect in panel UV (CanvasTexture flips y): u0, v0, u1, v1
+    this.fastRect = new THREE.Vector4(FAST_RECT.x0 / kl, 1 - FAST_RECT.y1 / ea, FAST_RECT.x1 / kl, 1 - FAST_RECT.y0 / ea);
+    this.lastSlowAt = -Infinity; this.slowDt = 0; this.fastDt = 0; this.fastKey = ''; this.fastUntil = 0; this.uploads = { fast: 0, slow: 0, bytes: 0 };
 
     this.bg = document.createElement('canvas');
     this.bg.width = kl * this.staticScale;
@@ -453,7 +475,7 @@ class CockpitPanel {
       (t.lineWidth = 6),
       t.strokeRect(372, 160, 180, 290),
       this.label(t, 'TRIPLE DISPLAY', 462, 140, 18),
-      this.label(t, 'KEAS', 462, 182, 18),
+      this.label(t, 'KIAS', 462, 182, 18),
       this.label(t, 'MACH', 462, 278, 18),
       this.label(t, 'ALT FT', 462, 374, 18),
       this.label(t, 'L', 1690, 128, 30),
@@ -748,6 +770,9 @@ class CockpitPanel {
         24,
         e.nav.ilsValid ? '#3ef06a' : '#d8dcdf',
       ));
+  }
+  // glass highlights over every round gauge (they used to be drawn at the end of hsi(); they belong to the slow, full-panel layer)
+  glassAll(t) {
     for (const gauge of Object.values(It)) if (gauge.r) this.glass(t, gauge.x, gauge.y, gauge.r);
     for (const gauge of MINI) this.glass(t, gauge.x, gauge.y, gauge.r);
   }
@@ -757,12 +782,22 @@ class CockpitPanel {
     const nextTime = this.t + this.pendingDt;
     const blinkActive = t.warn.stall || t.warn.overG || t.warn.pullUp || t.warn.lowFuel || t.warn.overspeed || t.warn.gearUnsafe || t.unstart[0] || t.unstart[1];
     const key = `${panelSignature(t)}:${blinkActive ? Math.floor(nextTime * 2.5) : ''}`;
-    if (key === this.stateKey || now - this.lastDrawAt < 50) return false;
-    this.stateKey = key;
+    this.slowDt += Math.max(0, e || 0);
+    // the fast layer has its own key (only what the attitude and heading displays show) and keeps drawing 0.6 s after it settles so the easing finishes
+    const fk = fastSignature(t);
+    if (fk !== this.fastKey) { this.fastKey = fk; this.fastUntil = now + 600; }
+    const slowWanted = key !== this.stateKey && now - this.lastSlowAt >= 1000 / SLOW_HZ, fastWanted = now < this.fastUntil;
+    if (now - this.lastDrawAt < 50 || (!slowWanted && !fastWanted)) return false;
     this.lastDrawAt = now;
     this.t = nextTime;
+    this.fastDt = this.pendingDt;
     this.pendingDt = 0;
+    if (!slowWanted) { this.paintFast(t, this.fastDt); return true; }
+    this.stateKey = key;
+    this.lastSlowAt = now;
+    e = this.slowDt; this.slowDt = 0;
     const started = now;
+    this.paintFast(t, this.fastDt);
     const n = this.ctx;
     n.setTransform(DYNAMIC_W / kl, 0, 0, DYNAMIC_H / ea, 0, 0);
     n.globalAlpha = 1;
@@ -812,7 +847,7 @@ HIGH`,
         '#ff3a2e',
       ],
       [
-        `KEAS
+        `KIAS
 LIMIT`,
         t.warn.overspeed,
         '#ffb21e',
@@ -860,8 +895,11 @@ UNSAFE`,
       n.arc(473, 1030 + (t.gearDown ? 90 : 10), 22, 0, Math.PI * 2),
       n.fill(),
       this.label(n, t.gearDown ? 'DN' : 'UP', 520, 1075, 22),
-      this.adi(n, t, e),
-      this.hsi(n, t, e));
+      // the fast canvas (painted first, with the real dt) is what shows in the centre column; this dt-0 copy only supplies the few pixels the
+      // displays reach outside it (the bank pointer tip above the lamp row, HSI digit edges)
+      this.adi(n, t, 0),
+      this.hsi(n, t, 0),
+      this.glassAll(n));
     const v = this.ease('alt', t.altFt, 8, e);
     (this.needle(n, It.alt.x, It.alt.y, ((v % 1e3) / 1e3) * Math.PI * 2, It.alt.r * 0.86, 9),
       this.needle(n, It.alt.x, It.alt.y, ((v % 1e4) / 1e4) * Math.PI * 2, It.alt.r * 0.55, 12, '#c8c8c8'),
@@ -949,10 +987,21 @@ BRAKE`,
       this.digits(n, String(Math.round(t.cit)), It.cit.x, It.cit.y + It.cit.r * 0.4, 60, 26),
       this.miniLive(n, t, e),
       (this.dynamicTexture.needsUpdate = !0));
+    this.uploads.slow++; this.uploads.bytes += DYNAMIC_W * DYNAMIC_H * 4;
     this.lastDrawMs = performance.now() - started;
     this.drawCount++;
     return true;
   }
+  // attitude + heading displays only, into the centre-column canvas
+  paintFast(t, dt) {
+    const n = this.fastCtx, k = DYNAMIC_W / kl;
+    n.setTransform(k, 0, 0, DYNAMIC_H / ea, -FAST_RECT.x0 * k, -FAST_RECT.y0 * DYNAMIC_H / ea);
+    n.globalAlpha = 1; n.globalCompositeOperation = 'source-over';
+    n.clearRect(FAST_RECT.x0, FAST_RECT.y0, FAST_RECT.x1 - FAST_RECT.x0, FAST_RECT.y1 - FAST_RECT.y0);
+    this.adi(n, t, dt); this.hsi(n, t, dt);
+    this.fastTexture.needsUpdate = true;
+    this.uploads.fast++; this.uploads.bytes += FAST_W * FAST_H * 4;
+  }
 }
 
-export { CockpitPanel };
+export { CockpitPanel, It as PANEL_GAUGES, kl as PANEL_W, ea as PANEL_H, FAST_RECT as PANEL_FAST_RECT };

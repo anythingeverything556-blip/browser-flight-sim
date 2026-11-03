@@ -1,17 +1,19 @@
 const R_EARTH = 63710088e-1,
   D2R = Math.PI / 180;
+const wrapLon = (l) => ((((l + 180) % 360) + 360) % 360) - 180,
+  dLon = (a, b) => ((((a - b + 180) % 360) + 360) % 360) - 180;
 class Geo {
   constructor(t, e) {
     this.setOrigin(t, e);
   }
   setOrigin(t, e) {
-    ((this.lat0 = t), (this.lon0 = e), (this.cos0 = Math.cos(t * D2R)), (this.version = (this.version || 0) + 1));
+    ((this.lat0 = t), (this.lon0 = wrapLon(e)), (this.cos0 = Math.cos(t * D2R)), (this.version = (this.version || 0) + 1));
   }
   toXZ(t, e) {
-    return { x: (e - this.lon0) * D2R * R_EARTH * this.cos0, z: -(t - this.lat0) * D2R * R_EARTH };
+    return { x: dLon(e, this.lon0) * D2R * R_EARTH * this.cos0, z: -(t - this.lat0) * D2R * R_EARTH };
   }
   toLatLon(t, e) {
-    return { lat: this.lat0 + -e / R_EARTH / D2R, lon: this.lon0 + t / (R_EARTH * this.cos0) / D2R };
+    return { lat: this.lat0 + -e / R_EARTH / D2R, lon: wrapLon(this.lon0 + t / (R_EARTH * this.cos0) / D2R) };
   }
 }
 const lon2tx = (s, t) => ((s + 180) / 360) * (1 << t),
@@ -44,4 +46,4 @@ function destination(s, t, e, n) {
   return { lat: h / D2R, lon: ((u / D2R + 540) % 360) - 180 };
 }
 
-export { D2R, Geo, R_EARTH, bearing, destination, haversine, lat2ty, lon2tx, tx2lon, ty2lat };
+export { D2R, Geo, R_EARTH, bearing, dLon, destination, haversine, lat2ty, lon2tx, tx2lon, ty2lat, wrapLon };

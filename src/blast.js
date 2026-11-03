@@ -27,14 +27,15 @@ export class JetBlast {
         vec2 q = gl_PointCoord * 2.0 - 1.0; float r = dot(q, q); if (r > 1.0) discard; float n = 0.75 + 0.25 * sin(q.x * 9.0 + q.y * 7.0); gl_FragColor = vec4(uCol, vA * (1.0 - r) * (1.0 - r) * n); }`,
     });
     this.pts = new THREE.Points(g, this.mat); this.pts.frustumCulled = false; this.pts.renderOrder = 8;
+    g.setDrawRange(0, 0); this.nLive = 0; this.iDone = 0; this.lo0 = this.N; this.hi0 = -1;
     scene.add(this.pts); this.g = g; this._v = new THREE.Vector3(); this._d = new THREE.Vector3(); this.acc = 0;
   }
 
   // nozzles: world positions of the two exhausts (the frame fdm.pos lives in); aft: unit vector pointing back along the exhaust
-  update(dt, { fdm, camWorld, groundY, nozzles, aft, daylight, height, px }) {
+  update(dt, { fdm, camWorld, groundY, nozzles, aft, daylight, height, px, scale = 1 }) {
     const agl = Math.max(0, fdm.pos.y - groundY - 2.42), thr = fdm.crashed ? 0 : Math.max(0, fdm.throttle - 0.12) / 0.88;
     const ab = Math.max(fdm.engines[0].ab, fdm.engines[1].ab);
-    const s = Math.min(1, thr * (1 - Math.min(1, agl / 30)) * (fdm.onGround || agl < 30 ? 1 : 0));
+    const s = Math.min(1, thr * (1 - Math.min(1, agl / 30)) * (fdm.onGround || agl < 30 ? 1 : 0)) * scale; // scale: a small engine's share of the J58 blast
     const U = TERRAIN_UNIFORMS, mid = this._v.set(0, 0, 0);
     for (const n of nozzles) mid.add(n); mid.multiplyScalar(1 / nozzles.length);
     U.uBlastA.value.set(mid.x - camWorld.x, mid.y - camWorld.y, mid.z - camWorld.z, s * (0.7 + 0.3 * ab));
@@ -51,6 +52,9 @@ export class JetBlast {
       const sp = 7 + 16 * s * Math.random(); this.vel[j] = aft.x * sp + (Math.random() - 0.5) * 3; this.vel[j + 1] = 1 + Math.random() * 2.4; this.vel[j + 2] = aft.z * sp + (Math.random() - 0.5) * 3;
       this.age[k] = 0; this.life[k] = 2.6 + Math.random() * 2.6;
     }
+    const emitted = this.i !== this.iDone; this.iDone = this.i;
+    if (!this.nLive && !emitted) return;
+    let lo = this.N, hi = -1;
     for (let k = 0; k < this.N; k++) {
       const j = k * 3;
       if (this.age[k] >= this.life[k]) { A[k] = 0; continue; }
@@ -58,8 +62,12 @@ export class JetBlast {
       this.vel[j] *= drag; this.vel[j + 2] *= drag; this.vel[j + 1] -= dt * 0.4;
       this.pos[j] += this.vel[j] * dt; this.pos[j + 1] += this.vel[j + 1] * dt; this.pos[j + 2] += this.vel[j + 2] * dt;
       A[k] = 0.3 * Math.sin(Math.PI * Math.min(1, f * 1.2)) * (1 - f) ; S[k] = 1.2 + 6 * f;
+      this.rel[j] = this.pos[j] - camWorld.x; this.rel[j + 1] = this.pos[j + 1] - camWorld.y; this.rel[j + 2] = this.pos[j + 2] - camWorld.z;
+      if (k < lo) lo = k; hi = k;
     }
-    for (let k = 0; k < this.N; k++) { const j = k * 3; this.rel[j] = this.pos[j] - camWorld.x; this.rel[j + 1] = this.pos[j + 1] - camWorld.y; this.rel[j + 2] = this.pos[j + 2] - camWorld.z; }
-    this.g.attributes.position.needsUpdate = this.g.attributes.aA.needsUpdate = this.g.attributes.aS.needsUpdate = true;
+    this.nLive = hi >= 0 ? 1 : 0;
+    const ul = Math.min(lo, this.lo0), uh = Math.max(hi, this.hi0), at = this.g.attributes;
+    if (uh >= ul) for (const a of [at.position, at.aA, at.aS]) { a.clearUpdateRanges(); a.addUpdateRange(ul * a.itemSize, (uh - ul + 1) * a.itemSize); a.needsUpdate = true; }
+    this.lo0 = lo; this.hi0 = hi; this.g.setDrawRange(lo, hi >= lo ? hi - lo + 1 : 0);
   }
 }

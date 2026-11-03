@@ -11,6 +11,12 @@ export const MISSIONS = {
   tour: { name: 'Watch demo', blurb: 'The jet flies a take-off, climb and autopilot sequence by itself, then hands over.' },
 };
 
+// Where each mission has to start. The R key, Return, the Airports sheet and the map use this to put the jet where the selected mission expects it.
+const MISSION_SPAWN = { tutorial: 'runway', tour: 'runway', landassist: 'approach', landhand: 'final' };
+export const missionSpawnMode = (kind, fallback = 'runway') => MISSION_SPAWN[kind] || fallback;
+export const missionFits = (kind, mode) => !MISSION_SPAWN[kind] || MISSION_SPAWN[kind] === mode;
+export const missionSurvivesTeleport = (kind) => kind === 'highfast' || kind === 'recon' || kind === 'free';
+
 // High & Fast: sustain M >= 3.0 above 70,000 ft for 20 s.
 class HighFast {
   constructor() { this.hold = 0; this.best = 0; this.done = false; this.t = 0; }
@@ -84,7 +90,8 @@ const fmtTime = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padSt
 const band = (v, bands) => { for (const [lim, pts] of bands) if (v <= lim) return pts; return 0; };
 export function scoreLanding(td) {
   const sink = band(td.sink, [[1.2, 40], [2, 32], [3, 22], [4.5, 10]]);
-  const spd = band(td.kt, [[160, 20], [170, 14], [180, 8]]);
+  const ref = td.vref || 175, dv = td.kt - ref; // speed against the weight's touchdown reference (vrefEas): slower means more nose-up, toward a tail strike
+  const spd = dv >= -6 && dv <= 12 ? 20 : dv >= -12 && dv <= 22 ? 14 : dv >= -18 && dv <= 32 ? 8 : 0;
   const off = band(td.off, [[4, 20], [8, 14], [15, 8]]);
   const d = td.dist;
   const dist = d == null ? 10 : d < 100 ? 0 : d <= 700 ? 20 : d <= 1200 ? 12 : d <= 2000 ? 6 : 0;
@@ -93,7 +100,8 @@ export function scoreLanding(td) {
   const tips = [];
   if (td.belly) tips.push('Gear was not down. Press G well before the runway.');
   if (sink < 32) tips.push(`Sink rate ${td.sink.toFixed(1)} m/s. Flare earlier and hold the nose up, aim for under 2.`);
-  if (spd < 14) tips.push(`Touched down at ${Math.round(td.kt)} kt. Bleed speed on final and idle the throttle in the flare, aim for under 160.`);
+  if (spd < 14) tips.push(dv < 0 ? `Touched down at ${Math.round(td.kt)} kt, ${Math.round(-dv)} kt under the ${Math.round(ref)} kt reference: the nose was high enough to risk a tail strike. Keep the speed until the wheels touch.`
+    : `Touched down at ${Math.round(td.kt)} kt, ${Math.round(dv)} kt fast. Bleed speed on final and idle the throttle in the flare, aim for ${Math.round(ref)}-${Math.round(ref + 10)} kt.`);
   if (off < 14) tips.push(`${Math.round(td.off)} m off the centre line. Small corrections with A and D, early.`);
   if (d != null && dist < 12) tips.push(d < 100 ? 'You landed short of the runway markings. Keep the glideslope.' : `Touched down ${Math.round(d)} m down the runway. Do not float, ease the throttle at the threshold.`);
   return { sink, spd, off, dist, total, grade, tips };
@@ -110,7 +118,7 @@ class Landing {
     if (!s.onGround) { this.lastVy = s.vy; if (s.agl > 6) this.airborne = true; }
     if (this.phase === 'final' && s.agl < 60) this.phase = 'flare';
     if (s.onGround && this.airborne && !this.td) {
-      this.td = { sink: Math.max(0, -this.lastVy), kt: s.iasKt, off: Math.abs(s.locXtk || 0), dist: s.ilsValid ? -s.thrDist : null, belly: !s.gearDown };
+      this.td = { sink: Math.max(0, -this.lastVy), kt: s.iasKt, vref: s.vrefKt, off: Math.abs(s.locXtk || 0), dist: s.ilsValid ? -s.thrDist : null, belly: !s.gearDown };
       this.score = scoreLanding(this.td); this.phase = 'rollout';
       return { event: 'touchdown', text: `Touchdown: ${this.td.sink.toFixed(1)} m/s down at ${Math.round(this.td.kt)} kt` };
     }
@@ -151,14 +159,14 @@ class Landing {
         live: `${check}\nHeight ${Math.round(s.agl)} m   Pitch ${Math.round(s.pitchDeg || 0)}°`, hint: hints.join(' ') };
     }
     if (this.phase === 'flare') {
-      const sink = -s.vy, pitch = Math.round(s.pitchDeg || 0);
+      const sink = -s.vy, pitch = Math.round(s.pitchDeg || 0), ref = Math.round(s.vrefKt || 175);
       const hint = s.agl < 30 && sink > 3.2 ? 'Sinking fast. Pull back with S now.'
         : s.agl < 25 && sink < 1 && s.throttle > 0.2 ? 'Throttle to idle with 0, and keep the nose where it is.'
-        : pitch > 14 ? 'Nose too high. Ease forward with W, or the tail will strike the runway.' : '';
+        : pitch > 12 || (s.agl < 15 && s.iasKt < ref - 12) ? 'Nose too high or too slow. Ease forward with W, or the tail will strike the runway.' : '';
       return { label: 'Flare', title: 'Flare and touch down',
-        text: 'Now: 1. Raise the nose gently with S to about 10-12° and hold it there. 2. Throttle to idle with 0 as the runway arrives. '
-          + '3. Let the jet settle on its own: do not keep pulling, and do not push the nose down. Aim to touch down under 160 kt and under 2 m/s sink.',
-        live: `Sink ${sink.toFixed(1)} m/s (aim < 2)\nSpeed ${Math.round(s.iasKt)} kt (aim < 160)\nPitch ${pitch}°   Height ${Math.round(s.agl)} m`, hint };
+        text: 'Now: 1. Raise the nose gently with S to about 9-10° and hold it there, never past 12°: the nozzles strike the runway at 15-16°. 2. Throttle to idle with 0 as the runway arrives. '
+          + `3. Let the jet settle on its own: do not keep pulling, and do not push the nose down. Aim to touch down at ${ref}-${ref + 10} kt and under 2 m/s sink.`,
+        live: `Sink ${sink.toFixed(1)} m/s (aim < 2)\nSpeed ${Math.round(s.iasKt)} kt (aim ${ref}-${ref + 10})\nPitch ${pitch}° (max 12)   Height ${Math.round(s.agl)} m`, hint };
     }
     if (this.phase === 'rollout') {
       const hint = s.chute < 0.1 && s.gs * 1.944 > 60 && s.gs * 1.944 < 200 ? 'Deploy the drag chute with C now.' : s.gs * 1.944 < 60 && s.throttle > 0.05 ? 'Throttle to idle with 0.' : '';

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { FX_LAYER } from './layers.js';
 
 // Visible airflow around the jet, driven by what the flight model says the air is doing:
 //  * wingtip and chine vortices: vortex cores drop below the dew point and show as vapour ropes once the wing is loaded (high angle of
@@ -50,13 +51,14 @@ export class Airflow {
     g.setAttribute('aA', new THREE.BufferAttribute(new Float32Array(N), 1)); g.setAttribute('aS', new THREE.BufferAttribute(new Float32Array(N), 1));
     g.setAttribute('aR', new THREE.BufferAttribute(Float32Array.from({ length: N }, () => Math.random()), 1));
     this.mat = new THREE.ShaderMaterial({ transparent: true, depthWrite: false, toneMapped: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor, uniforms: { uPx: { value: 500 }, uCol: { value: new THREE.Color(0.9, 0.93, 1) } }, vertexShader: VERT, fragmentShader: FRAG });
+    g.setDrawRange(0, 0); this.nLive = 0; this.iDone = 0; this.lo0 = N; this.hi0 = -1;
     this.pts = new THREE.Points(g, this.mat); this.pts.frustumCulled = false; this.pts.renderOrder = 8; scene.add(this.pts); this.g = g;
     this.em = { tipL: {}, tipR: {}, chL: {}, chR: {}, nzL: {}, nzR: {} };
     this.p = new THREE.Vector3(); this.q = new THREE.Vector3(); this.v = new THREE.Vector3();
     this.gv = null; this.sprites = null; this.force = null; this.state = { vortex: 0, contrail: 0, mach: 0 };
   }
 
-  clear() { this.age.fill(1e9); for (const k in this.em) this.em[k] = {}; }
+  clear() { this.age.fill(1e9); this.nLive = 1; for (const k in this.em) this.em[k] = {}; }
 
   emit(x, y, z, vx, vy, vz, life, s0, s1, a0, drag, sink = 0) {
     const k = this.i++ % this.N, j = k * 3;
@@ -109,17 +111,24 @@ export class Airflow {
       } else { em.nzL.last = em.nzR.last = null; }
     }
     // age and move the puffs
-    const A = this.g.attributes.aA.array, S = this.g.attributes.aS.array;
-    for (let k = 0; k < this.N; k++) {
-      const j = k * 3;
-      if (this.age[k] >= this.life[k]) { A[k] = 0; this.rel[j] = this.rel[j + 1] = this.rel[j + 2] = 0; continue; }
-      this.age[k] += dt; const f = Math.min(1, this.age[k] / this.life[k]), dr = Math.exp(-dt * this.drag[k]);
-      this.vel[j] *= dr; this.vel[j + 1] = this.vel[j + 1] * dr - this.sink[k] * dt; this.vel[j + 2] *= dr;
-      this.abs[j] += this.vel[j] * dt; this.abs[j + 1] += this.vel[j + 1] * dt; this.abs[j + 2] += this.vel[j + 2] * dt;
-      this.rel[j] = this.abs[j] - cw.x; this.rel[j + 1] = this.abs[j + 1] - cw.y; this.rel[j + 2] = this.abs[j + 2] - cw.z;
-      A[k] = this.a0[k] * Math.pow(1 - f, 1.3) * Math.min(1, this.age[k] / Math.min(0.25, 0.04 * this.life[k])); S[k] = this.s0[k] + (this.s1[k] - this.s0[k]) * Math.sqrt(f);
+    const emitted = this.i !== this.iDone; this.iDone = this.i;
+    if (this.nLive || emitted) {
+      const at = this.g.attributes, A = at.aA.array, S = at.aS.array; let lo = this.N, hi = -1;
+      for (let k = 0; k < this.N; k++) {
+        const j = k * 3;
+        if (this.age[k] >= this.life[k]) { A[k] = 0; this.rel[j] = this.rel[j + 1] = this.rel[j + 2] = 0; continue; }
+        this.age[k] += dt; const f = Math.min(1, this.age[k] / this.life[k]), dr = Math.exp(-dt * this.drag[k]);
+        this.vel[j] *= dr; this.vel[j + 1] = this.vel[j + 1] * dr - this.sink[k] * dt; this.vel[j + 2] *= dr;
+        this.abs[j] += this.vel[j] * dt; this.abs[j + 1] += this.vel[j + 1] * dt; this.abs[j + 2] += this.vel[j + 2] * dt;
+        this.rel[j] = this.abs[j] - cw.x; this.rel[j + 1] = this.abs[j + 1] - cw.y; this.rel[j + 2] = this.abs[j + 2] - cw.z;
+        A[k] = this.a0[k] * Math.pow(1 - f, 1.3) * Math.min(1, this.age[k] / Math.min(0.25, 0.04 * this.life[k])); S[k] = this.s0[k] + (this.s1[k] - this.s0[k]) * Math.sqrt(f);
+        if (k < lo) lo = k; hi = k;
+      }
+      this.nLive = hi >= 0 ? 1 : 0;
+      const ul = Math.min(lo, this.lo0), uh = Math.max(hi, this.hi0);
+      if (uh >= ul) for (const a of [at.position, at.aA, at.aS]) { a.clearUpdateRanges(); a.addUpdateRange(ul * a.itemSize, (uh - ul + 1) * a.itemSize); a.needsUpdate = true; }
+      this.lo0 = lo; this.hi0 = hi; this.g.setDrawRange(lo, hi >= lo ? hi - lo + 1 : 0);
     }
-    this.g.attributes.position.needsUpdate = this.g.attributes.aA.needsUpdate = this.g.attributes.aS.needsUpdate = true;
     this.updateSprites(model, c);
   }
 
@@ -127,14 +136,24 @@ export class Airflow {
   updateSprites(model, c) {
     if (!model) return;
     if (!this.sprites) {
-      const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d');
-      for (let k = 0; k < 40; k++) { const px = 64 + (Math.random() - 0.5) * 56, py = 64 + (Math.random() - 0.5) * 56, r = 14 + Math.random() * 30, g = x.createRadialGradient(px, py, 0, px, py, r); g.addColorStop(0, 'rgba(255,255,255,0.20)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); }
-      const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+      // four soft cloud-like patches. The old single 128 px texture had gradients running to its edge, so every sprite showed a hard square outline
+      // ("boxy"): each patch is now faded to zero toward its border with a radial mask, and the four differ so the sheets do not repeat.
+      const texs = [];
+      for (let v = 0; v < 4; v++) {
+        const cv = document.createElement('canvas'); cv.width = cv.height = 256; const x = cv.getContext('2d');
+        for (let k = 0; k < 70; k++) {
+          const a = Math.random() * 6.2832, d = Math.pow(Math.random(), 0.7) * 78, px = 128 + Math.cos(a) * d * (1.15 + 0.3 * Math.sin(v)), py = 128 + Math.sin(a) * d * 0.8, r = 16 + Math.random() * 38, g = x.createRadialGradient(px, py, 0, px, py, r);
+          g.addColorStop(0, 'rgba(255,255,255,0.17)'); g.addColorStop(0.55, 'rgba(255,255,255,0.07)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(px - r, py - r, r * 2, r * 2);
+        }
+        x.globalCompositeOperation = 'destination-in';
+        const m = x.createRadialGradient(128, 128, 0, 128, 128, 126); m.addColorStop(0, 'rgba(0,0,0,1)'); m.addColorStop(0.55, 'rgba(0,0,0,0.85)'); m.addColorStop(1, 'rgba(0,0,0,0)'); x.fillStyle = m; x.fillRect(0, 0, 256, 256);
+        const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; texs.push(t);
+      }
       this.sprites = [];
       const spots = [[-3, 2.55, 1.6, 5], [-3, 2.55, -1.6, 5], [-6.5, 2.4, 3.2, 6], [-6.5, 2.4, -3.2, 6], [-9, 2.4, 2.2, 5], [-9, 2.4, -2.2, 5], [-7, 3.1, 4.3, 4.5], [-7, 3.1, -4.3, 4.5], [1.5, 2.9, 0.9, 4], [1.5, 2.9, -0.9, 4], [-11.5, 2.2, 6, 5], [-11.5, 2.2, -6, 5], [8, 3.5, 0, 3.5]];
       for (const [x, y, z, sc] of spots) {
-        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0, color: 0xffffff, toneMapped: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor }));
-        sp.position.set(x, y, z); sp.scale.setScalar(sc); sp.userData.base = sc; sp.userData.ph = Math.random() * 6; sp.renderOrder = 7; sp.visible = false; model.add(sp); this.sprites.push(sp);
+        const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: texs[Math.floor(Math.random() * texs.length)], transparent: true, depthWrite: false, opacity: 0, color: 0xffffff, toneMapped: false, blending: THREE.CustomBlending, blendEquation: THREE.AddEquation, blendSrc: THREE.SrcAlphaFactor, blendDst: THREE.OneMinusSrcAlphaFactor, blendSrcAlpha: THREE.OneFactor, blendDstAlpha: THREE.OneFactor }));
+        sp.position.set(x, y, z); sp.scale.setScalar(sc); sp.userData.base = sc; sp.userData.ph = Math.random() * 6; sp.material.rotation = Math.random() * 6.28; sp.renderOrder = 7; sp.visible = false; sp.layers.set(FX_LAYER); model.add(sp); this.sprites.push(sp);
       }
     }
     const m = this.state.mach, t = performance.now() / 1000, day = 0.1 + 0.9 * c.daylight;

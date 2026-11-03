@@ -11,7 +11,9 @@ import { CG_MODEL, CHUTE_POINT } from './flight.js';
 import { CockpitPanel } from './panel.js';
 import { ChangeGate } from './workstats.js';
 import { DecalGeometry } from 'three/examples/jsm/geometries/DecalGeometry.js';
-import { SHADOW_LAYER } from './shadows.js';
+import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { SHADOW_LAYER, AC_SHADOW_LAYER } from './shadows.js';
+import { FX_LAYER } from './layers.js';
 import { createGearRig } from './gear.js';
 import { cullHidden } from './occlusion.js';
 
@@ -58,17 +60,19 @@ if (eAng != 0.0) { vec3 ed = transformed - vec3(eHx, 0.0, 0.0); float ec = cos(-
 // frame and panel lines, chordwise wing corrugations, nacelle rings and per-panel tone/gloss variation.
 // shared water-on-skin state: wetness 0..1 and how hard the airflow drags it aft 0..1
 export const SKIN_WET = { value: 0 }, SKIN_FLOW = { value: 0 };
+// 1 when the camera is far from the jet: the sub-pixel skin detail (seam lines, rivets, corrugation, bump and bead normals, all with derivatives) is skipped
+export const SKIN_LOD = { value: 0 };
 function addSkinDetail(mat) {
   const prev = mat.onBeforeCompile;
   mat.onBeforeCompile = (sh, r) => {
     prev(sh, r);
-    sh.uniforms.uSkinWet = SKIN_WET; sh.uniforms.uSkinFlow = SKIN_FLOW;
+    sh.uniforms.uSkinWet = SKIN_WET; sh.uniforms.uSkinFlow = SKIN_FLOW; sh.uniforms.uSkinLod = SKIN_LOD;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vMP; varying vec3 vMN; varying vec3 vZv; varying vec3 vXv;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvMP = transformed; vMN = objectNormal; vZv = normalize((modelViewMatrix * vec4(0.0, 0.0, 1.0, 0.0)).xyz); vXv = normalize((modelViewMatrix * vec4(1.0, 0.0, 0.0, 0.0)).xyz);');
     const common = `
 varying vec3 vMP; varying vec3 vMN; varying vec3 vZv; varying vec3 vXv;
-uniform float uSkinWet, uSkinFlow;
+uniform float uSkinWet, uSkinFlow, uSkinLod;
 float skHash(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
 float skLine(float v, float s, float w){ float d = abs(fract(v / s + 0.5) - 0.5) * s; float aa = fwidth(v); return (1.0 - smoothstep(w, w + aa * 1.2, d)) * (1.0 - smoothstep(0.01, 0.06, aa)); }
 float skNacelle(vec3 p){ return 1.0 - smoothstep(1.02, 1.1, length(vec2(p.y - 0.22, abs(p.z) - 4.3))); }
@@ -115,7 +119,7 @@ vec3 skBump(vec3 pos, vec3 n, vec2 dH){
           vec3 p = vMP; float nac = skNacelle(p), wing = skWing(p), body = (1.0 - nac) * (1.0 - wing);
           vec2 cell = wing > 0.5 ? floor(vec2(p.x / 1.6, p.z / 1.1)) : (nac > 0.5 ? floor(vec2(p.x / 1.5, sign(p.z))) : floor(vec2(p.x / 1.0, p.z / 0.9)));
           float tone = 0.9 + 0.2 * skHash(cell);
-          float lines = skSeams(p);
+          float lines = uSkinLod < 0.5 ? skSeams(p) : 0.0;
           if (gl_FrontFacing) diffuseColor.rgb *= tone * (1.0 - 0.45 * lines) * (1.0 - 0.28 * uSkinWet);
         }
         // weathering: repaint mottling, grime streaks swept aft by the airflow, the famous fuel leaks on the
@@ -123,7 +127,7 @@ vec3 skBump(vec3 pos, vec3 n, vec2 dH){
         float skGrime = smoothstep(0.45, 0.9, skN(vec3(vMP.x * 0.22, vMP.y * 5.0, vMP.z * 5.0)) * 0.7 + skN(vMP * 0.9) * 0.3);
         float skLeak = (1.0 - smoothstep(-0.6, -0.25, vMN.y)) * smoothstep(0.55, 0.8, skN(vec3(vMP.x * 0.15, vMP.y * 2.5, vMP.z * 3.0 + 11.0)));
         float skHeat = skNacelle(vMP) * (1.0 - smoothstep(-9.0, -3.0, vMP.x));
-        float skRiv = skRivets(vMP);
+        float skRiv = uSkinLod < 0.5 ? skRivets(vMP) : 0.0;
         if (gl_FrontFacing) {
           diffuseColor.rgb *= (0.9 + 0.2 * skN(vMP * vec3(0.35, 0.6, 0.6))) * (1.0 + 0.25 * skGrime) * (1.0 - 0.25 * skLeak);
           diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(1.5, 1.2, 0.95), skHeat * 0.6);
@@ -134,7 +138,7 @@ vec3 skBump(vec3 pos, vec3 n, vec2 dH){
           + 0.14 * skGrime - 0.22 * skLeak + 0.08 * skHeat, 0.18, 1.0);
         roughnessFactor = mix(roughnessFactor, 0.1, uSkinWet * 0.85);`)
       .replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
-        {
+        if (uSkinLod < 0.5) {
           // corrugations run fore-and-aft on the wing panels (ridges every 16 cm across the span)
           float s = 0.16, aa = fwidth(vMP.z) / s;
           float m = skWing(vMP) * step(0.5, abs(vMN.y)) * (1.0 - smoothstep(0.15, 0.5, aa)) * step(-10.6, vMP.x);
@@ -144,6 +148,22 @@ vec3 skBump(vec3 pos, vec3 n, vec2 dH){
         }`);
   };
   mat.customProgramCacheKey = () => 'elevons-skin';
+}
+
+
+// three's log depth makes every fragment write its own depth, which switches polygonOffset off, so markings lying on the skin z-fought (flickering red and
+// yellow placards). Lift them in depth instead: the bias is in log-depth units, so it is a roughly constant ~0.1 % of the distance at any range.
+// Under reversed depth nothing writes gl_FragDepth (early-Z stays on): the clip z is scaled up by the same share of the distance instead (d ~ 1/w).
+export function depthBias(mat, bias = 2.5e-5) {
+  const prev = mat.onBeforeCompile, key = 'depthbias' + bias;
+  mat.onBeforeCompile = (sh, r) => {
+    if (prev) prev.call(mat, sh, r);
+    sh.vertexShader = sh.vertexShader.replace('#include <project_vertex>', `#include <project_vertex>\n#ifdef USE_REVERSED_DEPTH_BUFFER\n  gl_Position.z *= ${(1 + bias * Math.LN2 * Math.log2(1.2e7 + 1)).toFixed(7)};\n#endif`);
+    sh.fragmentShader = sh.fragmentShader.replace('#include <logdepthbuf_fragment>', `#include <logdepthbuf_fragment>\n#ifdef USE_LOGDEPTHBUF\n  gl_FragDepth = max(0.0, gl_FragDepth - ${bias.toFixed(8)});\n#endif`);
+  };
+  const prevKey = mat.customProgramCacheKey;
+  mat.customProgramCacheKey = () => (prevKey ? prevKey.call(mat) : '') + key;
+  mat.needsUpdate = true; return mat;
 }
 
 // Stencils and warning placards, projected onto the curved skin with DecalGeometry.
@@ -240,6 +260,59 @@ const MATS = {
   nozzle: () => new THREE.MeshStandardMaterial({ color: 0x3b3631, roughness: 0.45, metalness: 0.85 }),
 };
 
+const _mA = new THREE.Matrix4(), _mB = new THREE.Matrix4();
+const mergeKey = (o) => { const g = o.geometry, a = Object.keys(g.attributes).sort().map((n) => `${n}:${g.attributes[n].itemSize}${g.attributes[n].normalized ? 'n' : ''}${g.attributes[n].array.constructor.name}`).join(','); return `${o.material.uuid}|${o.layers.mask}|${o.renderOrder}|${+o.castShadow}${+o.receiveShadow}${+o.frustumCulled}${+!!o.userData.thr}|${g.index ? 'i' : 'n'}|${a}`; };
+const mergeable = (o, group, skip) => {
+  if (!o.isMesh || o.isInstancedMesh || o.isSkinnedMesh || Array.isArray(o.material) || !o.material || o.material.transparent || o.customDepthMaterial || o.onBeforeRender !== THREE.Object3D.prototype.onBeforeRender) return false;
+  const g = o.geometry; if (!g || !g.attributes.position || g.morphAttributes.position || g.drawRange.start !== 0 || g.drawRange.count !== Infinity || skip(o)) return false;
+  for (let p = o; p; p = p.parent) { if (!p.visible) return false; if (p === group) return true; }
+  return false;
+};
+// Folds the static meshes under `group` that share a material into one draw each (transforms baked relative to `group`). Moving parts, instanced, transparent and
+// skipped meshes stay as they are. The source meshes leave the scene but are kept on `merged.userData.mergedParts` ({ geometry, material, matrix, name }) so that
+// the crash breakup can still split the original parts.
+export function mergeStatic(group, { skip = () => false, minGroup = 2 } = {}) {
+  group.updateMatrixWorld(true);
+  const inv = _mA.copy(group.matrixWorld).invert().clone(), buckets = new Map();
+  group.traverse((o) => { if (mergeable(o, group, skip)) { const k = mergeKey(o); (buckets.get(k) || buckets.set(k, []).get(k)).push(o); } });
+  const out = { before: 0, after: 0, merged: [] };
+  for (const list of buckets.values()) {
+    out.before += list.length;
+    if (list.length < minGroup) { out.after += list.length; continue; }
+    const geos = [], parts = [];
+    for (const o of list) {
+      const rel = new THREE.Matrix4().multiplyMatrices(inv, o.matrixWorld), g = o.geometry.clone();
+      if (!g.index) { const n = g.attributes.position.count, idx = new Uint32Array(n); for (let i = 0; i < n; i++) idx[i] = i; g.setIndex(new THREE.BufferAttribute(idx, 1)); }
+      g.applyMatrix4(rel);
+      if (rel.determinant() < 0) { const ix = g.index.array; for (let i = 0; i + 2 < ix.length; i += 3) { const t = ix[i + 1]; ix[i + 1] = ix[i + 2]; ix[i + 2] = t; } }
+      geos.push(g); parts.push({ geometry: o.geometry, material: o.material, matrix: rel, name: o.name });
+    }
+    const geo = mergeGeometries(geos, false);
+    for (const g of geos) g.dispose();
+    if (!geo) { out.after += list.length; continue; }
+    geo.computeBoundingBox(); geo.computeBoundingSphere();
+    const ref = list[0], m = new THREE.Mesh(geo, ref.material);
+    m.name = 'merged_' + (ref.material.name || ref.material.type); m.castShadow = ref.castShadow; m.receiveShadow = ref.receiveShadow; m.frustumCulled = ref.frustumCulled; m.renderOrder = ref.renderOrder; m.layers.mask = ref.layers.mask;
+    m.userData.mergedParts = parts; if (ref.userData.thr) m.userData.thr = true;
+    for (const o of list) if (o.parent) o.parent.remove(o);
+    group.add(m); out.after++; out.merged.push(m);
+  }
+  group.updateMatrixWorld(true);
+  return out;
+}
+
+// the transform nodes the cockpit's own animation moves (throttles, hands, stick): drive them to both ends, note what changed, put everything back
+const movingNodes = (root, drive) => {
+  const nodes = []; root.traverse((o) => nodes.push(o));
+  const snap = nodes.map((o) => [o.position.clone(), o.quaternion.clone(), o.scale.clone()]), moved = new Set();
+  const diff = () => nodes.forEach((o, i) => { const s = snap[i]; if (!o.position.equals(s[0]) || !o.quaternion.equals(s[1]) || !o.scale.equals(s[2])) moved.add(o); });
+  drive({ throttle: 1, stick: { p: 1, r: -1 } }); diff();
+  drive({ throttle: 0, stick: { p: -1, r: 1 } }); diff();
+  drive({ throttle: 0, stick: { p: 0, r: 0 } });
+  nodes.forEach((o, i) => { o.position.copy(snap[i][0]); o.quaternion.copy(snap[i][1]); o.scale.copy(snap[i][2]); });
+  return moved;
+};
+
 export class AircraftVisual {
   constructor(scene) {
     this.scene = scene;
@@ -252,8 +325,13 @@ export class AircraftVisual {
   async load(url, onProgress) {
     const draco = new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
     const loader = new GLTFLoader().setDRACOLoader(draco);
-    let gltf;
-    try { gltf = await loader.loadAsync(url, (e) => e.total && onProgress && onProgress(e.loaded / e.total)); } finally { draco.dispose(); }
+    let gltf, lodGltf = null;
+    try {
+      [gltf, lodGltf] = await Promise.all([
+        loader.loadAsync(url, (e) => e.total && onProgress && onProgress(e.loaded / e.total)),
+        loader.loadAsync(url.replace('SR71_sim', 'SR71_lod')).catch(() => null),
+      ]);
+    } finally { draco.dispose(); }
     const model = gltf.scene;
     model.position.copy(CG_MODEL).negate();
     const cache = {};
@@ -295,9 +373,11 @@ export class AircraftVisual {
     this.cockpit = [];
     model.traverse((o) => { if (/^SR71_Cpt/.test(o.name)) this.cockpit.push(o); });
     // the opaque exterior casts world sun shadows (onto the runway, buildings); the cockpit interior can't be seen by the sun
-    const caster = new THREE.MeshBasicMaterial({ colorWrite: false }), inside = new Set();
+    const caster = this.casterMat = new THREE.MeshBasicMaterial({ colorWrite: false }), inside = new Set();
     for (const c of this.cockpit) c.traverse((o) => { inside.add(o); o.castShadow = false; });
-    model.traverse((o) => { if (o.isMesh && !inside.has(o) && !o.material.transparent) { o.userData.casterMat = caster; o.layers.enable(SHADOW_LAYER); } });
+    this.casters = [];
+    model.traverse((o) => { if (o.isMesh && !inside.has(o) && !o.material.transparent) { o.userData.casterMat = caster; o.layers.enable(AC_SHADOW_LAYER); this.casters.push(o); } });
+    this.castsWorldShadow = true; this.altCull = false;
     const box = new THREE.Box3().setFromObject(model);
     this.dims = { length: box.max.x - box.min.x, span: box.max.z - box.min.z, height: box.max.y - box.min.y };
     this.setupMoving(model);
@@ -306,13 +386,29 @@ export class AircraftVisual {
     // the lit opaque materials skip fragments that lie behind the cockpit, which would only lose the depth test (see occlusion.js)
     model.traverse((o) => { if (o.isMesh) for (const m of [].concat(o.material)) if (m && !m.transparent) cullHidden(m); });
     this.buildEffects();
+    this.attachLod(model, lodGltf && lodGltf.scene);
     // two jobs that take the main thread most of a second each and are only seen later (the cockpit's smoothed fuselage edge, the stencils on
     // the skin) run when the browser is idle instead of delaying the menu
     // painted markings on the outside of the skin (rescue arrows, placards) are seen from inside as stray shapes on the lining: hide them from the seat
     this.decalOrig = []; model.traverse((o) => { if (/^SR71_Decal_/.test(o.name)) this.decalOrig.push(o); });
-    this.chine = null; whenIdle(() => { try { this.chine = buildChineZone(model); } catch (e) { console.warn('chine', e); } });
+    // the model's own painted markings sit on the skin too: own (cloned) materials, lifted a little less than the placards above them
+    for (const o of this.decalOrig) { if (o.material && !Array.isArray(o.material)) { o.material = o.material.clone(); depthBias(o.material, 3e-5); } }
+    const idle = (fn, timeout) => new Promise((done) => whenIdle(() => { try { fn(); } catch (e) { console.warn('aircraft idle job', e); } done(); }, timeout));
     this.buildCrew(model);
-    whenIdle(() => { try { this.addDecals(model); } catch (e) { console.warn('decals', e); } }, 6000);
+    const meshesBefore = new Set(); this.root.traverse((o) => { if (o.isMesh) meshesBefore.add(o); });
+    this.chine = null;
+    this.lateReady = Promise.all([idle(() => { this.chine = buildChineZone(model); }), idle(() => this.addDecals(model), 6000)]).then(() => {
+      const made = []; this.root.traverse((o) => { if (o.isMesh && !meshesBefore.has(o)) made.push(o); });
+      return made;
+    });
+  }
+
+  cockpitTextures() {
+    const out = new Set(), add = (t) => { if (t && t.isTexture) out.add(t); };
+    const scan = (root) => root.traverse((o) => { if (!o.isMesh) return; for (const m of [].concat(o.material)) if (m) for (const k of ['map', 'emissiveMap', 'roughnessMap', 'normalMap', 'bumpMap', 'alphaMap']) add(m[k]); });
+    if (this.real) scan(this.real.group);
+    if (this.panel) { add(this.panel.texture); add(this.panel.dynamicTexture); add(this.panel.fastTexture); }
+    return [...out];
   }
 
   addDecals(model) {
@@ -336,7 +432,7 @@ export class AircraftVisual {
       const fwd = new THREE.Vector3(zs > 0 ? 1 : -1, 0, 0); const xa = fwd.sub(n.clone().multiplyScalar(fwd.dot(n))).normalize(); const ya = n.clone().cross(xa);
       const rot = new THREE.Euler().setFromRotationMatrix(new THREE.Matrix4().makeBasis(xa, ya, n));
       const geo = new DecalGeometry(hit.object, hit.point, rot, new THREE.Vector3(w, h, 0.25));
-      const m = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: tex[name] || (tex[name] = PLACARDS[name]()), transparent: true, roughness: 0.6, metalness: 0.05, polygonOffset: true, polygonOffsetFactor: -4, depthWrite: false }));
+      const m = new THREE.Mesh(geo, depthBias(new THREE.MeshStandardMaterial({ map: tex[name] || (tex[name] = PLACARDS[name]()), transparent: true, roughness: 0.6, metalness: 0.05, depthWrite: false }), 6e-5));
       m.renderOrder = 2; this.root.attach(m); (this.decals || (this.decals = [])).push(m);
     }
   }
@@ -364,22 +460,46 @@ export class AircraftVisual {
     const shell = new THREE.MeshStandardMaterial({ color: 0xf4f3ee, roughness: 0.3, metalness: 0.05 });
     const visor = new THREE.MeshStandardMaterial({ color: 0x1b1608, roughness: 0.08, metalness: 0.9 });
     const strap = new THREE.MeshStandardMaterial({ color: 0x2b2d2f, roughness: 0.8 });
-    const make = (x, y) => {
+    const metal = new THREE.MeshStandardMaterial({ color: 0x6f7378, roughness: 0.35, metalness: 0.85 });
+    const glove = new THREE.MeshStandardMaterial({ color: 0xcfcdc6, roughness: 0.7, metalness: 0.02 });
+    const boot = new THREE.MeshStandardMaterial({ color: 0x1d1f22, roughness: 0.6, metalness: 0.05 });
+    const hose = new THREE.MeshStandardMaterial({ color: 0x2a2c2e, roughness: 0.55, metalness: 0.2 });
+    const up = new THREE.Vector3(0, 1, 0);
+    const limb = (g, a, b, r, mat) => {
+      const d = new THREE.Vector3().subVectors(b, a), len = d.length(), m = new THREE.Mesh(new THREE.CapsuleGeometry(r, Math.max(0.01, len - 2 * r), 4, 10), mat);
+      m.position.copy(a).addScaledVector(d, 0.5); m.quaternion.setFromUnitVectors(up, d.normalize()); g.add(m); return m;
+    };
+    const ball = (g, r, mat, x, y, z, sx = 1, sy = 1, sz = 1) => { const m = new THREE.Mesh(new THREE.SphereGeometry(r, 16, 12), mat); m.position.set(x, y, z); m.scale.set(sx, sy, sz); g.add(m); return m; };
+    const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
+    const make = (x, y, pilot) => {
       const g = new THREE.Group(); g.position.set(x, y, 0);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.165, 24, 16), shell); head.scale.set(1.08, 1, 0.94); head.position.set(0.02, 0.0, 0); g.add(head);
+      ball(g, 0.165, shell, 0.02, 0, 0, 1.12, 1, 0.95);
+      ball(g, 0.12, shell, -0.1, -0.03, 0, 1, 1, 0.95);
       const vz = new THREE.Mesh(new THREE.SphereGeometry(0.15, 20, 12, -Math.PI * 0.42, Math.PI * 0.84, Math.PI * 0.3, Math.PI * 0.32), visor);
-      vz.rotation.y = Math.PI / 2; vz.scale.set(1.02, 1, 1.02); vz.position.set(0.03, 0.0, 0); vz.rotation.y = 0; g.add(vz);
-      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.11, 0.14, 14), suit); neck.position.set(0, -0.18, 0); g.add(neck);
+      vz.scale.set(1.02, 1, 1.02); vz.position.set(0.03, 0.0, 0); g.add(vz);
+      const frame = new THREE.Mesh(new THREE.TorusGeometry(0.158, 0.011, 8, 32, Math.PI * 0.86), metal); frame.rotation.set(0, Math.PI / 2, 0); frame.position.set(0.045, 0.012, 0); frame.rotation.y = Math.PI / 2; frame.rotation.z = -Math.PI * 0.43; g.add(frame);
+      for (const z of [-1, 1]) ball(g, 0.05, metal, -0.01, -0.03, z * 0.165, 0.8, 1, 0.7);
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.022, 10, 24), metal); ring.rotation.x = Math.PI / 2; ring.position.set(0, -0.115, 0); g.add(ring);
+      const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.11, 0.12, 14), suit); neck.position.set(0, -0.17, 0); g.add(neck);
       const torso = new THREE.Mesh(new THREE.CapsuleGeometry(0.2, 0.34, 6, 14), suit); torso.scale.set(0.8, 1, 1.2); torso.position.set(-0.1, -0.46, 0); torso.rotation.z = 0.28; g.add(torso);
+      const conn = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.045, 0.06, 14), metal); conn.rotation.z = Math.PI / 2; conn.position.set(0.1, -0.4, 0.09); g.add(conn);
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V3(0.1, -0.4, 0.09), V3(0.18, -0.52, 0.2), V3(0.1, -0.78, 0.34), V3(-0.05, -1.0, 0.42)]), 24, 0.016, 8, false), hose));
       for (const z of [-1, 1]) {
-        const arm = new THREE.Mesh(new THREE.CapsuleGeometry(0.065, 0.46, 4, 10), suit); arm.position.set(0.16, -0.5, z * 0.27); arm.rotation.z = -1.05; g.add(arm);
-        const thigh = new THREE.Mesh(new THREE.CapsuleGeometry(0.095, 0.4, 4, 10), suit); thigh.position.set(0.2, -0.82, z * 0.13); thigh.rotation.z = -1.35; g.add(thigh);
+        ball(g, 0.088, suit, 0.0, -0.31, z * 0.26);
+        const elbow = V3(0.2, -0.62, z * 0.34), wrist = pilot ? (z > 0 ? V3(0.47, -0.62, 0.06) : V3(0.3, -0.78, -0.55)) : V3(0.34, -0.8, z * 0.28);
+        limb(g, V3(0.0, -0.31, z * 0.26), elbow, 0.062, suit); limb(g, elbow, wrist, 0.052, suit);
+        ball(g, 0.06, glove, wrist.x + 0.02, wrist.y - 0.01, wrist.z, 1.25, 0.85, 0.95);
+        const hip = V3(-0.14, -0.8, z * 0.13), knee = V3(0.36, -0.86, z * 0.14), ankle = V3(0.48, -1.2, z * 0.13);
+        limb(g, hip, knee, 0.095, suit); limb(g, knee, ankle, 0.075, suit);
+        const b = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.09, 0.11), boot); b.position.set(ankle.x + 0.07, ankle.y - 0.03, ankle.z); b.rotation.z = -0.15; g.add(b);
         const sh = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.25, 0.04), strap); sh.position.set(0.1, -0.4, z * 0.1); sh.rotation.z = 0.28; g.add(sh);
       }
       return g;
     };
     this.crew = new THREE.Group();
-    this.crew.add(make(11.02, 3.2), make(8.96, 3.18));
+    const people = [make(11.02, 3.2, true), make(8.96, 3.18, false)];
+    this.crew.add(...people);
+    this.mergeStats = { ...this.mergeStats, crew: people.map((g) => mergeStatic(g)) };
     model.add(this.crew);
   }
   // ---------- pilot's cockpit: original panel, console and canopy meshes hidden, rebuilt from the photographs (cockpitreal.js) ----------
@@ -391,6 +511,9 @@ export class AircraftVisual {
     });
     this.panel = new CockpitPanel();
     this.real = buildRealCockpit(model, this.panel, model.userData.skin);
+    const moved = movingNodes(this.real.interior, (st) => this.real.controls.set(st)), picks = new Set(this.real.pick.panels);
+    const rigid = (root) => mergeStatic(root, { skip: (o) => { if (picks.has(o)) return true; for (let p = o; p && p !== root; p = p.parent) if (moved.has(p)) return true; return false; } });
+    this.mergeStats = { ...this.mergeStats, cockpit: [this.real.interior, ...moved].map(rigid) };
     this.extCanopy = ['SR71_Canopy_Pilot_mesh', 'SR71_Canopy_Pilot_mesh_1'].map((n) => model.getObjectByName(n)).filter(Boolean);
     this.glassWater = new GlassWater();
     this.glassWater.attach(this.real.group.userData.glass, model);
@@ -404,6 +527,80 @@ export class AircraftVisual {
     occ.addAll(this.real.interior); occ.addAll(this.real.canopy);
     for (const o of this.cockpit) occ.addAll(o);
   }
+
+  attachLod(model, lodScene) {
+    this.lodPairs = []; this.lodOn = false;
+    if (!lodScene) return;
+    const wanted = /^SR71_(Fuselage|Wing_[LR]|Nacelle_[LR]|Fin_[LR]|Ejector_[LR])$/, meshesOf = (n) => { const a = []; n.traverse((o) => { if (o.isMesh) a.push(o); }); return a; };
+    const origs = new Map(); model.traverse((o) => { if (wanted.test(o.name) && !origs.has(o.name)) origs.set(o.name, o); });
+    const lods = []; lodScene.traverse((o) => { if (wanted.test(o.name)) lods.push(o); });
+    for (const l of lods) {
+      const orig = origs.get(l.name); if (!orig) continue;
+      const om = meshesOf(orig), lm = meshesOf(l);
+      if (om.length !== lm.length) continue;
+      om.forEach((o, i) => {
+        const m = lm[i]; m.material = o.material; m.castShadow = o.castShadow; m.receiveShadow = o.receiveShadow; m.layers.mask = o.layers.mask;
+        m.userData.casterMat = o.userData.casterMat; m.visible = false; m.frustumCulled = o.frustumCulled;
+        m.position.copy(o.position); m.quaternion.copy(o.quaternion); m.scale.copy(o.scale);
+        o.parent.add(m); this.lodPairs.push([o, m]);
+        if (this.casters && o.userData.casterMat) this.casters.push(m);
+      });
+    }
+    this.buildShadowProxy(model);
+  }
+
+  buildShadowProxy(model) {
+    this.proxy = { sun: [], cascade: [], handled: [], active: false };
+    if (!this.lodPairs.length) return;
+    model.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(model.matrixWorld).invert(), sunGeos = [], cascadeGeos = [];
+    const positionsOf = (g) => { const p = new THREE.BufferGeometry(); p.setAttribute('position', g.attributes.position); if (g.index) p.setIndex(g.index); return p; };
+    const sunMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, depthTest: false, side: THREE.DoubleSide }); sunMat.visible = false;
+    const stamp = (mesh, name) => { mesh.name = name; mesh.userData.shadowProxy = true; mesh.castShadow = false; mesh.receiveShadow = false; return mesh; };
+    for (const [o, m] of this.lodPairs) {
+      this.proxy.handled.push(o, m);
+      const g = positionsOf(m.geometry).clone(); g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(inv, m.matrixWorld));
+      if (!g.index) { const n = g.attributes.position.count, idx = new Uint32Array(n); for (let i = 0; i < n; i++) idx[i] = i; g.setIndex(new THREE.BufferAttribute(idx, 1)); }
+      sunGeos.push(g); if (o.userData.casterMat) cascadeGeos.push(g);
+    }
+    model.traverse((o) => { if (o.isMesh && /^SR71_(Antenna_\d|NoStep|Decal_|TailNo_)/.test(o.name) && !this.proxy.handled.includes(o)) this.proxy.handled.push(o); });
+    const mk = (geos, mat, name) => { if (!geos.length) return null; const geo = mergeGeometries(geos, false); geo.computeBoundingBox(); geo.computeBoundingSphere(); return stamp(new THREE.Mesh(geo, mat), name); };
+    const sun = mk(sunGeos, sunMat, 'SR71_ShadowProxy'), cas = mk(cascadeGeos, this.casterMat, 'SR71_CascadeProxy');
+    if (sun) { model.add(sun); this.proxy.sun.push(sun); }
+    if (cas) { cas.userData.casterMat = this.casterMat; cas.layers.mask = 0; model.add(cas); this.proxy.cascade.push(cas); }
+    this.proxy.sunMat = sunMat;
+    this.proxy.tris = [...this.proxy.sun, ...this.proxy.cascade].reduce((n, o) => n + (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3, 0);
+  }
+
+  // Self-shadow (the sun light's shadow map, used on the wings, nacelles and cockpit) and the finest world cascade draw the ~37k triangle LOD shapes through shadow-only
+  // proxies instead of the ~300k triangle airframe. The proxies are never drawn in the colour pass: the sun map only sees them while the light's shadow matrices are set
+  // up, which is after the colour pass has collected what to draw, and are hidden again when that render call ends. Needs the sun light once (attachSelfShadow); until then nothing changes.
+  setShadowProxy(on, light) {
+    const P = this.proxy; if (!P || !P.sun.length && !P.cascade.length) return false;
+    if (light && !P.hooked) {
+      const sh = light.shadow, orig = sh.updateMatrices; P.hooked = true;
+      sh.updateMatrices = function (l, vp) { if (P.active) P.sunMat.visible = true; return orig.call(this, l, vp); };
+      const sc = this.scene, after = sc.onAfterRender; sc.onAfterRender = function (...a) { P.sunMat.visible = false; return after.apply(this, a); };
+    }
+    on = !!on && !!P.hooked; P.active = on; P.sunMat.visible = false;
+    if (!this.allCasters) this.allCasters = this.casters.slice();
+    const wasCaster = new Set(this.allCasters);
+    for (const o of P.handled) { o.castShadow = !on; if (wasCaster.has(o)) { if (!on && this.castsWorldShadow) o.layers.enable(AC_SHADOW_LAYER); else o.layers.disable(AC_SHADOW_LAYER); } }
+    for (const o of P.sun) o.castShadow = on;
+    this.casters = on ? this.allCasters.filter((o) => !P.handled.includes(o)).concat(P.cascade) : this.allCasters;
+    for (const o of P.cascade) o.layers.mask = on && this.castsWorldShadow ? 1 << AC_SHADOW_LAYER : 0;
+    this.gearCastOff(false);
+    return on;
+  }
+
+  gearCastOff(off) {
+    if (!this.gearGroup) return;
+    if (!this.gearCasters) { this.gearCasters = []; this.gearGroup.traverse((o) => { if (o.isMesh && o.castShadow) this.gearCasters.push(o); }); }
+    const cast = !off; for (const o of this.gearCasters) o.castShadow = cast;
+    this.gearCastIsOff = off;
+  }
+
+  attachSelfShadow(light) { return this.setShadowProxy(true, light); }
 
   buildEffects() {
     const glow = radialTexture([[0, 'rgba(255,255,255,1)'], [0.2, 'rgba(255,220,150,0.9)'], [0.5, 'rgba(255,120,40,0.35)'], [1, 'rgba(0,0,0,0)']]);
@@ -435,6 +632,8 @@ export class AircraftVisual {
       smoke.renderOrder = 4; smoke.position.x = -4; grp.add(smoke);
       const light = new THREE.PointLight(0xff8040, 0, 40, 2); light.position.x = -2.5; grp.add(light);
       grp.add(disc);
+      // the plume is drawn on its own layer into a separate target and added after the clouds (post.js); the smoke stays in the scene
+      for (const o of [disc, outer, mid, core, halo, teb, ...diamonds]) o.layers.set(FX_LAYER);
       this.engines.push({ grp, disc, outer, mid, core, diamonds, halo, teb, smoke, light });
     }
     // drag chute: canopy + risers, streamed behind the tail cone
@@ -593,6 +792,8 @@ export class AircraftVisual {
       TERRAIN_UNIFORMS.uLand.value.set(this._lp.x, this._lp.y, this._lp.z, on); TERRAIN_UNIFORMS.uLandDir.value.copy(this._ld); }
     if (this.gearRig) this.gearRig.setLamp(!fdm.crashed && fdm.gearPos > 0.65 && (fdm.out.V || 0) < 180, n);
     const inside = view === 'cockpit';
+    if (this.proxy && this.proxy.sunMat) this.proxy.sunMat.visible = false;
+    if (this.proxy && this.proxy.active && inside !== !!this.gearCastIsOff) this.gearCastOff(inside);
     if (this.crew) this.crew.visible = !inside;
     if (this.chine) { const c = this.chine; if (c.zoneMesh.visible !== inside) { c.zoneMesh.visible = inside; c.fus.geometry.setIndex(inside ? c.cut : c.full); } }
     // The cockpit was nearly black: a candela-rated point light of ~1 does almost nothing at panel distance, and the exterior sky map is
@@ -602,6 +803,11 @@ export class AircraftVisual {
     // the interior is ~250k triangles: only draw it when the camera is close enough to see it
     const near = view === 'cockpit' || camWorld.distanceTo(fdm.pos) < 70;
     this.cockpit.forEach((o) => { o.visible = near && !o.userData.hidden && !(inside && o.name.startsWith('SR71_Cpt_RSO')); });
+    if (this.lodPairs && this.lodPairs.length) {
+      const dd = camWorld.distanceTo(fdm.pos), lodFar = this.lodGeoForce != null ? this.lodGeoForce : view !== 'cockpit' && (this.lodOn ? dd > 110 : dd > 140);
+      if (lodFar !== this.lodOn) { this.lodOn = lodFar; for (const [o, l] of this.lodPairs) { o.visible = !lodFar; l.visible = lodFar; } }
+    }
+    { const d = camWorld.distanceTo(fdm.pos), far = this.lodForce != null ? this.lodForce : SKIN_LOD.value > 0.5 ? d > 50 : d > 60; SKIN_LOD.value = far && view !== 'cockpit' ? 1 : 0; }
     SKIN_WET.value = Math.max(this.glassWater ? this.glassWater.wet : 0, fdm.onGround ? (env.wet || 0) * 0.85 : 0);
     SKIN_FLOW.value = this.glassWater ? this.glassWater.uniforms.uSpeed.value : 0;
     if (this.decals) for (const d of this.decals) d.visible = !inside;
@@ -630,14 +836,21 @@ export class AircraftVisual {
     }
     // ground shadow, offset along the sun direction
     const agl = fdm.pos.y - groundY;
-    this.shadow.visible = agl < 400 && env.elev > 0.03;
+    // The jet is drawn into the finest sun-shadow cascade every frame (~330k triangles). Above ~130 m its shadow falls outside that cascade (and the coarser ones no
+    // longer draw it), so it is not drawn there at all: the contact shadow below takes over. Back on below 130 m, off above 160 m, so no flicker.
+    {
+        const want = this.shadowCastForce != null ? this.shadowCastForce : this.castsWorldShadow ? agl < 160 : agl < 130;
+      if (want !== this.castsWorldShadow) { this.castsWorldShadow = want; for (const o of this.casters) { if (want) o.layers.enable(AC_SHADOW_LAYER); else o.layers.disable(AC_SHADOW_LAYER); } }
+    }
+    this.shadow.visible = agl < 1400 && env.elev > 0.03;
     if (this.shadow.visible) {
       const sd = env.sunDir, k = agl / Math.max(0.25, sd.y);
       // lifted clear of the coarser drawn terrain mesh (log depth rules out polygonOffset)
       this.shadow.position.set(fdm.pos.x - sd.x * k - camWorld.x, groundY + 0.3 - camWorld.y, fdm.pos.z - sd.z * k - camWorld.z);
       const fwd = new THREE.Vector3(1, 0, 0).applyQuaternion(fdm.quat);
       this.shadow.rotation.y = Math.atan2(-fwd.z, fwd.x);
-      this.shadow.material.opacity = Math.max(0, 1 - agl / 400) * Math.min(1, env.daylight * 1.5);
+      const nearGround = Math.min(1, Math.max(0, (agl - 8) / 20)); // the real cascade shadow takes over on the ground
+      this.shadow.material.opacity = Math.max(0, 1 - agl / 1400) * Math.min(1, env.daylight * 1.5) * nearGround;
     }
   }
 }

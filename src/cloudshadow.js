@@ -12,27 +12,33 @@ varying vec2 vUv;
 float h21(vec2 p) { p = fract(p * vec2(0.1031, 0.1030)); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }
 float vn2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
 float weather(vec2 xz) { vec2 p = xz / 26000.0; return 0.3 * vn2(xz / 110000.0 + 19.0) + 0.3 * vn2(p) + 0.25 * vn2(p * 2.7 + 7.1) + 0.15 * vn2(p * 6.3 + 3.3); }
-float dens(vec2 wxz, float h) {
+// gx/gy: screen derivatives of the map position, taken before the loop: texture() in a loop with continue is a gradient op in dynamic flow (D3D X3595)
+float dens(vec2 wxz, float h, vec2 gx, vec2 gy) {
   float hn = (h - uBase) / (uTop - uBase);
   if (hn <= 0.0 || hn >= 1.0) return 0.0;
   vec3 wp = vec3(wxz.x, h, wxz.y);
-  float cov = clamp(uCover * (0.45 + 1.1 * weather(wp.xz)), 0.0, 1.0), top = mix(0.4, 1.0, cov);
+  float wv = weather(wp.xz);
+  float cov = clamp(uCover * (0.45 + 1.1 * wv), 0.0, 1.0), top = mix(0.4, 1.0, cov);
+  float clearLo = mix(0.38, 0.35, smoothstep(0.85, 1.0, uCover));
   float prof = smoothstep(0.0, 0.08, hn) * (1.0 - smoothstep(top * 0.45, top, hn));
   vec3 wr = vec3(0.8 * wp.x - 0.6 * wp.z, wp.y, 0.6 * wp.x + 0.8 * wp.z);
   vec3 w3 = vec3(0.28 * wp.x + 0.96 * wp.z, wp.y, -0.96 * wp.x + 0.28 * wp.z); // a third scale at another angle, so the 64-cell noise tile never reads as a repeat
-  float s = texture(tShape, wp * vec3(1.0 / 5600.0, 1.0 / 3800.0, 1.0 / 5600.0) + vec3(0.0, uEvo, 0.0)).r * 0.45
-          + texture(tShape, wr * vec3(1.0 / 14300.0, 1.0 / 5100.0, 1.0 / 14300.0) + vec3(0.37, 0.37 + uEvo * 0.7, 0.37)).r * 0.3
-          + texture(tShape, w3 * vec3(1.0 / 41000.0, 1.0 / 6700.0, 1.0 / 41000.0) + vec3(0.71, 0.13 + uEvo * 0.5, 0.29)).r * 0.25;
-  return clamp((s * prof - (1.0 - cov)) / max(cov, 0.1), 0.0, 1.0);
+  vec3 dx = vec3(gx.x, 0.0, gx.y), dy = vec3(gy.x, 0.0, gy.y), S1 = vec3(1.0 / 5600.0, 1.0 / 3800.0, 1.0 / 5600.0), S2 = vec3(1.0 / 14300.0, 1.0 / 5100.0, 1.0 / 14300.0), S3 = vec3(1.0 / 41000.0, 1.0 / 6700.0, 1.0 / 41000.0);
+  mat3 R2 = mat3(0.8, 0.0, 0.6, 0.0, 1.0, 0.0, -0.6, 0.0, 0.8), R3 = mat3(0.28, 0.0, -0.96, 0.0, 1.0, 0.0, 0.96, 0.0, 0.28); // the rotations of wr and w3 (column-major)
+  float s = textureGrad(tShape, wp * S1 + vec3(0.0, uEvo, 0.0), dx * S1, dy * S1).r * 0.45
+          + textureGrad(tShape, wr * S2 + vec3(0.37, 0.37 + uEvo * 0.7, 0.37), (R2 * dx) * S2, (R2 * dy) * S2).r * 0.3
+          + textureGrad(tShape, w3 * S3 + vec3(0.71, 0.13 + uEvo * 0.5, 0.29), (R3 * dx) * S3, (R3 * dy) * S3).r * 0.25;
+  return clamp((s * prof - (1.0 - cov)) / max(cov, 0.1), 0.0, 1.0) * smoothstep(clearLo, clearLo + 0.08, wv);
 }
 void main() {
   vec2 g = (vUv - 0.5) * uSize + uRelC;
+  vec2 gx = dFdx(g), gy = dFdy(g);
   float dm = 0.0;
   for (int i = 0; i < 4; i++) {
     float h = mix(uBase, uTop, 0.12 + 0.25 * float(i));
     if (h <= uGround) continue;
     float t = (h - uGround) / max(uSun.y, 0.05);
-    dm = max(dm, dens(g + uSun.xz * t + uOff, h));
+    dm = max(dm, dens(g + uSun.xz * t + uOff, h, gx, gy));
   }
   float sh = 1.0 - 0.85 * smoothstep(0.03, 0.4, dm) * smoothstep(0.04, 0.2, uSun.y);
   gl_FragColor = vec4(sh, sh, sh, 1.0);

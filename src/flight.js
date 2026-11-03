@@ -40,16 +40,16 @@ const THRUST_LINE = 2.47 - CG_MODEL.y;
 const D2R = Math.PI / 180;
 const DE_MAX = 18 * D2R, DA_MAX = 12 * D2R, DR_MAX = 20 * D2R; // surface travel at |command| = 1 (matches aircraft.js)
 
-const lerpTable = (t, x) => {
+export const lerpTable = (t, x) => {
   if (x <= t[0][0]) return t[0][1];
   for (let i = 1; i < t.length; i++) if (x < t[i][0]) {
-    const [x0, y0] = t[i - 1], [x1, y1] = t[i];
+    const a = t[i - 1], b = t[i], x0 = a[0], y0 = a[1], x1 = b[0], y1 = b[1];
     return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
   }
   return t[t.length - 1][1];
 };
-const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
-const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+export const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
+export const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 
 // ---- aerodynamic data (per rad, reference S = 170 m^2, c = 10 m, b = 16.94 m) ----
 // CL-alpha: low-AR swept delta (AR 1.7): Helmbold-like ~2.4 subsonic, slender-body peak near M1, Ackeret with finite-span correction above.
@@ -93,7 +93,7 @@ export function liftCoef(alpha, M) {
 const G_DRY = [[0, 1.0], [0.6, 1.0], [0.9, 1.3], [1.05, 2.56], [1.2, 2.8], [1.5, 3.2], [1.8, 4.1], [2.1, 5.1], [2.4, 6.7], [2.7, 9.0], [3.0, 11.8], [3.2, 14.1], [3.5, 14.6], [3.8, 11.3]];
 const G_AB = [[0, 1.0], [0.6, 1.0], [0.9, 1.3], [1.05, 2.8], [1.2, 3.1], [1.5, 3.8], [1.8, 4.8], [2.1, 6.0], [2.4, 7.8], [2.7, 10.2], [3.0, 13.0], [3.2, 15.0], [3.5, 15.5], [3.8, 12]];
 // TSFC, lb/lbf/h (x 2.833e-5 = kg/N/s): turbojet-like dry, ~1.9-2.5 in A/B
-const TSFC_DRY = [[0, 0.9], [1, 1.05], [2, 1.25], [3.2, 1.6]], TSFC_AB = [[0, 2.5], [1, 2.5], [2, 2.4], [3, 2.3], [3.5, 2.25]];
+const TSFC_DRY = [[0, 0.9], [1, 1.05], [2, 1.25], [3.2, 1.6]], TSFC_AB = [[0, 2.15], [1, 2.2], [2, 2.2], [3, 2.2], [3.5, 2.2]]; // full A/B on the runway burned 74 t/h; 2 x 34,000 lbf at ~2.1 is about 62 t/h
 const LBH = 2.833e-5;
 // One J58: dry = 0..1 (idle..military), ab = 0..1 afterburner (0.35 = minimum A/B once lit). atm = isa() result.
 export function engineThrust(dry, ab, atm, M) {
@@ -106,17 +106,22 @@ export function thrustAvail(th, atm, M) { const s = throttleSplit(th); return 2 
 
 const _r = new THREE.Vector3(), _t = new THREE.Vector3(), _I = new THREE.Vector3(), _cg = new THREE.Vector3(), _w2 = new THREE.Vector3();
 const _qi = new THREE.Quaternion(), _dq = new THREE.Quaternion(), _w = new THREE.Vector3();
-const UP = new THREE.Vector3(0, 1, 0);
-const newEngine = () => ({ dry: 0, ab: 0, abLit: false, abTimer: 0, unstart: 0, thrust: 0, ff: 0, spike: 0, stress: 0 });
+const _air = new THREE.Vector3(), _vb = new THREE.Vector3(), _fa = new THREE.Vector3(), _d = new THREE.Vector3(), _lift = new THREE.Vector3(), _side = new THREE.Vector3(), _fb = new THREE.Vector3(), _mb = new THREE.Vector3(),
+  _F = new THREE.Vector3(), _T = new THREE.Vector3(), _fc = new THREE.Vector3(), _fwd = new THREE.Vector3(), _vp = new THREE.Vector3(), _fh = new THREE.Vector3(), _right = new THREE.Vector3(), _Fg = new THREE.Vector3(), _rc = new THREE.Vector3(), _Iw = new THREE.Vector3(), _gyro = new THREE.Vector3();
+const _mp = { m: 0, cgx: 0, Ix: 0, Iy: 0, Iz: 0 }, A_MAX = [[2.3, 0.20], [3.0, 0.15], [3.5, 0.12]], B_MAX = [[2.3, 0.08], [3.0, 0.055], [3.5, 0.04]];
+export const UP = new THREE.Vector3(0, 1, 0);
+export const newEngine = () => ({ dry: 0, ab: 0, abLit: false, abTimer: 0, unstart: 0, thrust: 0, ff: 0, spike: 0, stress: 0 });
 
 // Tyre force from combined slip: friction circle with a Pacejka-style sin(C atan(B s)) shape (peak at normalised slip s = 1).
-const TYRE_C = 1.5, TYRE_B = Math.tan(Math.PI / (2 * TYRE_C)), MU_PEAK = 0.85, KAPPA_PK = 0.12, ALPHA_PK = Math.tan(8 * D2R), V_REG = 1.2;
+export const TYRE_C = 1.5, TYRE_B = Math.tan(Math.PI / (2 * TYRE_C)), MU_PEAK = 0.85, KAPPA_PK = 0.12, ALPHA_PK = Math.tan(8 * D2R), V_REG = 1.2;
 const TB_MAX = 3.8e4; // N m per main wheel set at full pedal
-function tyre(kappa, tanA, Fn) {
+const _ty = [0, 0];
+export function tyre(kappa, tanA, Fn) {
   const sx = kappa / KAPPA_PK, sy = tanA / ALPHA_PK, s = Math.hypot(sx, sy);
-  if (s < 1e-9) return [0, 0];
+  if (s < 1e-9) { _ty[0] = 0; _ty[1] = 0; return _ty; }
   const f = MU_PEAK * Fn * Math.sin(TYRE_C * Math.atan(TYRE_B * s)) / s;
-  return [f * sx, -f * sy];
+  _ty[0] = f * sx; _ty[1] = -f * sy;
+  return _ty;
 }
 
 export class FlightModel {
@@ -139,7 +144,7 @@ export class FlightModel {
     this.surf = { de: 0, da: 0, dr: 0 };   // actual surface positions (lagged, rate limited actuators), pilot + SAS
     this.realism = { unstarts: true };
     this.out = { V: 0, M: 0, qbar: 0, alpha: 0, beta: 0, rho: 1.225, a: 340, T: 288, nz: 1, buffet: 0 };
-    this.onGround = false; this.crashed = null;
+    this.onGround = false; this.crashed = null; this.crashOff = false; // crashOff: the Crash option is off, impacts are absorbed (see absorb)
     this.contacts = [0, 0, 0]; this.compress = [0, 0, 0];
     this.wheel = [0, 0, 0]; this.brakePress = [0, 0, 0]; // wheel spin (rad/s), brake pressure 0..1
     this.alphaPrev = null; this.alphaDot = 0; this.exceed = 0; this.inletStress = 0; this.unstartCool = 0;
@@ -154,7 +159,8 @@ export class FlightModel {
     const cgx = (SPEC.EMPTY * X_E + fwd * X_F + aft * X_A) / m;
     const pool = (x, mm) => mm * (13 + (x - cgx) ** 2);
     const iyz = SPEC.EMPTY * (X_E - cgx) ** 2 + pool(X_F, fwd) + pool(X_A, aft);
-    return { m, cgx, Ix: 0.42e6 + 9 * this.fuel, Iy: 3.55e6 + iyz, Iz: 3.25e6 + iyz };
+    _mp.m = m; _mp.cgx = cgx; _mp.Ix = 0.42e6 + 9 * this.fuel; _mp.Iy = 3.55e6 + iyz; _mp.Iz = 3.25e6 + iyz;
+    return _mp;
   }
 
   // Automatic fuel-tank sequencing: pump fuel to the aft trim tank to put the CG at the scheduled %MAC for this Mach.
@@ -179,6 +185,11 @@ export class FlightModel {
     this.w.set(0, 0, 0);
     this.crashed = null; this.chute = 'stowed'; this.chuteOpen = 0; this.trim = 0;
     this.gearDown = onGround || speed < 120; this.gearPos = this.gearDown ? 1 : 0;
+    // every piece of state starts fresh, so a NaN that ever got in (fuel pools, engines, read-outs) is cleared by a respawn, not only by a page reload
+    if (!Number.isFinite(this.fuel)) this.fuel = 25000;
+    this.fuelAft = 0; this.engines = [newEngine(), newEngine()]; this.brakes = 0; this.onGround = !!onGround;
+    this.out = { V: speed, M: 0, qbar: 0, alpha: 0, beta: 0, rho: 1.225, a: 340, T: 288, nz: 1, buffet: 0 };
+    this.crashVel = new THREE.Vector3(); this.crashW = new THREE.Vector3(); this.crashKind = null; this.crashInfo = null; this.events.length = 0;
     this.setEngines(onGround ? 0 : (speed > 600 ? 0.95 : 0.55), true);
     this.surf = { de: 0, da: 0, dr: 0 }; this.ctrl = { de: 0, da: 0, dr: 0 }; this.sas = { de: 0, da: 0, dr: 0 };
     this.parkingBrake = false; this.contacts = [0, 0, 0]; this.compress = [0, 0, 0];
@@ -228,7 +239,7 @@ export class FlightModel {
     // Inlet start margin: the shock must stay on the cowl lip. Boundaries shrink with Mach; spike lag behind the Mach schedule and
     // throttle chops (back-pressure) eat margin too. stress = 1 is the edge of the stable envelope.
     const spikeT = smooth(1.6, 3.2, M);
-    const aMax = lerpTable([[2.3, 0.20], [3.0, 0.15], [3.5, 0.12]], M), bMax = lerpTable([[2.3, 0.08], [3.0, 0.055], [3.5, 0.04]], M);
+    const aMax = lerpTable(A_MAX, M), bMax = lerpTable(B_MAX, M);
     const sa = alpha > 0.03 ? (alpha - 0.03) / (aMax - 0.03) : (0.03 - alpha) / 0.10, sb = Math.abs(beta) / bMax;
     let worst = 0;
     this.engines.forEach((e, i) => {
@@ -288,8 +299,8 @@ export class FlightModel {
     const { S, B: SPAN, C } = SPEC;
     _qi.copy(this.quat).invert();
 
-    const air = this.vel.clone().sub(wind);
-    const vb = air.clone().applyQuaternion(_qi);
+    const air = _air.copy(this.vel).sub(wind);
+    const vb = _vb.copy(air).applyQuaternion(_qi);
     const V = vb.length();
     const atm = isa(this.pos.y), grav = gravityAt(this.pos.y);
     const M = V / atm.a, qbar = 0.5 * atm.rho * V * V;
@@ -327,19 +338,19 @@ export class FlightModel {
       + 1.1 * Math.pow(Math.abs(Math.sin(alpha)), 3) + 0.018 * this.gearPos;
     const bC = clamp(beta, -0.6, 0.6), qS = qbar * S;
     const Cy = lerpTable(CY_B, M) * bC + CY_DR * yawEff(M) * dR;
-    const fa = new THREE.Vector3(); // aerodynamic force, acting at the aerodynamic centre
+    const fa = _fa.set(0, 0, 0); // aerodynamic force, acting at the aerodynamic centre
     if (V > 0.5) {
-      const d = vb.clone().divideScalar(V);
-      const lift = new THREE.Vector3(0, 1, 0).addScaledVector(d, -d.y);
+      const d = _d.copy(vb).divideScalar(V);
+      const lift = _lift.set(0, 1, 0).addScaledVector(d, -d.y);
       if (lift.lengthSq() > 1e-6) lift.normalize();
-      const side = new THREE.Vector3(0, 0, 1).addScaledVector(d, -d.z);
+      const side = _side.set(0, 0, 1).addScaledVector(d, -d.z);
       if (side.lengthSq() > 1e-6) side.normalize();
       fa.addScaledVector(d, -qS * CD).addScaledVector(lift, qS * CL).addScaledVector(side, qS * Cy);
     }
-    const fb = fa.clone();
+    const fb = _fb.copy(fa);
     const fuelOk = this.fuel > 0 || this.unlimitedFuel;
     let thrust = 0;
-    const mb = new THREE.Vector3();
+    const mb = _mb.set(0, 0, 0);
     // The J58 fuel control holds the compressor inlet temperature to 427 C (the airframe and engine limit): the faster the jet goes the
     // hotter the ram air, and past about 410 C the control cuts fuel flow, which is what stops the real aircraft near Mach 3.3 in
     // standard air. In hot air the limit arrives at a lower Mach.
@@ -372,8 +383,8 @@ export class FlightModel {
       mb.y -= qS * SPAN * Cn;
     }
 
-    const F = fb.clone().applyQuaternion(this.quat);
-    const T = new THREE.Vector3();
+    const F = _F.copy(fb).applyQuaternion(this.quat);
+    const T = _T.set(0, 0, 0);
     F.y -= m * grav;
     // Round-Earth terms in the local tangent plane (x east, y up, z south): centrifugal relief and Coriolis (Earth rotation)
     F.y += m * (this.vel.x * this.vel.x + this.vel.z * this.vel.z) / (R_EARTH + Math.max(0, this.pos.y));
@@ -387,16 +398,16 @@ export class FlightModel {
       if (ias > 110) { this.chute = 'failed'; this.events.push('chute-fail'); }
       else if (V > 1) {
         const D = 0.5 * atm.rho * V * V * 45 * this.chuteOpen;
-        const fc = air.clone().normalize().multiplyScalar(-D);
+        const fc = _fc.copy(air).normalize().multiplyScalar(-D);
         F.add(fc);
-        T.add(CHUTE_POINT.clone().sub(cgv).applyQuaternion(this.quat).cross(fc));
+        T.add(_rc.copy(CHUTE_POINT).sub(cgv).applyQuaternion(this.quat).cross(fc));
       }
     }
 
     // ----- landing gear: strut spring/damper + tyre with wheel spin, brake torque and anti-skid -----
     let onGround = false;
     const wWorld = _w.copy(this.w).applyQuaternion(this.quat);
-    const fwd = new THREE.Vector3(1, 0, 0).applyQuaternion(this.quat);
+    const fwd = _fwd.set(1, 0, 0).applyQuaternion(this.quat);
     const gs = this.vel.length();
     for (let i = 0; i < GEAR.length; i++) {
       const g = GEAR[i];
@@ -411,42 +422,45 @@ export class FlightModel {
         continue;
       }
       onGround = true;
-      const vp = new THREE.Vector3().crossVectors(wWorld, r).add(this.vel);
+      const vp = _vp.crossVectors(wWorld, r).add(this.vel);
       if (!was && vp.y < -0.3) this.events.push({ type: 'touch', vs: -vp.y, wheel: i });
-      if (!was && vp.y < -5.5) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; }
+      if (!was && vp.y < -5.5) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
       if (pen > 0.75) {
-        if (vp.y < -3) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; }
+        if (vp.y < -3) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
         // ground rose under a slowly sinking wheel: finer elevation data arrived, not an impact
         this.pos.y += pen - 0.12; pen = 0.12;
       }
       const Fn = Math.max(0, g.k * pen - g.c * vp.y);
       this.contacts[i] = Fn; this.compress[i] = Math.min(0.4, pen);
-      const fh = new THREE.Vector3(fwd.x, 0, fwd.z);
+      const fh = _fh.set(fwd.x, 0, fwd.z);
       if (fh.lengthSq() < 1e-6) fh.set(1, 0, 0);
       fh.normalize();
       if (g.steer) {
         const maxSteer = (3 + 32 * clamp(1 - gs / 40, 0, 1)) * D2R;
         fh.applyAxisAngle(UP, -this.ctrl.dr * maxSteer);
       }
-      const right = new THREE.Vector3().crossVectors(fh, UP);
+      const right = _right.crossVectors(fh, UP);
       const vLong = vp.dot(fh), vLat = vp.dot(right), vref = Math.max(Math.abs(vLong), V_REG);
       const om = this.wheel[i], tanA = vLat / vref, kap = (om * g.R - vLong) / vref;
-      let [fx, fy] = tyre(kap, tanA, Fn);
+      const ty = tyre(kap, tanA, Fn), fx = ty[0];
+      let fy = ty[1];
       if (g.steer) fy *= 0.15 + 0.85 * (1 - smooth(15, 40, gs)); // nose wheel castors at speed: a loaded nose tyre ahead of the CG would be directionally unstable
       // Semi-implicit wheel update: tyre force linearised about the current slip (small-slip slope, so it stays stable past the peak
       // and at walking speed) and brake / rolling-resistance torque (opposing spin, smoothed through zero) solved together. The
       // airframe gets the same linearised force, so wheel and aircraft stay consistent.
+      // Rolling resistance 0.015, plus 0.02 of tyre breakaway below walking pace: idle thrust (2 x 5 % of dry) out-pulled 0.015 and a jet left at idle
+      // with the brakes off crept to 44 kt in 9 minutes; it now stays put down to ~32 t and, once taxiing, rolls on at idle as before.
       const dF = MU_PEAK * Fn * TYRE_B * TYRE_C / KAPPA_PK * g.R / vref;
       let demand = g.brake ? Math.max(this.brakes, this.parkingBrake ? 1 : 0) : 0;
       if (this.antiSkid && !this.parkingBrake && Math.abs(vLong) > 4) demand *= 1 - clamp((-kap - 0.10) / 0.10, 0, 1); // release as slip passes ~10 %
       this.brakePress[i] += (demand - this.brakePress[i]) * Math.min(1, dt / 0.12);
-      const tqMax = TB_MAX * (this.parkingBrake ? 1.8 : 1) * this.brakePress[i] + 0.015 * Fn * g.R, th = Math.tanh(om / 0.2);
+      const tqMax = TB_MAX * (this.parkingBrake ? 1.8 : 1) * this.brakePress[i] + (0.015 + 0.02 * (1 - smooth(0.5, 3, Math.abs(vLong)))) * Fn * g.R, th = Math.tanh(om / 0.2);
       const dom = -dt * (g.R * fx + tqMax * th) / (g.J + dt * g.R * dF + dt * tqMax * (1 - th * th) / 0.2);
       const fxEff = clamp(fx + dF * dom, -MU_PEAK * Fn, MU_PEAK * Fn);
       this.wheel[i] = Math.max(-5, om + dom);
-      const Fg = new THREE.Vector3(0, Fn, 0).addScaledVector(fh, fxEff).addScaledVector(right, fy);
+      const Fg = _Fg.set(0, Fn, 0).addScaledVector(fh, fxEff).addScaledVector(right, fy);
       F.add(Fg);
-      T.add(r.clone().cross(Fg));
+      T.add(_rc.copy(r).cross(Fg));
     }
     this.onGround = onGround;
 
@@ -455,8 +469,8 @@ export class FlightModel {
     this.pos.addScaledVector(this.vel, dt).addScaledVector(a, 0.5 * dt * dt);
     this.vel.addScaledVector(a, dt);
     const tb = T.applyQuaternion(_qi).add(mb);
-    const Iw = new THREE.Vector3(I.x * this.w.x, I.y * this.w.y, I.z * this.w.z);
-    const gyro = new THREE.Vector3().crossVectors(this.w, Iw);
+    const Iw = _Iw.set(I.x * this.w.x, I.y * this.w.y, I.z * this.w.z);
+    const gyro = _gyro.crossVectors(this.w, Iw);
     const w0 = _w2.copy(this.w);
     this.w.x += (tb.x - gyro.x) / I.x * dt;
     this.w.y += (tb.y - gyro.y) / I.y * dt;
@@ -471,18 +485,20 @@ export class FlightModel {
     // fuel burn (forward pool; the pump keeps the aft tank on schedule). TSFC rises with ram temperature, A/B roughly doubles it
     let ffTotal = 0;
     for (const e of this.engines) {
-      e.ff = e.thrust * (lerpTable(TSFC_DRY, M) + (lerpTable(TSFC_AB, M) - lerpTable(TSFC_DRY, M)) * e.ab) * LBH; ffTotal += e.ff;
+      e.ff = Math.abs(e.thrust) * (lerpTable(TSFC_DRY, M) + (lerpTable(TSFC_AB, M) - lerpTable(TSFC_DRY, M)) * e.ab) * LBH; ffTotal += e.ff;
     }
     if (!this.unlimitedFuel) this.fuel = Math.max(0, this.fuel - ffTotal * dt);
 
     // hard points
-    for (const [name, p] of HARD) {
+    for (let hi = 0; hi < HARD.length; hi++) {
+      const name = HARD[hi][0], p = HARD[hi][1];
       const r = _r.copy(p).sub(cgv).applyQuaternion(this.quat);
       const px = this.pos.x + r.x, py = this.pos.y + r.y, pz = this.pos.z + r.z;
       const gy = groundAt(px, pz);
       if (py < gy - 0.05) {
         // parked or taxiing slowly when the terrain refines: lift clear instead of declaring a crash
         if (onGround && gs < 15 && Math.abs(this.vel.y) < 2) { this.pos.y += gy - py + 0.05; continue; }
+        if (this.crashOff) { this.absorb(gy - py + 0.05); continue; }
         this.crash(`${name} hit the ground`); return;
       }
     }
@@ -494,10 +510,18 @@ export class FlightModel {
       + (this.chute === 'deployed' ? 0.15 * this.chuteOpen : 0);
     const hCG = (MAC_LE - mp.cgx) / C, sm = lerpTable(AC_TAB, M) - hCG, Pde = CM_DE * eff * DE_MAX;
     // control-power read-outs for the autopilot's gain scheduling: angular accel per unit command, and elevator per g (static)
-    const power = { pitchPower: Pde * qS * C / I.z, rollPower: CL_DA * rollEff(M) * DA_MAX * qS * SPAN / I.x, yawPower: CN_DR * yawEff(M) * DR_MAX * qS * SPAN / I.y,
-      dePerG: qS > 1 ? Math.min(1.5, Math.max(sm, 0.02) * m * grav / (qS * Pde)) : 1.5 };
     this.out = { V, M, qbar, alpha, beta, rho: atm.rho, a: atm.a, T: atm.T, thrust, nz, CL, CD, buffet, ff: ffTotal, ias,
-      cg: hCG, staticMargin: sm, inletStress: this.inletStress, ...power };
+      cg: hCG, staticMargin: sm, inletStress: this.inletStress, pitchPower: Pde * qS * C / I.z, rollPower: CL_DA * rollEff(M) * DA_MAX * qS * SPAN / I.x, yawPower: CN_DR * yawEff(M) * DR_MAX * qS * SPAN / I.y,
+      dePerG: qS > 1 ? Math.min(1.5, Math.max(sm, 0.02) * m * grav / (qS * Pde)) : 1.5 };
+  }
+
+  // Crash option off: the impact is soaked up where it happens. The jet keeps its ground speed, stops sinking and is lifted clear by `lift` metres;
+  // the old way (main.js zeroed the velocity and dropped the jet from 6 m up) hit the ground again on landing and bounced for ever.
+  absorb(lift) {
+    if (lift > 0) this.pos.y += lift;
+    if (this.vel.y < 0) this.vel.y = 0;
+    this.w.multiplyScalar(0.3);
+    if (!this.events.includes('crash-absorbed')) this.events.push('crash-absorbed');
   }
 
   // kind: 'impact' (ground) or 'overstress' (in-flight break-up); the motion before the crash drives the wreck (crash.js)

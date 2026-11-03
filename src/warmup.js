@@ -14,12 +14,22 @@ const scanMats = (o, out, depth = 0) => {
   }
 };
 
+// renderer.compileAsync, minus its one failure: a material disposed before its program reports ready (a preset switch replacing the AO or cloud
+// material, a second switch during the first one's compile) has no currentProgram, three's poll threw on it and the promise never settled
+export function compileSafe(r, scene, camera, target = null) {
+  const mats = r.compile(scene, camera, target);
+  return new Promise((resolve) => {
+    const check = () => { for (const m of mats) { const p = r.properties.get(m).currentProgram; if (!p || p.isReady()) mats.delete(m); } if (!mats.size) resolve(scene); else setTimeout(check, 10); };
+    if (r.extensions && r.extensions.has && r.extensions.has('KHR_parallel_shader_compile')) check(); else setTimeout(check, 10);
+  });
+}
+
 // c: { renderer, scene, camera, post, shadows, buildings, trees, vclouds, glass, extra: [materials drawn into the scene target], extraPost: [...], crash }
 export function warmShaders(c) {
   const r = c.renderer, ready = [], before = r.info.programs ? r.info.programs.length : 0, t0 = performance.now();
   const geo = new THREE.PlaneGeometry(1, 1), prevRT = r.getRenderTarget();
   const dummy = (mats) => { const s = new THREE.Scene(); for (const m of mats) { if (!m) continue; const o = new THREE.Mesh(geo, m); o.frustumCulled = false; s.add(o); } return s; };
-  const go = (scene, rt, target) => { try { r.setRenderTarget(rt); ready.push(r.compileAsync(scene, c.camera, target)); } catch (e) { console.warn('shader warm-up step failed', e); } };
+  const go = (scene, rt, target) => { try { r.setRenderTarget(rt); ready.push(compileSafe(r, scene, c.camera, target)); } catch (e) { console.warn('shader warm-up step failed', e); } };
   const sceneRT = c.post.enabled && c.post.sceneRT ? c.post.sceneRT : null, shadowRT = (c.shadows && c.shadows.rts && c.shadows.rts[0]) || c.post.compRT;
 
   // the crash scene (wreck, fire, extra light) is in the scene only for the synchronous part of each compile call below
@@ -47,5 +57,52 @@ export function warmShaders(c) {
   return Promise.all(ready).then(() => ({ programs: (r.info.programs ? r.info.programs.length : 0) - before, ms: performance.now() - t0 }));
 }
 
+// Without KHR_parallel_shader_compile (SwiftShader, Safari) compileSafe resolves before the driver has linked anything, so the first draw of each
+// program still links it: the crash-light variants of the terrain, building, tree and aircraft programs are first drawn by the wreck, one took
+// 5.1 s in the crash frame in a SwiftShader profile. Finish them after the warm-up instead (main.js, not awaited: the spawn and the first draw
+// wait for the warm-up and must not wait for this too), in ~8 ms idle slices (three.js links and checks a program
+// the first time its uniforms are read; for a program already drawn that is a cached lookup). Every program, not only this call's: the crash
+// frame's last one (a MeshBasicMaterial, 3.9 s) was created by an earlier compile and never drawn. With the extension compileSafe already waited.
+export function finishPrograms(r, from = 0) {
+  if (r.extensions && r.extensions.has && r.extensions.has('KHR_parallel_shader_compile')) return Promise.resolve(0);
+  const progs = (r.info.programs || []).slice(from);
+  return new Promise((resolve) => {
+    let i = 0;
+    const step = () => {
+      // already drawn programs cost nothing here; one that still has to link blocks, then the slice ends
+      const t0 = performance.now();
+      while (i < progs.length && performance.now() - t0 < 8) {
+        const p = progs[i++];
+        try { if (p && p.program && p.getUniforms) p.getUniforms(); } catch (e) { console.warn('program finish failed', e); }
+      }
+      if (i >= progs.length) { resolve(progs.length); return; }
+      whenIdle(step, 1000);
+    };
+    whenIdle(step, 1000);
+  });
+}
+
 // run fn when the browser is idle (or after a short delay where idle callbacks do not exist)
 export const whenIdle = (fn, timeout = 4000) => ('requestIdleCallback' in window ? requestIdleCallback(fn, { timeout }) : setTimeout(fn, 600));
+
+// Meshes that only appear after the loading screen has started (the cockpit's chine zone and canopy strips, the skin stencils) are built in idle time; if that is later
+// than the warm-up above, their shaders compile on the first frame that draws them. Hand them over once they exist: warmLate({ renderer, scene, camera, post }, meshes).
+export function warmLate(c, meshes) {
+  const r = c.renderer, prevRT = r.getRenderTarget(), rt = c.post && c.post.enabled && c.post.sceneRT ? c.post.sceneRT : null, ready = [];
+  try { r.setRenderTarget(rt); for (const m of meshes) ready.push(compileSafe(r, m, c.camera, c.scene)); } catch (e) { console.warn('late shader warm-up failed', e); } finally { r.setRenderTarget(prevRT); }
+  return Promise.all(ready);
+}
+
+// First use of a texture allocates and uploads it on the spot (a 2048x1152 panel canvas, a 4096x2304 panel background and dozens of 1024 cockpit canvases are 40+ MB
+// together): do it a few at a time while the browser is idle, so switching to the cockpit does not pay for all of it in one frame.
+export function warmTextures(renderer, textures, budgetMs = 4) {
+  const queue = [...textures];
+  return new Promise((done) => {
+    const slice = () => {
+      const t0 = performance.now();
+      while (queue.length && performance.now() - t0 < budgetMs) { const t = queue.shift(); try { renderer.initTexture(t); } catch (e) { console.warn('texture warm-up failed', e); } }
+      if (queue.length) whenIdle(slice, 1000); else done();
+    };
+    whenIdle(slice, 1000);
+  });
+}

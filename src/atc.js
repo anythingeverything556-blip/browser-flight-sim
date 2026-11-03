@@ -4,30 +4,47 @@ import { parseMetar } from './metar.js';
 const DIG = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'niner'];
 const dig = (n, pad = 0) => String(Math.round(n)).padStart(pad, '0').split('').map((d) => DIG[+d] || d).join(' ');
 const rwySpoken = (id) => String(id).replace(/(\d+)/, (m) => dig(m, 2)).replace(/L$/, ' left').replace(/R$/, ' right').replace(/C$/, ' centre');
-export const CALLSIGN = 'Blackbird 71', SPOKEN = 'Blackbird seven one';
+export let CALLSIGN = 'Blackbird 71', SPOKEN = 'Blackbird seven one';
+// the Skyhawk flies as 'Skyhawk 172SP' (main.js); live bindings, so every user of CALLSIGN sees the change
+export function setCallsign(written, spoken) { CALLSIGN = written; SPOKEN = spoken; }
 
 export class Atc {
   constructor(el, audio) {
-    this.el = el; this.audio = audio; this.voice = true; this.t = 0; this.reset(); this.ctx = null;
+    this.el = el; this.audio = audio; this.voice = true; this.t = 0; this.ctx = null; this.noise = null; this.timers = new Set(); this.hidden = false; this.reset();
   }
-  reset() { this.s = { atis: false, clr: false, dep: false, app: false, land: false, down: false, goAround: false }; this.t = 0; this.quiet = 0; this.approachSample = null; this.lastAdvisoryAt = 0; }
+  later(fn, ms) { const id = setTimeout(() => { this.timers.delete(id); fn(); }, ms); this.timers.add(id); return id; }
+  hush() {
+    for (const id of this.timers) clearTimeout(id);
+    this.timers.clear();
+    try { 'speechSynthesis' in window && speechSynthesis.cancel(); } catch { /* ignore */ }
+  }
+  setHidden(hidden) { this.hidden = !!hidden; hidden && this.hush(); }
+  reset() { this.hush(); this.s = { atis: false, clr: false, dep: false, app: false, land: false, down: false, goAround: false }; this.t = 0; this.quiet = 0; this.approachSample = null; this.lastAdvisoryAt = 0; }
   squelch() {
     try {
-      const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
-      const a = this.ctx || (this.ctx = new AC()), n = a.sampleRate * 0.11, b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
-      for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / n * 5);
+      const shared = this.audio && this.audio.ctx, AC = window.AudioContext || window.webkitAudioContext;
+      if (!shared && !AC) return;
+      const a = shared || this.ctx || (this.ctx = new AC());
+      if (shared && this.audio.held) return;
+      shared && a.state === 'suspended' && a.resume && a.resume();
+      if (!this.noise || this.noise.ctx !== a) {
+        const n = Math.round(a.sampleRate * 0.11), b = a.createBuffer(1, n, a.sampleRate), d = b.getChannelData(0);
+        for (let i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * Math.exp(-i / n * 5);
+        this.noise = { buf: b, ctx: a };
+      }
       const src = a.createBufferSource(), f = a.createBiquadFilter(), g = a.createGain(); f.type = 'bandpass'; f.frequency.value = 1800; f.Q.value = 0.8;
-      g.gain.value = 0.16 * (this.audio && this.audio.enabled ? this.audio.volume ?? 0.7 : 0); src.buffer = b; src.connect(f); f.connect(g); g.connect(a.destination); src.start();
+      g.gain.value = 0.16 * (this.audio && this.audio.enabled ? this.audio.volume ?? 0.7 : 0); src.buffer = this.noise.buf; src.connect(f); f.connect(g); g.connect(a.destination); src.start();
+      src.onended = () => { try { src.disconnect(); f.disconnect(); g.disconnect(); } catch { /* gone */ } };
     } catch { /* audio is optional */ }
   }
   say(from, text, spoken, you = false) {
     const m = document.createElement('div'); m.className = 'rmsg' + (you ? ' you' : ''); m.innerHTML = `<b></b><span></span>`; m.firstChild.textContent = from; m.lastChild.textContent = text;
     this.el.appendChild(m); while (this.el.children.length > 3) this.el.firstChild.remove();
     setTimeout(() => m.classList.add('old'), 14000 + text.length * 40); setTimeout(() => m.remove(), 16000 + text.length * 40);
-    if (!(this.audio && this.audio.enabled)) return;
+    if (!(this.audio && this.audio.enabled) || this.hidden) return;
     this.squelch();
     if (this.voice && 'speechSynthesis' in window && spoken) {
-      try { const u = new SpeechSynthesisUtterance(spoken); u.rate = you ? 1.12 : 1.04; u.pitch = you ? 0.85 : 0.95; u.volume = Math.min(1, (this.audio.volume ?? 0.7) * 0.9); setTimeout(() => speechSynthesis.speak(u), 140); } catch { /* ignore */ }
+      try { const u = new SpeechSynthesisUtterance(spoken); u.rate = you ? 1.12 : 1.04; u.pitch = you ? 0.85 : 0.95; u.volume = Math.min(1, (this.audio.volume ?? 0.7) * 0.9); this.later(() => speechSynthesis.speak(u), 140); } catch { /* ignore */ }
     }
   }
   wxLine(c) {
@@ -43,10 +60,11 @@ export class Atc {
     if (!message) return null;
     this.say(`${airport} ${message.station}`, message.text, message.text);
     const readback = buildReadback(message);
-    setTimeout(() => this.say(CALLSIGN, readback, readback, true), 4200);
+    this.later(() => this.say(CALLSIGN, readback, readback, true), 4200);
     return message;
   }
-  // c: { started, crashed, onGround, gsKt, agl (ft), gearDown, apt: {ident, name}, rwy, wind: {dir, kt}, nav: {ilsValid, thrDist (m)}, tempC, qnhHpa }
+  // c: { started, crashed, onGround, gsKt, agl (ft), gearDown, apt: {ident, name}, rwy, arrApt, arrRwy, wind: {dir, kt}, nav: {ilsValid, thrDist (m)}, tempC, qnhHpa }
+  // departure calls name apt/rwy; approach, landing and landed calls name the arrival (they used the departure airport on a cross-country flight)
   update(dt, c) {
     if (!c.started || c.crashed || !c.apt) return;
     this.t += dt; const s = this.s, w = this.wxLine(c), name = c.apt.name.replace(/ (International|Intl|Airport|Air Force Base|AFB)$/i, ''), rid = c.rwy;
@@ -58,28 +76,28 @@ export class Atc {
       s.dep = true;
       this.sendPhase('climb', c);
     }
-    const n = c.nav;
+    const n = c.nav, arr = () => (c.arrApt ? { ...c, apt: c.arrApt, rwy: c.arrRwy } : c);
     if (n && n.ilsValid && !c.onGround && n.thrDist != null) {
       if (!s.app && n.thrDist < 24000 && n.thrDist > 8000) {
         s.app = true;
         s.goAround = false;
         this.approachSample = { distance: n.thrDist, agl: c.agl };
-        this.sendPhase('approach', c);
+        this.sendPhase('approach', arr());
       }
       if (s.app && !s.goAround && this.approachSample) {
         if (n.thrDist < this.approachSample.distance) {
           this.approachSample = { distance: n.thrDist, agl: c.agl };
         } else if (n.thrDist > this.approachSample.distance + 500 && c.agl > this.approachSample.agl + 100 && c.agl < 5000) {
-          this.sendPhase('approach', c, { goAround: true });
+          this.sendPhase('approach', arr(), { goAround: true });
           s.goAround = true; s.land = false; this.approachSample = null;
         }
       }
       if (!s.land && n.thrDist < 9500 && n.thrDist > 600) {
         s.land = true;
-        this.sendPhase('landing', c);
+        this.sendPhase('landing', arr());
       }
     }
-    if (s.land && c.onGround && c.gsKt < 60 && !s.down) { s.down = true; this.sendPhase('landed', c); }
+    if (s.land && c.onGround && c.gsKt < 60 && !s.down) { s.down = true; this.sendPhase('landed', arr()); }
     if (this.t - (this.lastAdvisoryAt || 0) >= 30 && c.traffic && c.ownship) {
       this.lastAdvisoryAt = this.t;
       const advisory = buildTrafficAdvisory(c.traffic, c.ownship);

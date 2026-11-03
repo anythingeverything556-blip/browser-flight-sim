@@ -4,6 +4,8 @@
 //  - wind scales with dynamic pressure, tyres rumble and thump over runway joints, gear has a hydraulic pump and clunks
 //  - impacts are modal: struck metal is a handful of damped inharmonic partials, tearing is rough band-passed noise,
 //    explosions are a sub-bass sweep plus a filtered whoomp that arrives late and dull with distance, fire crackles
+import { VOICE_KEYS, VoiceScheduler, voiceStyle, voiceUrl, DEFAULT_VOICE_STYLE } from './voicewarn.js';
+
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
 const rnd = (a = 0, b = 1) => a + Math.random() * (b - a);
@@ -24,12 +26,18 @@ function loopable(d, fade) {
   return o;
 }
 
+const WRECK_SOUNDS = new Set(['impact', 'crunch', 'scrape', 'grind', 'explosion', 'fire', 'crash']);
+
+const NO_FAN = { cabin: 1, rumble: 1, roar: 1, hiss: 1, pitch: 1, whine: 1, whineLo: 1100, whineSpan: 3400 };
+const FAN = { cabin: 0.55, rumble: 0.4, roar: 0.55, hiss: 1.1, pitch: 1.5, whine: 2.6, whineLo: 1900, whineSpan: 3800 };
+
 export class Audio {
-  constructor() { this.ctx = null; this.enabled = true; this.volume = 0.7; }
+  constructor() { this.ctx = null; this.enabled = true; this.volume = 0.7; this.held = false; this.last = new WeakMap(); this.wreckBus = null; this.route = null;
+    this.voiceOn = true; this.voiceStyle = DEFAULT_VOICE_STYLE; this.voiceBase = '/'; this.voiceClips = {}; this.voiceSrc = null; this.voiceSched = new VoiceScheduler(); }
 
   // ctx: an existing (e.g. offline) context, for tests
   init(ctx) {
-    if (this.ctx) { if (this.ctx.state === 'suspended' && this.ctx.resume) this.ctx.resume(); return; }
+    if (this.ctx) { if (!this.held && this.ctx.state === 'suspended' && this.ctx.resume) this.ctx.resume(); return; }
     const C = this.ctx = ctx || new (window.AudioContext || window.webkitAudioContext)();
     const sr = C.sampleRate;
     const mk = (secs, fill) => {
@@ -63,8 +71,8 @@ export class Audio {
       normalise(d, 0.9);
     });
     // sparse sharp pops of widely varying size
-    this.crackle = mk(6, (d) => {
-      for (let i = 0; i < d.length - 600; i++) if (Math.random() < 0.0011) {
+    this.crackle = mk(14, (d) => {
+      for (let i = 0; i < d.length - 600; i++) if (Math.random() < 0.00055) {
         const a = Math.pow(Math.random(), 2.2) * (Math.random() < 0.5 ? -1 : 1), L = 30 + Math.random() * 260;
         for (let k = 0; k < L; k++) d[i + k] += a * Math.exp(-k / (L * 0.22)) * (Math.random() * 2 - 1);
       }
@@ -90,6 +98,7 @@ export class Audio {
     this.cabin = filt('lowpass', 20000, 0.5); this.cabin.connect(this.master);
     this.hp = filt('highpass', 30, 0.5); this.hp.connect(this.cabin);
     this.mix = gain(1); this.mix.connect(this.hp);
+    this.wreckBus = gain(1); this.wreckBus.connect(this.mix);
     this.dopplerSources = [];
 
     const src = (buf, rate = 1, doppler = false) => {
@@ -168,10 +177,85 @@ export class Audio {
     wo.connect(wf); wo2.connect(w2g); w2g.connect(wf); wf.connect(this.warnGain); this.warnGain.connect(this.master); wo.start(); wo2.start();
     this.warnOsc = [wo, wo2];
     this.warnPhase = 0;
+
+    // voice call-outs bypass the cabin muffling, like the intercom they come through
+    this.voiceGain = gain(0.6); this.voiceGain.connect(this.master);
+    this._loadVoices();
+  }
+
+  // ---------- voice warnings ----------
+  // style: a key of VOICE_STYLES; base: the app's base URL. Clips are fetched once per style, after the first user gesture.
+  setVoice(enabled, style, base) {
+    this.voiceOn = !!enabled; this.voiceStyle = voiceStyle(style);
+    if (base !== undefined) this.voiceBase = base;
+    if (!this.voiceOn) this._stopVoice();
+    this._loadVoices();
+  }
+  _loadVoices() {
+    if (!this.ctx || !this.voiceOn || typeof window === 'undefined') return; // node tests use an offline context
+    const style = this.voiceStyle, C = this.ctx;
+    this.voiceClips = this.voiceClips || {};
+    const prev = this.voiceClips[style];
+    if (prev && !prev.failed) return;
+    // a set that failed (offline, server restart) is retried at most every 5 s, keeping the clips it did get
+    if (prev && performance.now() - prev.at < 5000) return;
+    const clips = this.voiceClips[style] = Object.assign(prev || {}, { failed: false, at: performance.now() });
+    for (const key of VOICE_KEYS) {
+      if (clips[key]) continue;
+      fetch(voiceUrl(this.voiceBase || '/', style, key))
+        .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status} ${key}`))))
+        .then((b) => C.decodeAudioData(b))
+        .then((buf) => { clips[key] = buf; })
+        .catch((e) => { clips.failed = true; console.warn('voice clip', style, key, e.message || e); });
+    }
+  }
+  _voiceDuration(key) {
+    const set = this.voiceClips && this.voiceClips[this.voiceStyle], buf = set && set[key];
+    if (!buf && this.voiceOn && set && set.failed) this._loadVoices();
+    return buf ? buf.duration : 0;
+  }
+  _speak(key) {
+    const buf = this.voiceClips[this.voiceStyle][key], s = this.ctx.createBufferSource();
+    s.buffer = buf; s.connect(this.voiceGain); s.start();
+    this.voiceSrc = s;
+  }
+  _stopVoice() {
+    if (this.voiceSrc) { try { this.voiceSrc.stop(); } catch { /* already ended */ } this.voiceSrc = null; }
+    this.voiceSched.reset();
+  }
+  // the selected style's pull-up call-out, so the choice can be heard in the settings
+  previewVoice() {
+    if (!this.ctx || !this.voiceOn) return;
+    this._loadVoices();
+    if (!this._voiceDuration('pullUp')) { setTimeout(() => this._voiceDuration('pullUp') && this.previewVoice(), 400); return; }
+    this._stopVoice(); this._speak('pullUp');
+    this.voiceSched.playing = 'pullUp'; this.voiceSched.until = this.ctx.currentTime + this._voiceDuration('pullUp');
   }
 
   // ---------- one-shot building blocks ----------
-  _out(dest) { return dest || this.mix; }
+  _out(dest) { return dest || this.route || this.mix; }
+  _set(p, v, tc, t) {
+    const l = this.last.get(p);
+    if (l !== undefined && Math.abs(v - l) <= 2e-3 * Math.abs(v) + 1e-5) return;
+    this.last.set(p, v); p.setTargetAtTime(v, t, tc);
+  }
+  suspend(fadeMs = 120) {
+    if (!this.ctx) return;
+    this.held = true; this._set(this.master.gain, 0, 0.03, this.ctx.currentTime);
+    setTimeout(() => { this.held && this.ctx.state === 'running' && this.ctx.suspend(); }, fadeMs);
+  }
+  resume() {
+    if (!this.ctx) return;
+    this.held = false; this.ctx.state === 'suspended' && this.ctx.resume && this.ctx.resume();
+  }
+  resetForSpawn() {
+    if (this.voiceSrc || this.voiceSched.playing) this._stopVoice();
+    this.wreckFadeUntil = this.wreckScrapeUntil = this.wreckFireUntil = 0; this.wreckLevel = this.wreckScrapeLevel = this.wreckFireLevel = 0;
+    if (!this.ctx) return;
+    const C = this.ctx, t = C.currentTime;
+    for (const v of Object.values(this.crashLayers)) { v.g.gain.cancelScheduledValues(t); v.g.gain.setValueAtTime(0, t); this.last.set(v.g.gain, 0); }
+    this.wreckBus.disconnect(); this.wreckBus = C.createGain(); this.wreckBus.connect(this.mix);
+  }
   // an enveloped tone, optionally sweeping to f1
   tone(f0, dur, vol, { type = 'sine', delay = 0, f1 = null, attack = 0.004, dest } = {}) {
     if (!this.ctx || !this.enabled) return;
@@ -205,7 +289,7 @@ export class Audio {
   _bang(level, distance) {
     const C = this.ctx, delay = clamp(distance / 343, 0, 9), air = clamp(1 / (1 + distance / 350), 0.18, 1);
     const dull = this._filt('lowpass', clamp(15000 / (1 + distance / 450), 500, 15000), 0.5), g = this._gain(1);
-    dull.connect(g); g.connect(this.mix);
+    dull.connect(g); g.connect(this._out());
     const o = { dest: dull }, a = level * air * 1.7;
     this.tone(64, 2.4, 1.5 * a, { type: 'sine', delay, f1: 21, attack: 0.012, dest: dull });
     this.burst(1.5, 1400, 1.3 * a, { type: 'lowpass', buf: this.brown, delay, f1: 70, attack: 0.012, ...o });
@@ -217,6 +301,11 @@ export class Audio {
   }
 
   play(name, k = 1, distance = 0) {
+    const prev = this.route;
+    if (WRECK_SOUNDS.has(name)) this.route = this.wreckBus;
+    try { this._play(name, k, distance); } finally { this.route = prev; }
+  }
+  _play(name, k, distance) {
     if (!this.ctx || !this.enabled) return;
     switch (name) {
       case 'gear-lock':
@@ -257,12 +346,14 @@ export class Audio {
       case 'crunch': {
         // struck, bending metal: modal clanks over 0.8 s and a rough tearing noise that falls in pitch
         const L = clamp(k, 0, 1.6), n = 5 + Math.round(6 * L);
-        for (let i = 0; i < n; i++) { const d = Math.pow(Math.random(), 1.6) * 0.8; this.modal(rnd(170, 1100), 0.3 * L * (1 - 0.7 * d), rnd(0.18, 0.55), d); }
+        // unpitched clanks (broad noise bursts, no ringing tones: random bell pitches in a row sound like a tune) over two fixed low thuds
+        this.modal(140, 0.3 * L, 0.3); this.modal(220, 0.18 * L, 0.2, 0.03);
+        for (let i = 0; i < n; i++) { const d = Math.pow(Math.random(), 1.6) * 0.8; this.burst(rnd(0.03, 0.11), rnd(500, 2600), 0.34 * L * (1 - 0.7 * d), { type: 'bandpass', q: 0.6, buf: this.grit, attack: 0.002, delay: d }); }
         this.burst(1.1 + 0.5 * L, 2200, 0.55 * L, { type: 'bandpass', q: 2.2, buf: this.grit, f1: 500, attack: 0.02 });
         this.burst(0.9, 1800, 0.5 * L, { type: 'bandpass', q: 1.5, buf: this.pink, f1: 600, attack: 0.01, delay: 0.05 });
         // debris coming down for several seconds, thinning out
         const m = 8 + Math.round(10 * L);
-        for (let i = 0; i < m; i++) { const d = 0.9 + Math.pow(Math.random(), 1.8) * 5; this.modal(rnd(380, 2200), rnd(0.04, 0.12) * L, rnd(0.08, 0.3), d); }
+        for (let i = 0; i < m; i++) { const d = 0.9 + Math.pow(Math.random(), 1.8) * 5; this.burst(rnd(0.04, 0.16), rnd(400, 2400), rnd(0.1, 0.24) * L, { type: 'bandpass', q: 0.5, buf: this.grit, attack: 0.002, delay: d }); }
         break;
       }
       case 'scrape':
@@ -303,9 +394,37 @@ export class Audio {
     }
   }
 
+  // Lycoming four-cylinder + two-blade propeller (C172): firing pulses at rpm/30 Hz through an exhaust-stack resonance, a half-order
+  // thump (cylinder-to-cylinder unevenness), combustion grit, and the propeller's blade-pass buzz and swish, louder ahead of the disc
+  _pistonVoice() {
+    const C = this.ctx, osc = (type) => { const o = C.createOscillator(); o.type = type; o.start(); return o; }, g = (v, to) => { const x = C.createGain(); x.gain.value = v; if (to) x.connect(to); return x; };
+    const bq = (type, f, q, to) => { const x = C.createBiquadFilter(); x.type = type; x.frequency.value = f; x.Q.value = q; if (to) x.connect(to); return x; };
+    const src = (buf) => { const x = C.createBufferSource(); x.buffer = buf; x.loop = true; x.start(); return x; };
+    const out = g(0, this.mix), stack = bq('lowpass', 400, 5, out), body = g(1, stack);
+    const fire = osc('sawtooth'); fire.connect(body);
+    const half = osc('square'), halfG = g(0.3, body); half.connect(halfG);
+    const grit = src(this.brown), gritF = bq('bandpass', 180, 1.1, null), gritG = g(0.6, out); grit.connect(gritF); gritF.connect(gritG);
+    const propOut = g(0, this.mix), buzz = osc('triangle'), buzzG = g(0.5, propOut); buzz.connect(buzzG);
+    const swish = src(this.pink), swishF = bq('bandpass', 700, 0.7, null), swishG = g(0.0, propOut); swish.connect(swishF); swishF.connect(swishG);
+    const swishAm = osc('sine'), amG = g(0.0, swishG.gain); swishAm.connect(amG);
+    this.pistonV = { out, stack, fire, half, gritF, gritG, propOut, buzz, swishF, swishG, swishAm, amG };
+  }
+  _pistonUpdate(pv, s, set, near, dens, dop, ext) {
+    if (!this.pistonV) this._pistonVoice();
+    const V = this.pistonV, rpm = s.crashed ? 0 : pv.rpm, on = rpm > 150 ? 1 : 0, f = Math.max(5, rpm / 30) * dop, load = clamp(pv.thr, 0, 1);
+    set(V.fire.frequency, f, 0.03); set(V.half.frequency, f / 2, 0.03);
+    set(V.stack.frequency, 260 + 2.2 * f + 500 * load, 0.08); set(V.gritF.frequency, 120 + 1.5 * f, 0.1);
+    set(V.out.gain, on * (0.05 + 0.16 * load + 0.06 * rpm / 2700) * near * dens * (s.cockpit ? 1.1 : 1), 0.06);
+    set(V.gritG.gain, 0.45 + 0.6 * load, 0.1);
+    const blade = rpm / 30; // two blades
+    set(V.buzz.frequency, Math.max(5, blade) * dop, 0.03); set(V.swishAm.frequency, Math.max(1, blade), 0.03);
+    set(V.swishF.frequency, 500 + 0.5 * rpm, 0.1); set(V.swishG.gain, 0.25, 0.1); set(V.amG.gain, 0.2, 0.1);
+    const front = ext ? 0.6 + 0.4 * s.camFwdDot : 0.8;
+    set(V.propOut.gain, (rpm > 60 ? 1 : 0) * (0.02 + 0.08 * Math.pow(rpm / 2700, 2)) * near * dens * front, 0.06);
+  }
   update(s) {
-    if (!this.ctx) return;
-    const C = this.ctx, t = C.currentTime, set = (p, v, tc = 0.06) => p.setTargetAtTime(v, t, tc);
+    if (!this.ctx || (this.held && this.ctx.state !== 'running')) return;
+    const C = this.ctx, t = C.currentTime, set = (p, v, tc = 0.06) => this._set(p, v, tc, t);
     set(this.master.gain, this.enabled && !s.paused ? this.volume : 0, 0.1);
     const ext = !s.cockpit;
     // outside: inverse-distance level, louder behind the jet (exhaust) and in front for the inlet whine
@@ -322,20 +441,24 @@ export class Audio {
 
     const mod = (v, level) => { if (v.wob) set(v.wob.gain, level * v.wobDepth, 0.2); };
     const level = (v, g, f) => { set(v.g.gain, g); if (f != null) set(v.fl.frequency, f); mod(v, g); };
+    const jet = s.piston ? 0 : 1; // the Skyhawk: jet voices silent, the piston voice below instead
+    if (s.piston) this._pistonUpdate(s.piston, s, set, near, dens, dop, ext);
+    // the Vision Jet: one small aft-mounted turbofan (pass it alone in s.engines): lighter rumble, a higher and louder fan whine, quieter behind the cabin wall
+    const F = s.fan ? FAN : NO_FAN;
     s.engines.forEach((e, i) => {
       const n = s.crashed ? 0 : e.dry, ab = s.crashed ? 0 : e.ab, un = e.unstart > 0 ? 0.35 : 1;
-      const E = this.eng[i], base = near * silent * dens * un, p = clamp(n, 0, 1);
-      level(E.rumble, (0.04 + 0.3 * p) * base * rear, (110 + 260 * p) * dop);
-      level(E.roar, (0.012 + 0.2 * Math.pow(p, 1.3)) * base * (0.6 + 0.4 * rear), (340 + 1200 * p) * dop);
-      level(E.hiss, (0.008 + 0.075 * Math.pow(p, 2.2)) * base * rear * (ext ? 1 : 0.25), 2400 + 1800 * p);
+      const E = this.eng[i], base = near * silent * dens * un * jet * (ext ? 1 : F.cabin), p = clamp(n, 0, 1);
+      level(E.rumble, (0.04 + 0.3 * p) * base * rear * F.rumble, (110 + 260 * p) * dop * F.pitch);
+      level(E.roar, (0.012 + 0.2 * Math.pow(p, 1.3)) * base * (0.6 + 0.4 * rear) * F.roar, (340 + 1200 * p) * dop * F.pitch);
+      level(E.hiss, (0.008 + 0.075 * Math.pow(p, 2.2)) * base * rear * (ext ? 1 : 0.25) * F.hiss, 2400 + 1800 * p);
       level(E.abLow, 0.5 * ab * base * rear, 80 + 40 * ab);
       level(E.abMid, 0.62 * ab * base * rear, 260 + 360 * ab);
       level(E.abHigh, 0.26 * ab * base * rear * (ext ? 1 : 0.4), 1000 + 600 * ab);
       level(E.crack, 0.5 * ab * base * rear * (ext ? 1 : 0.35));
-      const f = (1100 + 3400 * p) * dop * E.whine.detune;
+      const f = (F.whineLo + F.whineSpan * p) * dop * E.whine.detune;
       E.whine.oscs.forEach((x) => set(x.o.frequency, f * x.m, 0.08));
       set(E.whine.wf.frequency, ext ? 7000 : 3500);
-      set(E.whine.g.gain, 0.016 * Math.pow(p, 0.8) * near * silent * front * un);
+      set(E.whine.g.gain, 0.016 * F.whine * Math.pow(p, 0.8) * near * silent * front * un * jet * (ext ? 1 : F.cabin));
     });
 
     const w = clamp(s.ias / 250, 0, 1.6), cab = s.cockpit ? 1 : 0;
@@ -375,11 +498,18 @@ export class Audio {
     level(this.crashLayers.fire, fireMix * 0.14 * wn);
 
     // warnings: stall = pulsed horn, pull-up = rising whoop-whoop siren
-    const warn = s.warnTone, now = performance.now();
+    const warn = s.crashed ? 0 : s.warnTone, now = performance.now();
     let on = 0, f = 880;
     if (warn === 1) { on = Math.floor(now / 110) % 2 === 0 ? 1 : 0; f = 1180; }
     else if (warn === 2) { const ph = (now % 760) / 760; on = ph < 0.62 ? 1 : 0; f = 520 + 640 * Math.min(1, ph / 0.62); }
-    set(this.warnGain.gain, on * 0.1, 0.012);
+    // spoken call-outs: the tones step aside while a phrase plays, so it is heard as "whoop whoop, PULL UP"
+    if (s.crashed || !this.voiceOn) { if (this.voiceSrc || this.voiceSched.playing) this._stopVoice(); }
+    else if (!s.paused) {
+      const pick = this.voiceSched.step(s.warn, t, (k) => this._voiceDuration(k));
+      if (pick) { if (pick.interrupt && this.voiceSrc) { try { this.voiceSrc.stop(); } catch { /* ended */ } } this._speak(pick.key); }
+    }
+    const speaking = this.voiceOn && this.voiceSched.speaking(t);
+    set(this.warnGain.gain, on * (speaking ? 0.02 : 0.1), 0.012);
     for (const o of this.warnOsc) set(o.frequency, f, 0.01);
   }
 }

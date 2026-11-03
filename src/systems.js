@@ -20,6 +20,10 @@ function outsideTemperature(altitudeFt) {
 
 export class AircraftSystems {
   constructor() {
+    this.reset();
+  }
+
+  reset() {
     this.hydraulicPressureKpsi = [2.85, 2.85];
     this.oxygenQuantityPct = 100;
     this.oilTemperatureC = [20, 20];
@@ -27,7 +31,7 @@ export class AircraftSystems {
   }
 
   step(dt, inputs = {}) {
-    dt = clamp(finite(dt), 0, 0.25);
+    dt = inputs.active === false ? 0 : clamp(finite(dt), 0, 0.25);
     const rpm = pair(inputs.engineRpm);
     const altitudeFt = Math.max(0, finite(inputs.altitudeFt));
     const fuelKg = Math.max(0, finite(inputs.fuelKg));

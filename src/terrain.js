@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { R_EARTH, D2R, lon2tx, lat2ty, tx2lon, ty2lat } from './geo.js';
 import { handle as loadInMain } from './terrain-worker.js';
-import { terrainMaterial, TERRAIN_UNIFORMS } from './terrain-shader.js';
+import { sharedTerrainMaterial, gateTerrainUniforms, TERRAIN_UNIFORMS } from './terrain-shader.js';
 import { sourceFor, esriUrl as IMG_URL, ESRI_MAX } from './imagery-sources.js';
 export { terrariumToHeights } from './terrain-dem.js';
 
@@ -20,7 +20,7 @@ const DEM_PAD = 6; // pixels of neighbour data a tile needs around itself (bicub
 // Chrome allows 6 connections per HTTP/1.1 host (two hosts each): more in flight would only queue unseen (and uncancellable) inside the browser.
 // Imagery leaves a little headroom on server.arcgisonline.com for the building and tree workers' Esri requests.
 // Slots count single requests (a 512 px composite costs four); every other imagery source has its own pool.
-const IMG_SLOTS = 12, DEM_SLOTS = 12, BUILD_MS = 3, UPLOAD_MS = 2, DEM_CAP = 260, STALE_MS = 4000;
+const IMG_SLOTS = 12, DEM_SLOTS = 12, BUILD_MS = 3, BUILD_MAX = 2, UPLOAD_MS = 2, UPLOAD_BYTES = 1.5 * 2 ** 20, DEM_CAP = 260, STALE_MS = 4000;
 
 // Earth-curvature drop applied in the vertex shader. The camera sits at the world origin
 // (camera-relative rendering), so the drop is simply d^2 / 2R of the horizontal distance.
@@ -80,6 +80,9 @@ const demLevel = (z) => Math.max(0, Math.min(DEM_MAX, z - 2)); // 1 DEM pixel pe
 const wrapLon = (d) => ((d + 540) % 360) - 180;
 const backoff = (n) => Math.min(8000, 600 * 2 ** (n - 1));
 const cr = (p0, p1, p2, p3, t) => p1 + 0.5 * t * (p2 - p0 + t * (2 * p0 - 5 * p1 + 4 * p2 - p3 + t * (3 * (p1 - p2) + p3 - p0)));
+const byScore = (a, b) => a.score - b.score, byD = (a, b) => a.d - b.d, byWanted = (a, b) => a.wantedAt - b.wantedAt;
+const related = (a, b) => { const hi = a.z < b.z ? a : b, lo = hi === a ? b : a, sh = lo.z - hi.z; return (lo.x >> sh) === hi.x && (lo.y >> sh) === hi.y; };
+const TINT_WHITE = new THREE.Color(1, 1, 1);
 
 // Talks to the worker; falls back to running the same code on the main thread if Workers are unavailable.
 class Loader {
@@ -108,6 +111,25 @@ class Loader {
   }
 }
 
+class Tile {
+  constructor(key, z, x, y) {
+    this.key = key; this.z = z; this.x = x; this.y = y;
+    this.img = 'none'; this.jobId = 0; this.tries = 0; this.retryAt = 0; this.bmp = null; this.tex = null; this.texBytes = 0; this.built = false; this.ready = false; this.mesh = null; this.demList = []; this.demEpoch = -1;
+    this.mk = 'none'; this.mkJob = 0; this.mkTries = 0; this.mkAt = 0; this.water = 0; this.waterGrid = null; this.maskTex = null; this.pendingMask = null; this.pendingTex = null; this.queued = false; this.disposed = false;
+    this.wantedAt = 0; this.score = 0; this.frame = -1; this.d = 0; this.inView = true; this.hMid = null; this.flags = -1; this.drawFrame = -1; this.splitFrame = -9; this.reshape = false; this.refit = false; this.usedFallback = false; this.geoVersion = -1; this.cosB = 1;
+    this.up = null; this.kids = null; this.nb = [null, null, null, null, null, null, null, null, null]; this.sel = 0; this.selI = 0; this.pres = 0; this.leafFrame = -9; this.leafPrev = -9; this.ns = false; this.nsAt = -1;
+    this.fade = 1; this.fadeDir = 0; this.fadeT0 = 0; this.ghostT0 = 0; this.ghostOf = null; this.wx = 0; this.wz = 0;
+    this.src = undefined; this.imgSrc = null; this.imgCost = 0; this.low = null; this.hi = undefined; this.hiJob = 0; this.hiSrc = null; this.hiRetry = 0; this._r = null;
+    this.pos = null; this.nor = null; this.H = null; this.lat = null; this.lon = null; this.raw = null; this.rawC = null; this.Hc = null; this.hw2 = 0; this.skirt = 0;
+    this.lat1 = ty2lat(y, z); this.lat0 = ty2lat(y + 1, z); this.lon0 = tx2lon(x, z); this.lon1 = tx2lon(x + 1, z);
+    this.clat = ty2lat(y + 0.5, z); this.clon = tx2lon(x + 0.5, z);
+    this.hh = (this.lat1 - this.lat0) * 0.5 * D2R * R_EARTH; this.hw = (this.lon1 - this.lon0) * 0.5 * D2R * R_EARTH * Math.cos(this.clat * D2R);
+    this.size = this.hw * 2; this.rad = Math.sqrt(this.hw * this.hw + this.hh * this.hh);
+    const wsz = 40075016.686 / 2 ** z;
+    this.tile = new THREE.Vector4((x * wsz) % 4096, (y * wsz) % 4096, wsz, 0);
+  }
+}
+
 export class Terrain {
   constructor(scene, geo, db) {
     this.scene = scene; this.geo = geo; this.db = db;
@@ -116,7 +138,7 @@ export class Terrain {
     this.loader = new Loader();
     this.frame = 0; this.detail = 2.0; this.maxZ = 20; this.budget = 1;
     this.pxScale = 1;   // render height / field of view relative to a 720p reference: finer tiles are wanted when more pixels are on screen (main.js)
-    this.lastNow = 0; this.vel = { e: 0, n: 0, u: 0 }; this.prevCam = null; // camera velocity (m/s), for loading ahead of a fast aircraft
+    this.lastNow = 0; this.vel = { e: 0, n: 0, u: 0 }; this.prevCam = { lat: 0, lon: 0, h: 0, set: false }; // camera velocity (m/s), for loading ahead of a fast aircraft
     this.leafCap = 260; // on-screen leaf tiles before the split criterion is coarsened (set by the graphics preset)
     this.hiZ = 99;      // from this level on, tiles get 512 px imagery composited from the next level (graphics preset)
     this.srcActive = {}; // requests in flight per imagery source
@@ -124,10 +146,14 @@ export class Terrain {
     this.uploadQ = []; this.renderer = null; // set by main.js: textures are uploaded a few per frame
     this.daylight = new THREE.Color(1, 1, 1);
     this.stats = { imgOk: 0, imgFail: 0, imgNodata: 0, demOk: 0, demFail: 0, visible: 0, draws: 0, tris: 0, tiles: 0, built: 0, imgActive: 0, demActive: 0, imgWait: 0, demWait: 0 };
-    this.cam = { lat: 0, lon: 0, cos: 1, h: 0, ground: 0, agl: 100 };
+    this.cam = { lat: 0, lon: 0, cos: 1, h: 0, ground: 0, agl: 100, ahead: null };
     this.fallbackColor = new THREE.Color(0x6f7a4f);
     this.anisotropy = 8;
     this.drawn = []; this.camera = null; this.now = performance.now();
+    this.material = sharedTerrainMaterial(); this.uniformGate = true;
+    this.ghosts = []; this.buildMax = BUILD_MAX; this.uploadBytes = UPLOAD_BYTES; this.selStamp = 0; this.presStamp = 0; this.demEpoch = 0; this.roots = []; this._rootId = -1; this._regionStamp = 0; this._regionMark = new Int32Array(4096); this.reshapeQ = [];
+    this._SL = []; this._wanted = []; this._imgJobs = []; this._demJobs = []; this._builds = []; this._ups = []; this._cur = []; this._next = []; this._leaves = []; this._drawnB = []; this._lost = []; this._old = [];
+    this._ahead = { e: 0, n: 0, u: 0 }; this._view = { x: 0, y: 0, z: -1, half: 1, cosH: 1, sinH: 0 }; this._dir = new THREE.Vector3(); this._vn = null; this._k = 1; this._farD = 8000; this._stamp = 0; this._selN = 0;
     this._p = new Float64Array(16); this._rows = new Float64Array(4);
     this._last = { L: -1, x: -1, y: -1, d: null };
     // learn the viewing camera from the renderer, so refinement can favour what is on screen
@@ -193,12 +219,12 @@ export class Terrain {
   }
   cancelDem(e) { this.loader.cancel(e.jobId); e.jobId = 0; e.state = 'none'; this.stats.demActive--; }
   // tiles built on a coarser stand-in for a DEM tile that has since arrived get reshaped
-  rebuildFallbacks() { for (const t of this.tiles.values()) if (t.built && t.usedFallback) { t.refit = true; t.reshape = true; } }
+  rebuildFallbacks() { for (const t of this.tiles.values()) if (t.built && t.usedFallback) this.markReshape(t, true); }
   trimDem() {
     if (this.dem.size <= DEM_CAP) return;
     const old = [...this.dem.values()].filter((e) => e.state !== 'loading' && !e.pin && this.now - e.wantedAt > 3000).sort((a, b) => a.used - b.used);
     for (let i = 0; i < old.length && this.dem.size > DEM_CAP; i++) this.dem.delete(old[i].key);
-    this._last.L = -1;
+    this._last.L = -1; this.demEpoch++;
   }
   // one source pixel at DEM level L; neighbouring DEM tiles are consulted so tile borders are seamless
   pix(L, gx, gy) {
@@ -274,14 +300,7 @@ export class Terrain {
     const key = tkey(z, x, y);
     let t = this.tiles.get(key);
     if (!t) {
-      t = {
-        key, z, x, y, img: 'none', jobId: 0, tries: 0, retryAt: 0, bmp: null, tex: null, built: false, ready: false, mesh: null, demList: [],
-        mk: 'none', mkJob: 0, mkTries: 0, mkAt: 0, water: 0, maskTex: null, wantedAt: 0, score: 0, frame: -1, d: 0, inView: true, hMid: null, flags: -1, drawFrame: -1, splitFrame: -9, reshape: false, refit: false, usedFallback: false, geoVersion: -1, cosB: 1,
-      };
-      t.lat1 = ty2lat(y, z); t.lat0 = ty2lat(y + 1, z); t.lon0 = tx2lon(x, z); t.lon1 = tx2lon(x + 1, z);
-      t.clat = ty2lat(y + 0.5, z); t.clon = tx2lon(x + 0.5, z);
-      t.hh = (t.lat1 - t.lat0) * 0.5 * D2R * R_EARTH; t.hw = (t.lon1 - t.lon0) * 0.5 * D2R * R_EARTH * Math.cos(t.clat * D2R);
-      t.size = t.hw * 2;
+      t = new Tile(key, z, x, y);
       this.tiles.set(key, t);
     }
     return t;
@@ -313,18 +332,10 @@ export class Terrain {
       if (m.bmp) {
         const tex = new THREE.Texture(m.bmp);
         tex.flipY = false; tex.generateMipmaps = false; tex.minFilter = tex.magFilter = THREE.LinearFilter; tex.needsUpdate = true;
-        t.maskTex = tex;
+        if (t.pendingMask) { t.pendingMask.dispose(); t.pendingMask.image.close && t.pendingMask.image.close(); }
+        t.pendingMask = tex; this.queueUpload(t);
       }
-      this.syncMat(t);
     });
-  }
-  syncMat(t) {
-    if (!t.mesh) return;
-    const u = t.mesh.material.uniforms;
-    u.uMap.value = t.tex || t.mesh.material.userData.white;
-    u.uMask.value = t.maskTex || t.mesh.material.userData.white;
-    u.uWater.value = t.maskTex ? 1 : t.water;
-    if (t.tex) u.uTint.value.setRGB(1, 1, 1); else u.uTint.value.copy(this.fallbackColor);
   }
   source(t) { if (t.src === undefined) t.src = sourceFor(t.z, t.clon, t.clat); return t.src; }
   imgSlotsFree(t) { const s = this.source(t); return s ? (this.srcActive[s.id] || 0) < s.slots : this.stats.imgActive < IMG_SLOTS; }
@@ -426,20 +437,32 @@ export class Terrain {
     const tex = new THREE.Texture(t.bmp);
     tex.colorSpace = THREE.SRGBColorSpace; tex.flipY = false; tex.anisotropy = this.anisotropy;
     tex.generateMipmaps = true; tex.minFilter = THREE.LinearMipmapLinearFilter; tex.needsUpdate = true;
-    if (t.pendingTex) { t.pendingTex.dispose(); t.pendingTex.image.close && t.pendingTex.image.close(); } else this.uploadQ.push(t);
+    if (t.pendingTex) { t.pendingTex.dispose(); t.pendingTex.image.close && t.pendingTex.image.close(); } else this.queueUpload(t);
     t.pendingTex = tex; t.bmp = null;
   }
-  uploadTextures(ms = UPLOAD_MS, min = 1) {
+  queueUpload(t) { if (!t.queued) { t.queued = true; this.uploadQ.push(t); } }
+  uploadTextures(ms = UPLOAD_MS, min = 1, bytes = UPLOAD_BYTES) {
     const t0 = performance.now();
-    for (let n = 0; this.uploadQ.length && (n < min || performance.now() - t0 < ms); n++) {
-      const t = this.uploadQ.shift(), tex = t.pendingTex;
-      if (t.disposed || !tex) continue;
-      t.pendingTex = null;
-      if (this.renderer) this.renderer.initTexture(tex);
-      if (t.tex) { this.texBytes -= t.texBytes || 0; t.tex.dispose(); t.tex.image && t.tex.image.close && t.tex.image.close(); }
-      t.tex = tex; t.texBytes = tex.image.width * tex.image.height * 4 * 1.34; this.texBytes += t.texBytes;
-      if (t.built) t.ready = true;
-      this.syncMat(t);
+    let n = 0, spent = 0;
+    while (this.uploadQ.length && (n < min || (spent < bytes && performance.now() - t0 < ms))) {
+      const t = this.uploadQ.shift();
+      n++; t.queued = false;
+      if (t.disposed) continue;
+      const mask = t.pendingMask, tex = t.pendingTex;
+      if (mask) {
+        t.pendingMask = null;
+        if (this.renderer) this.renderer.initTexture(mask);
+        spent += mask.image.width * mask.image.height * 4;
+        if (t.maskTex) { const im = t.maskTex.image; t.maskTex.dispose(); im && im.close && im.close(); }
+        t.maskTex = mask;
+      }
+      if (tex) {
+        t.pendingTex = null;
+        if (this.renderer) this.renderer.initTexture(tex);
+        if (t.tex) { this.texBytes -= t.texBytes || 0; t.tex.dispose(); t.tex.image && t.tex.image.close && t.tex.image.close(); }
+        t.tex = tex; t.texBytes = tex.image.width * tex.image.height * 4 * 1.34; this.texBytes += t.texBytes; spent += t.texBytes;
+      }
+      if (t.built && !t.pendingTex && (tex || t.tex)) t.ready = true;
     }
   }
   canBuild(t) {
@@ -453,8 +476,8 @@ export class Terrain {
   nearRunway(t) {
     const rs = this.db && this.db.ready ? this.db.activeRunways : null;
     if (!rs || !rs.length) return false;
-    const rad = Math.hypot(t.hw, t.hh) + 900, cosL = Math.cos(t.clat * D2R);
-    for (const r of rs) if (Math.hypot((((r.lon - t.clon + 540) % 360) - 180) * D2R * R_EARTH * cosL, (r.lat - t.clat) * D2R * R_EARTH) < r.len / 2 + rad) return true;
+    const rad = t.rad + 900, cosL = Math.cos(t.clat * D2R);
+    for (const r of rs) { const de = (((r.lon - t.clon + 540) % 360) - 180) * D2R * R_EARTH * cosL, dn = (r.lat - t.clat) * D2R * R_EARTH; if (Math.sqrt(de * de + dn * dn) < r.len / 2 + rad) return true; }
     return false;
   }
   // sample the DEM for a tile: padded height grid at its own level plus the coarse-level edge values used for stitching
@@ -521,7 +544,7 @@ export class Terrain {
       const k = j * NV + i, p = (j + 1) * PAD + i + 1;
       t.H[k] = H[p];
       pos[k * 3] = xs[i + 1]; pos[k * 3 + 2] = zs[j + 1];
-      const nx = -(H[p + 1] - H[p - 1]) / (xs[i + 2] - xs[i]), nz = -(H[p + PAD] - H[p - PAD]) / (zs[j + 2] - zs[j]), inv = 1 / Math.hypot(nx, 1, nz);
+      const nx = -(H[p + 1] - H[p - 1]) / (xs[i + 2] - xs[i]), nz = -(H[p + PAD] - H[p - PAD]) / (zs[j + 2] - zs[j]), inv = 1 / Math.sqrt(nx * nx + 1 + nz * nz);
       nor[k * 3] = nx * inv; nor[k * 3 + 1] = inv; nor[k * 3 + 2] = nz * inv;
     }
     for (let q = 0; q < RING.length; q++) {
@@ -541,15 +564,21 @@ export class Terrain {
       geom.setAttribute('uv', UV); geom.setIndex(INDEX);
       geom.boundingSphere = new THREE.Sphere();
       // imagery is already a photograph: the shader grades it and applies its own tone mapping and haze
-      const mat = terrainMaterial(); mat.userData.white = mat.uniforms.uMap.value;
-      const wsz = 40075016.686 / 2 ** t.z;
-      mat.uniforms.uTile.value.set((t.x * wsz) % 4096, (t.y * wsz) % 4096, wsz, 0);
-      t.mesh = new THREE.Mesh(geom, mat);
+      t.mesh = new THREE.Mesh(geom, this.material);
+      t.mesh.onBeforeRender = (renderer, scene, camera, geometry, material) => this.bindTile(t, renderer, material);
       t.mesh.frustumCulled = t.z >= 12; t.mesh.visible = false;
-      this.group.add(t.mesh); this.syncMat(t);
+      this.group.add(t.mesh);
     } else {
       t.mesh.geometry.attributes.position.needsUpdate = true; t.mesh.geometry.attributes.normal.needsUpdate = true;
     }
+  }
+  bindTile(t, renderer, material) {
+    if (material !== this.material) return;
+    const u = material.uniforms, white = material.userData.white;
+    u.uMap.value = t.tex || white; u.uMask.value = t.maskTex || white; u.uWater.value = t.maskTex ? 1 : t.water;
+    u.uTint.value = t.tex ? TINT_WHITE : this.fallbackColor;
+    u.uTile.value = t.tile; u.uFade.value = t.fade; u.uFadeDir.value = t.fadeDir;
+    if (!this.uniformGate || !gateTerrainUniforms(material, renderer.info.render.frame, renderer.getRenderTarget())) material.uniformsNeedUpdate = true;
   }
   // write vertex heights for the given neighbour mask: edges/corners facing a coarser tile take that tile's heights
   stitch(t, mask) {
@@ -591,11 +620,12 @@ export class Terrain {
     if (seg === SEG) return;
     topology(seg);
     for (const t of this.tiles.values()) {
-      if (t.mesh) { this.group.remove(t.mesh); t.mesh.geometry.dispose(); t.mesh.material.dispose(); t.mesh = null; }
+      if (t.mesh) { this.group.remove(t.mesh); t.mesh.geometry.dispose(); t.mesh = null; }
+      t.reshape = t.refit = false;
       t.pos = t.nor = t.H = t.lat = t.lon = t.raw = t.rawC = t.Hc = null;
       t.built = false; t.ready = false; t.flags = -1;
     }
-    this.drawn = [];
+    this.drawn = []; this.reshapeQ.length = 0; this.ghosts.length = 0;
   }
   // runway levelling changed near here: re-level from the cached raw samples
   refreshNear(lat, lon, km) {
@@ -603,13 +633,16 @@ export class Terrain {
     for (const t of this.tiles.values()) {
       if (!t.built || t.size / SEG >= 200) continue;
       const dn = (t.clat - lat) * D2R * R_EARTH, de = (((t.clon - lon + 540) % 360) - 180) * D2R * R_EARTH * cosL;
-      if (Math.hypot(dn, de) < km * 1000 + t.hw) t.reshape = true;
+      if (Math.sqrt(dn * dn + de * de) < km * 1000 + t.hw) this.markReshape(t, false);
     }
   }
   disposeTile(t) {
     if (t.jobId) this.cancelImage(t); else if (t.mkJob) { this.loader.cancel(t.mkJob); t.mkJob = 0; }
     if (t.maskTex) { const im = t.maskTex.image; t.maskTex.dispose(); im && im.close && im.close(); }
-    if (t.mesh) { this.group.remove(t.mesh); t.mesh.geometry.dispose(); t.mesh.material.dispose(); }
+    if (t.mesh) { this.group.remove(t.mesh); t.mesh.geometry.dispose(); }
+    if (t.pendingMask) { t.pendingMask.dispose(); t.pendingMask.image.close && t.pendingMask.image.close(); t.pendingMask = null; }
+    for (let i = 0; i < 9; i++) { const n = t.nb[i]; if (n !== null && n.nb[8 - i] === t) n.nb[8 - i] = null; t.nb[i] = null; }
+    if (t.up !== null && t.up.kids !== null && t.up.kids.includes(t)) t.up.kids = null;
     if (t.tex) { t.tex.dispose(); t.tex.image && t.tex.image.close && t.tex.image.close(); this.texBytes -= t.texBytes || 0; }
     if (t.pendingTex) { t.pendingTex.dispose(); t.pendingTex.image.close && t.pendingTex.image.close(); t.pendingTex = null; }
     if (t.hiJob) this.cancelHi(t);
@@ -623,19 +656,20 @@ export class Terrain {
     t.frame = this.frame;
     const dE = wrapLon(t.clon - cam.lon) * D2R * R_EARTH * cam.cos, dN = (t.clat - cam.lat) * D2R * R_EARTH;
     const hm = t.hMid === null ? cam.ground : t.hMid, dv = cam.h - hm;
-    let d = Math.hypot(Math.max(0, Math.abs(dE) - t.hw), Math.max(0, Math.abs(dN) - t.hh), dv);
+    const ex = Math.max(0, Math.abs(dE) - t.hw), ey = Math.max(0, Math.abs(dN) - t.hh);
+    let d = Math.sqrt(ex * ex + ey * ey + dv * dv);
     if (cam.ahead) {
       // a fast aircraft overflies the ring of fine tiles faster than they load: ask for what lies on its path as well
-      const a = cam.ahead, da = Math.hypot(Math.max(0, Math.abs(dE - a.e) - t.hw), Math.max(0, Math.abs(dN - a.n) - t.hh), dv - a.u);
+      const a = cam.ahead, fx = Math.max(0, Math.abs(dE - a.e) - t.hw), fy = Math.max(0, Math.abs(dN - a.n) - t.hh), fv = dv - a.u, da = Math.sqrt(fx * fx + fy * fy + fv * fv);
       if (da * 1.1 < d) d = da * 1.1;
     }
     t.d = Math.max(2, d);
     t.inView = true;
     if (view) {
-      const vy = -dv, vz = -dN, len = Math.hypot(dE, vy, vz), rad = Math.hypot(t.hw, t.hh);
+      const vy = -dv, vz = -dN, len = Math.sqrt(dE * dE + vy * vy + vz * vz), rad = t.rad;
       if (len > rad * 1.05) {
-        const cs = (dE * view.x + vy * view.y + vz * view.z) / len;
-        t.inView = Math.acos(Math.max(-1, Math.min(1, cs))) <= view.half + Math.asin(Math.min(1, rad / len));
+        const cs = (dE * view.x + vy * view.y + vz * view.z) / len, sb = Math.min(1, rad / len), reach = view.half + Math.asin(sb);
+        t.inView = reach >= Math.PI || cs >= view.cosH * Math.sqrt(1 - sb * sb) - view.sinH * sb;
       }
     }
     t.score = t.z * 10 + (t.inView ? 0 : 5) + Math.min(4.9, 4 * t.d / (t.size * this.detail * 1.5));
@@ -643,8 +677,120 @@ export class Terrain {
   viewCone() {
     const c = this.camera;
     if (!c) return null;
-    const d = new THREE.Vector3(0, 0, -1).applyQuaternion(c.quaternion);
-    return { x: d.x, y: d.y, z: d.z, half: Math.atan(Math.tan(c.fov * D2R / 2) * Math.max(1, c.aspect)) + 0.45 };
+    const v = this._view, d = this._dir.set(0, 0, -1).applyQuaternion(c.quaternion);
+    v.x = d.x; v.y = d.y; v.z = d.z; v.half = Math.atan(Math.tan(c.fov * D2R / 2) * Math.max(1, c.aspect)) + 0.45;
+    v.cosH = Math.cos(v.half); v.sinH = Math.sin(v.half);
+    return v;
+  }
+  peek(z, x, y) { return this.tiles.get(tkey(z, x, y)) || null; }
+  parentOf(t) {
+    let p = t.up;
+    if (p !== null && !p.disposed) return p;
+    p = this.tiles.get(tkey(t.z - 1, t.x >> 1, t.y >> 1)) || null;
+    t.up = p;
+    return p;
+  }
+  children(t) {
+    let k = t.kids;
+    if (k !== null) return k;
+    const z = t.z + 1, x = t.x * 2, y = t.y * 2;
+    k = t.kids = [this.getTile(z, x, y), this.getTile(z, x + 1, y), this.getTile(z, x, y + 1), this.getTile(z, x + 1, y + 1)];
+    for (let c = 0; c < 4; c++) k[c].up = t;
+    return k;
+  }
+  near(t, dx, dy) {
+    if (dx === 0 && dy === 0) return t;
+    const nz = 1 << t.z, ny = t.y + dy;
+    if (ny < 0 || ny >= nz) return null;
+    const i = (dy + 1) * 3 + dx + 1, c = t.nb[i];
+    if (c !== null && !c.disposed) return c;
+    let nx = t.x + dx;
+    if (nx < 0) nx += nz; else if (nx >= nz) nx -= nz;
+    const n = this.tiles.get(tkey(t.z, nx, ny)) || null;
+    if (n !== null) { t.nb[i] = n; n.nb[8 - i] = t; }
+    return n;
+  }
+  isNoSplit(t) {
+    const n = this.noSplit.size;
+    if (t.nsAt === n) return t.ns;
+    t.nsAt = n;
+    return (t.ns = n > 0 && this.noSplit.has(t.key));
+  }
+  select(t) {
+    const L = this._SL[t.z];
+    t.sel = this._stamp; t.selI = L.length; L.push(t); this._selN++;
+  }
+  unselect(t) { t.sel = 0; this._selN--; }
+  visit(t) {
+    if (t.z >= this.maxZ || this.isNoSplit(t)) return;
+    this.metrics(t, this.cam, this._vn);
+    const d = t.d, farD = this._farD, far = d > farD ? Math.max(0.55, (farD / d) ** 0.2) : 1;
+    if (!(d < t.size * this._k * far * (t.inView ? 1 : 0.6) * (t.splitFrame >= this.frame - 3 ? 1.15 : 1))) return;
+    t.splitFrame = this.frame;
+    this.select(t);
+    const kids = this.children(t);
+    this.visit(kids[0]); this.visit(kids[1]); this.visit(kids[2]); this.visit(kids[3]);
+  }
+  balance() {
+    const SL = this._SL, stamp = this._stamp, maxZ = this.maxZ, noSplit = this.noSplit, mark = this._regionMark, rs = this._regionStamp;
+    for (let pass = 0, changed = true; changed && pass < 4; pass++) {
+      changed = false;
+      for (let z = maxZ; z > ROOT_Z; z--) {
+        const L = SL[z], nz = 1 << z, sh = z - ROOT_Z;
+        for (let i = 0; i < L.length; i++) {
+          const T = L[i];
+          if (T.sel !== stamp || T.selI !== i) continue;
+          const x = T.x, y = T.y, P = this.parentOf(T);
+          let ok = true;
+          for (let dy = -1; dy <= 1 && ok; dy++) {
+            const my = y + dy;
+            if (my < 0 || my >= nz) continue;
+            const opy = (my >> 1) - (y >> 1);
+            for (let dx = -1; dx <= 1; dx++) {
+              let mx = x + dx;
+              const opx = (mx >> 1) - (x >> 1);
+              if (mx < 0) mx += nz; else if (mx >= nz) mx -= nz;
+              if (mark[((mx >> sh) << 6) + (my >> sh)] !== rs) continue;
+              const px = mx >> 1, py = my >> 1;
+              let Q = P !== null ? this.near(P, opx, opy) : this.peek(z - 1, px, py);
+              if (Q !== null && Q.sel === stamp) continue;
+              if (noSplit.size > 0 && noSplit.has(tkey(z - 1, px, py))) { ok = false; break; }
+              if (Q === null) Q = this.getTile(z - 1, px, py);
+              this.select(Q); changed = true;
+            }
+          }
+          if (!ok) { this.unselect(T); changed = true; }
+        }
+      }
+      for (let z = ROOT_Z + 1; z <= maxZ; z++) {
+        const L = SL[z];
+        for (let i = 0; i < L.length; i++) {
+          const T = L[i];
+          if (T.sel !== stamp || T.selI !== i) continue;
+          const P = this.parentOf(T);
+          if (P === null || P.sel !== stamp) { this.unselect(T); changed = true; }
+        }
+      }
+    }
+  }
+  setRoots(camLat, camLon) {
+    const n5 = 1 << ROOT_Z, rx = Math.floor(lon2tx(camLon, ROOT_Z)), ry = Math.min(n5 - 1, Math.max(0, Math.floor(lat2ty(camLat, ROOT_Z)))), id = rx * n5 + ry;
+    let roots = this.roots, fresh = this._rootId === id && roots.length > 0;
+    if (fresh) for (let i = 0; i < roots.length; i++) if (roots[i].disposed) { fresh = false; break; }
+    if (fresh) return roots;
+    this._rootId = id; this._regionStamp++;
+    roots = this.roots = [];
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const y = ry + dy; if (y < 0 || y >= n5) continue;
+      const x = (((rx + dx) % n5) + n5) % n5;
+      roots.push(this.getTile(ROOT_Z, x, y)); this._regionMark[x * n5 + y] = this._regionStamp;
+    }
+    return roots;
+  }
+  markReshape(t, refit) {
+    if (refit) t.refit = true;
+    if (t.reshape) return;
+    t.reshape = true; this.reshapeQ.push(t);
   }
 
   update(camWorld, camLat, camLon, camera) {
@@ -655,81 +801,50 @@ export class Terrain {
     if (camera && camera.isPerspectiveCamera) this.camera = camera;
     const ground = this.heightAt(camLat, camLon);
     const frameMs = this.lastNow ? Math.min(250, now - this.lastNow) : 16; this.lastNow = now;
-    const cam = this.cam = { lat: camLat, lon: camLon, cos: Math.cos(camLat * D2R), h: camWorld.y, ground: ground ?? this.cam.ground };
+    const cam = this.cam;
+    cam.lat = camLat; cam.lon = camLon; cam.cos = Math.cos(camLat * D2R); cam.h = camWorld.y; cam.ground = ground ?? cam.ground;
     cam.agl = Math.max(2, cam.h - cam.ground);
     // camera velocity from its own movement (smoothed); a teleport or origin move shows up as an absurd jump and is ignored
     const pc = this.prevCam;
-    if (pc && frameMs > 0) {
+    if (pc.set && frameMs > 0) {
       const ve = wrapLon(camLon - pc.lon) * D2R * R_EARTH * cam.cos / (frameMs / 1000), vn = (camLat - pc.lat) * D2R * R_EARTH / (frameMs / 1000), vu = (cam.h - pc.h) / (frameMs / 1000);
-      if (Math.hypot(ve, vn, vu) < 1800) { const a = Math.min(1, frameMs / 400); this.vel.e += (ve - this.vel.e) * a; this.vel.n += (vn - this.vel.n) * a; this.vel.u += (vu - this.vel.u) * a; }
+      if (Math.sqrt(ve * ve + vn * vn + vu * vu) < 1800) { const a = Math.min(1, frameMs / 400); this.vel.e += (ve - this.vel.e) * a; this.vel.n += (vn - this.vel.n) * a; this.vel.u += (vu - this.vel.u) * a; }
     }
-    this.prevCam = { lat: camLat, lon: camLon, h: cam.h };
-    const speed = Math.hypot(this.vel.e, this.vel.n, this.vel.u);
+    pc.lat = camLat; pc.lon = camLon; pc.h = cam.h; pc.set = true;
+    const speed = Math.sqrt(this.vel.e * this.vel.e + this.vel.n * this.vel.n + this.vel.u * this.vel.u);
     const LOOK = 4; // seconds
-    cam.ahead = speed > 80 ? { e: this.vel.e * LOOK, n: this.vel.n * LOOK, u: Math.max(-cam.agl * 0.5, this.vel.u * LOOK) } : null;
-    const view = this.viewCone(), maxZ = this.maxZ;
+    if (speed > 80) { const a = this._ahead; a.e = this.vel.e * LOOK; a.n = this.vel.n * LOOK; a.u = Math.max(-cam.agl * 0.5, this.vel.u * LOOK); cam.ahead = a; } else cam.ahead = null;
+    const view = this._vn = this.viewCone(), maxZ = this.maxZ;
     // beyond a few km (more when high up) haze hides fine imagery: the split distance shrinks slowly with range, which
     // keeps the far field from eating the tile budget that the ground around the aircraft needs
-    const farD = Math.max(8000, cam.agl * 6), far = (d) => (d > farD ? Math.max(0.55, (farD / d) ** 0.2) : 1);
+    this._farD = Math.max(8000, cam.agl * 3.5);
 
     // 1. desired split set: distance / screen-space criterion, then balanced so neighbours differ by <= 1 level.
     // If it would need more tiles than the draw budget, the criterion is coarsened until it fits.
-    const n5 = 1 << ROOT_Z, rx = Math.floor(lon2tx(camLon, ROOT_Z)), ry = Math.min(n5 - 1, Math.max(0, Math.floor(lat2ty(camLat, ROOT_Z))));
-    const roots = [], region = new Set();
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-      const y = ry + dy; if (y < 0 || y >= n5) continue;
-      const x = (((rx + dx) % n5) + n5) % n5;
-      roots.push([x, y]); region.add(x * n5 + y);
-    }
-    const inRegion = (z, x, y) => region.has((x >> (z - ROOT_Z)) * n5 + (y >> (z - ROOT_Z)));
-    let S, k, splits, leafCount;
+    const roots = this.setRoots(camLat, camLon), SL = this._SL;
+    while (SL.length < maxZ + 2) SL.push([]);
+    let k, splits, leafCount, stamp;
     for (let attempt = 0; ; attempt++) {
-      k = this.detail * 1.25 * this.budget * this.pxScale;
-      S = []; for (let z = 0; z <= maxZ + 1; z++) S.push(new Set());
-      const visit = (z, x, y) => {
-        const t = this.getTile(z, x, y);
-        if (z >= maxZ || this.noSplit.has(t.key)) return;
-        this.metrics(t, cam, view);
-        if (!(t.d < t.size * k * far(t.d) * (t.inView ? 1 : 0.6) * (t.splitFrame >= this.frame - 3 ? 1.15 : 1))) return;
-        t.splitFrame = this.frame;
-        S[z].add(nk(x, y));
-        visit(z + 1, 2 * x, 2 * y); visit(z + 1, 2 * x + 1, 2 * y); visit(z + 1, 2 * x, 2 * y + 1); visit(z + 1, 2 * x + 1, 2 * y + 1);
-      };
-      for (const [x, y] of roots) visit(ROOT_Z, x, y);
-      for (let pass = 0, changed = true; changed && pass < 4; pass++) {
-        changed = false;
-        for (let z = maxZ; z > ROOT_Z; z--) {
-          const nz = 1 << z;
-          for (const key of [...S[z]]) {
-            const x = Math.floor(key / 2097152), y = key - x * 2097152;
-            let ok = true;
-            for (let dy = -1; dy <= 1 && ok; dy++) for (let dx = -1; dx <= 1; dx++) {
-              const my = y + dy; if (my < 0 || my >= nz) continue;
-              const mx = (((x + dx) % nz) + nz) % nz;
-              if (!inRegion(z, mx, my)) continue;
-              const px = mx >> 1, py = my >> 1, pk = nk(px, py);
-              if (S[z - 1].has(pk)) continue;
-              if (this.noSplit.has(tkey(z - 1, px, py))) { ok = false; break; }
-              S[z - 1].add(pk); changed = true;
-            }
-            if (!ok) { S[z].delete(key); changed = true; }
-          }
-        }
-        for (let z = ROOT_Z + 1; z <= maxZ; z++) for (const key of [...S[z]]) {
-          const x = Math.floor(key / 2097152), y = key - x * 2097152;
-          if (!S[z - 1].has(nk(x >> 1, y >> 1))) { S[z].delete(key); changed = true; }
-        }
-      }
-      splits = S.reduce((a, s) => a + s.size, 0);
+      k = this._k = this.detail * 1.25 * this.budget * this.pxScale;
+      stamp = this._stamp = ++this.selStamp; this._selN = 0;
+      for (let z = 0; z < SL.length; z++) SL[z].length = 0;
+      for (let i = 0; i < roots.length; i++) this.visit(roots[i]);
+      this.balance();
+      splits = this._selN;
       let onScreen = 0;
-      for (const [x, y] of roots) if (!S[ROOT_Z].has(nk(x, y)) && this.getTile(ROOT_Z, x, y).inView) onScreen++;
-      for (let z = ROOT_Z; z < maxZ; z++) for (const key of S[z]) {
-        const x = Math.floor(key / 2097152), y = key - x * 2097152;
-        for (let c = 0; c < 4; c++) {
-          const cx = 2 * x + (c & 1), cy = 2 * y + (c >> 1);
-          if (S[z + 1].has(nk(cx, cy))) continue;
-          const ct = this.getTile(z + 1, cx, cy); this.metrics(ct, cam, view);
-          if (ct.inView) onScreen++;
+      for (let i = 0; i < roots.length; i++) if (roots[i].sel !== stamp && roots[i].inView) onScreen++;
+      for (let z = ROOT_Z; z < maxZ; z++) {
+        const L = SL[z];
+        for (let i = 0; i < L.length; i++) {
+          const T = L[i];
+          if (T.sel !== stamp || T.selI !== i) continue;
+          const kids = this.children(T);
+          for (let c = 0; c < 4; c++) {
+            const ct = kids[c];
+            if (ct.sel === stamp) continue;
+            this.metrics(ct, cam, view);
+            if (ct.inView) onScreen++;
+          }
         }
       }
       leafCount = onScreen;
@@ -739,19 +854,27 @@ export class Terrain {
     if (leafCount < this.leafCap * 0.8) this.budget = Math.min(1, this.budget * Math.pow(1.02, Math.min(6, frameMs / 16.7))); // per 60 Hz frame, not per frame
 
     // 2. wanted tiles = roots + children of every split node; schedule their loads, coarsest and nearest first
-    const wanted = [];
-    const want = (t) => { this.metrics(t, cam, view); t.wantedAt = now; wanted.push(t); };
-    for (const [x, y] of roots) want(this.getTile(ROOT_Z, x, y));
-    for (let z = ROOT_Z; z <= maxZ; z++) for (const key of S[z]) {
-      const x = Math.floor(key / 2097152), y = key - x * 2097152;
-      for (let c = 0; c < 4; c++) want(this.getTile(z + 1, 2 * x + (c & 1), 2 * y + (c >> 1)));
+    const wanted = this._wanted; wanted.length = 0;
+    for (let i = 0; i < roots.length; i++) { const t = roots[i]; this.metrics(t, cam, view); t.wantedAt = now; wanted.push(t); }
+    for (let z = ROOT_Z; z <= maxZ; z++) {
+      const L = SL[z];
+      for (let i = 0; i < L.length; i++) {
+        const T = L[i];
+        if (T.sel !== stamp || T.selI !== i) continue;
+        const kids = this.children(T);
+        for (let c = 0; c < 4; c++) { const t = kids[c]; this.metrics(t, cam, view); t.wantedAt = now; wanted.push(t); }
+      }
     }
-    const imgJobs = [], demJobs = [], builds = [];
-    for (const t of wanted) {
+    const imgJobs = this.imgQueue = this._imgJobs, demJobs = this.demQueue = this._demJobs, builds = this._builds;
+    imgJobs.length = 0; demJobs.length = 0; builds.length = 0;
+    for (let i = 0; i < wanted.length; i++) {
+      const t = wanted[i];
       if (t.img === 'none' || (t.img === 'failed' && now >= t.retryAt)) imgJobs.push(t);
       if (t.built) continue;
-      t.demList = this.tileDems(t);
-      for (const e of t.demList) {
+      if (t.demEpoch !== this.demEpoch) { t.demList = this.tileDems(t); t.demEpoch = this.demEpoch; }
+      const dl = t.demList;
+      for (let j = 0; j < dl.length; j++) {
+        const e = dl[j];
         e.wantedAt = now;
         if (e.listed !== this.frame) { e.listed = this.frame; e.score = t.score; if (e.state === 'none' || (e.state === 'failed' && now >= e.retryAt)) demJobs.push(e); }
         else if (t.score < e.score) e.score = t.score;
@@ -764,80 +887,92 @@ export class Terrain {
       if (e.listed !== this.frame && (e.state === 'none' || (e.state === 'failed' && now >= e.retryAt))) { e.listed = this.frame; demJobs.push(e); }
     }
     // drop work nobody wants any more (a teleport leaves the old area's requests in flight)
-    for (const t of this.tiles.values()) {
-      if (t.img === 'loading' && now - t.wantedAt > STALE_MS) this.cancelImage(t);
-      if (t.hiJob && now - t.wantedAt > STALE_MS) this.cancelHi(t);
+    if ((this.frame & 7) === 0) {
+      for (const t of this.tiles.values()) {
+        if (t.img === 'loading' && now - t.wantedAt > STALE_MS) this.cancelImage(t);
+        if (t.hiJob && now - t.wantedAt > STALE_MS) this.cancelHi(t);
+      }
+      for (const e of this.dem.values()) if (e.state === 'loading' && !e.pin && now - e.wantedAt > STALE_MS) this.cancelDem(e);
     }
-    for (const e of this.dem.values()) if (e.state === 'loading' && !e.pin && now - e.wantedAt > STALE_MS) this.cancelDem(e);
-    imgJobs.sort((a, b) => a.score - b.score); demJobs.sort((a, b) => a.score - b.score);
-    this.imgQueue = imgJobs; this.demQueue = demJobs;
+    imgJobs.sort(byScore); demJobs.sort(byScore);
     this.stats.imgWait = imgJobs.length; this.stats.demWait = demJobs.length;
     let waiting = 0;
-    for (const t of imgJobs) { if (this.imgSlotsFree(t)) this.startImage(t); else waiting++; }
+    for (let i = 0; i < imgJobs.length; i++) { const t = imgJobs[i]; if (this.imgSlotsFree(t)) this.startImage(t); else waiting++; }
     // sharpen displayed leaves only when no base imagery is waiting for a connection
     if (this.hiZ < 99 && !waiting) {
-      const ups = this.drawn.filter((t) => t.z >= this.hiZ && t.inView && t.tex && !t.pendingTex && !t.hiJob && !t.disposed
-        && (t.hi === undefined || (t.hi === 'failed' && now >= t.hiRetry)) && !this.noSplit.has(t.key) && t.z + 1 <= this.srcMaxZ(t));
-      ups.sort((a, b) => a.d - b.d);
-      for (const t of ups) {
-        const s = this.source(t);
+      const ups = this._ups; ups.length = 0;
+      for (const t of this.drawn) {
+        if (t.z >= this.hiZ && t.inView && t.tex && !t.pendingTex && !t.hiJob && !t.disposed
+          && (t.hi === undefined || (t.hi === 'failed' && now >= t.hiRetry)) && !this.noSplit.has(t.key) && t.z + 1 <= this.srcMaxZ(t)) ups.push(t);
+      }
+      ups.sort(byD);
+      for (let i = 0; i < ups.length; i++) {
+        const t = ups[i], s = this.source(t);
         if (s ? (this.srcActive[s.id] || 0) + 4 <= s.slots : this.stats.imgActive + 4 <= IMG_SLOTS) this.startHi(t);
       }
     }
     for (let i = 0; i < demJobs.length && this.stats.demActive < DEM_SLOTS; i++) this.startDem(demJobs[i]);
 
     // 3. build what became loadable (time-sliced), then re-level tiles near a changed runway
-    builds.sort((a, b) => a.score - b.score);
-    const t0 = performance.now(), buildMs = Math.max(BUILD_MS, Math.min(14, frameMs * 0.3)), minBuilds = frameMs > 80 ? 4 : frameMs > 40 ? 3 : 1;
-    for (let i = 0; i < builds.length && (i < minBuilds || performance.now() - t0 < buildMs); i++) this.buildTile(builds[i]);
-    for (const t of this.tiles.values()) {
-      if (performance.now() - t0 > buildMs) break;
-      if (!t.reshape || !t.built) continue;
+    builds.sort(byScore);
+    // fixed budgets in flight: they used to grow with the frame time (up to 14 ms of builds and 8 ms of uploads), so a slow frame bought itself more
+    // work and the next one was slower still. Only behind the loading screen (loadBoost, set by main.js) does the terrain get a bigger slice.
+    const boost = this.loadBoost ? 4 : 1, t0 = performance.now(), buildMs = BUILD_MS * boost, maxBuilds = this.buildMax * boost, minBuilds = boost > 1 ? 3 : 1;
+    for (let i = 0; i < builds.length && i < maxBuilds && (i < minBuilds || performance.now() - t0 < buildMs); i++) this.buildTile(builds[i]);
+    const rq = this.reshapeQ;
+    while (rq.length && performance.now() - t0 <= buildMs) {
+      const t = rq.shift();
+      if (!t.reshape || t.disposed) continue;
+      if (!t.built) { t.reshape = false; continue; }
       if (t.refit) { t.refit = false; this.sampleTile(t); }
       this.shapeTile(t);
     }
-    this.uploadTextures(Math.max(UPLOAD_MS, Math.min(8, frameMs * 0.15)), frameMs > 80 ? 3 : 1);
+    this.uploadTextures(UPLOAD_MS * boost, boost > 1 ? 3 : 1, this.uploadBytes * boost);
 
     // 4. what is drawn: refine a node only when all four children are ready and its same-level neighbours are already refined
-    const present = []; for (let z = 0; z <= maxZ + 1; z++) present.push(new Set());
-    for (const [x, y] of roots) present[ROOT_Z].add(nk(x, y));
-    const leaves = [];
-    let cur = roots;
+    const presStamp = ++this.presStamp, mark = this._regionMark, rs = this._regionStamp, leaves = this._leaves;
+    leaves.length = 0;
+    let cur = this._cur, next = this._next;
+    cur.length = 0;
+    for (let i = 0; i < roots.length; i++) { roots[i].pres = presStamp; cur.push(roots[i]); }
     for (let z = ROOT_Z; z <= maxZ && cur.length; z++) {
-      const nz = 1 << z, next = [];
-      for (const [x, y] of cur) {
-        let split = S[z].has(nk(x, y));
+      const nz = 1 << z, sh = z - ROOT_Z;
+      next.length = 0;
+      for (let i = 0; i < cur.length; i++) {
+        const T = cur[i];
+        let split = T.sel === stamp;
         if (split) {
-          for (let c = 0; c < 4 && split; c++) { const ch = this.tiles.get(tkey(z + 1, 2 * x + (c & 1), 2 * y + (c >> 1))); if (!ch || !ch.ready) split = false; }
+          const kids = T.kids;
+          for (let c = 0; c < 4 && split; c++) if (!kids[c].ready) split = false;
           for (let d = 0; d < 8 && split; d++) {
-            const ny = y + DIRS[d][1]; if (ny < 0 || ny >= nz) continue;
-            const nx = (((x + DIRS[d][0]) % nz) + nz) % nz;
-            if (inRegion(z, nx, ny) && !present[z].has(nk(nx, ny))) split = false;
+            const ny = T.y + DIRS[d][1]; if (ny < 0 || ny >= nz) continue;
+            const nx = (((T.x + DIRS[d][0]) % nz) + nz) % nz;
+            if (mark[((nx >> sh) << 6) + (ny >> sh)] === rs) { const N = this.near(T, DIRS[d][0], DIRS[d][1]); if (N === null || N.pres !== presStamp) split = false; }
           }
+          if (split) for (let c = 0; c < 4; c++) { kids[c].pres = presStamp; next.push(kids[c]); }
         }
-        if (split) for (let c = 0; c < 4; c++) { const cx = 2 * x + (c & 1), cy = 2 * y + (c >> 1); next.push([cx, cy]); present[z + 1].add(nk(cx, cy)); }
-        else leaves.push([z, x, y]);
+        if (!split) leaves.push(T);
       }
-      cur = next;
+      const tmp = cur; cur = next; next = tmp;
     }
 
     // 5. place leaves, stitching edges that face a coarser neighbour
     let tris = 0, draws = 0, shown = 0;
-    const drawn = [];
-    for (const [z, x, y] of leaves) {
-      const t = this.tiles.get(tkey(z, x, y));
-      if (!t || !t.ready) continue;
+    const drawn = this._drawnB, frame = this.frame; drawn.length = 0;
+    for (let i = 0; i < leaves.length; i++) {
+      const t = leaves[i];
+      if (!t.ready) continue;
       let mask = 0;
-      const nz = 1 << z;
+      const nz = 1 << t.z, sh = t.z - ROOT_Z;
       for (let d = 0; d < 8; d++) {
-        const ny = y + DIRS[d][1]; if (ny < 0 || ny >= nz) continue;
-        const nx = (((x + DIRS[d][0]) % nz) + nz) % nz;
-        if (inRegion(z, nx, ny) && !present[z].has(nk(nx, ny))) mask |= DIRS[d][2];
+        const ny = t.y + DIRS[d][1]; if (ny < 0 || ny >= nz) continue;
+        const nx = (((t.x + DIRS[d][0]) % nz) + nz) % nz;
+        if (mark[((nx >> sh) << 6) + (ny >> sh)] === rs) { const N = this.near(t, DIRS[d][0], DIRS[d][1]); if (N === null || N.pres !== presStamp) mask |= DIRS[d][2]; }
       }
       if (t.flags !== mask) this.stitch(t, mask);
       if (t.geoVersion !== g.version) { const c = g.toXZ(t.clat, t.clon); t.wx = c.x; t.wz = c.z; t.geoVersion = g.version; }
       const m = t.mesh;
-      m.visible = t.inView; t.drawFrame = this.frame; drawn.push(t); // tiles below z12 skip three's culling (curvature moves them), so cull by view cone here
+      m.visible = t.inView; t.drawFrame = frame; t.leafPrev = t.leafFrame; t.leafFrame = frame; drawn.push(t); // tiles below z12 skip three's culling (curvature moves them), so cull by view cone here
       m.position.set(t.wx - camWorld.x, -camWorld.y, t.wz - camWorld.z);
       m.scale.x = g.cos0 / t.cosB; // an origin move only rescales east-west offsets; no rebuild
       tris += TRIS; draws++;
@@ -845,33 +980,58 @@ export class Terrain {
     }
     // LOD crossfade: a tile that stopped being drawn while a related tile (its parent or a child) started stays on screen for FADE_S,
     // dissolving into the new one. Only when the new tile replaces something that was visible, never over empty sky.
-    const FADE_S = 0.5, drawnSet = new Set(drawn), lost = this.drawn.filter((t) => !drawnSet.has(t) && t.mesh && t.mesh.visible && t.inView);
-    const related = (a, b) => { const hi = a.z < b.z ? a : b, lo = hi === a ? b : a; const sh = lo.z - hi.z; return (lo.x >> sh) === hi.x && (lo.y >> sh) === hi.y; };
-    this.ghosts = this.ghosts || [];
-    if (lost.length) for (const t of drawn) if (!t.fadeT0 && !(this.prevDrawn && this.prevDrawn.has(t))) {
-      const m = lost.filter((l) => related(l, t));
-      if (m.length) { t.fadeT0 = now; for (const l of m) if (!this.ghosts.includes(l)) { l.ghostT0 = now; l.ghostOf = t; this.ghosts.push(l); } }
+    const FADE_S = 0.5, lost = this._lost; lost.length = 0;
+    for (const t of this.drawn) if (t.leafFrame !== frame && t.mesh && t.mesh.visible && t.inView) lost.push(t);
+    const ghosts = this.ghosts;
+    for (let i = 0; i < drawn.length; i++) {
+      const t = drawn[i];
+      if (t.leafPrev === frame - 1) continue;
+      // newly drawn: a fade it was in when it was last dropped is over (resuming it left part of the tile open with no ghost behind it)
+      t.fadeT0 = 0; t.fade = 1;
+      if (!lost.length) continue;
+      // only when the outgoing tiles cover all of this one (an ancestor, or descendants filling it): turning brings in a coarse tile whose other
+      // quarters were off screen last frame, and a fade over those faded in from nothing, the ground below showing through as black grain
+      let area = 0;
+      for (let j = 0; j < lost.length && area < 0.999; j++) { const l = lost[j]; if (related(l, t)) area += l.z <= t.z ? 1 : 4 ** (t.z - l.z); }
+      if (area < 0.999) continue;
+      t.fadeT0 = now;
+      for (let j = 0; j < lost.length; j++) {
+        const l = lost[j];
+        if (related(l, t) && !ghosts.includes(l)) { l.ghostT0 = now; l.ghostOf = t; ghosts.push(l); }
+      }
     }
-    for (const t of drawn) if (t.fadeT0) { const f = (now - t.fadeT0) / (FADE_S * 1000); if (f >= 1) { t.fadeT0 = 0; t.mesh.material.uniforms.uFade.value = 1; } else { t.mesh.material.uniforms.uFade.value = f; t.mesh.material.uniforms.uFadeDir.value = 1; } }
-    this.ghosts = this.ghosts.filter((gt) => {
-      if (!gt.mesh || drawnSet.has(gt) || (now - gt.ghostT0) / 1000 >= FADE_S) { if (gt.mesh) { gt.mesh.material.uniforms.uFade.value = 1; if (!drawnSet.has(gt)) gt.mesh.visible = false; } gt.ghostT0 = 0; return false; }
+    for (let i = 0; i < drawn.length; i++) {
+      const t = drawn[i];
+      if (t.fadeT0) { const f = (now - t.fadeT0) / (FADE_S * 1000); if (f >= 1) { t.fadeT0 = 0; t.fade = 1; } else { t.fade = f; t.fadeDir = 1; } }
+    }
+    let keep = 0;
+    for (let i = 0; i < ghosts.length; i++) {
+      const gt = ghosts[i];
+      if (!gt.mesh || gt.leafFrame === frame || (now - gt.ghostT0) / 1000 >= FADE_S) { if (gt.mesh) { gt.fade = 1; if (gt.leafFrame !== frame) gt.mesh.visible = false; } gt.ghostT0 = 0; continue; }
       const f = (now - gt.ghostT0) / (FADE_S * 1000), r = gt.ghostOf;
-      if (r && r.fadeT0 && r.mesh) f && (gt.mesh.material.uniforms.uFade.value = (now - r.fadeT0) / (FADE_S * 1000)); else gt.mesh.material.uniforms.uFade.value = f;
-      gt.mesh.material.uniforms.uFadeDir.value = 0; gt.mesh.visible = true; gt.drawFrame = this.frame;
+      // the ghost's share always follows its replacement's, also on the first frame: it used to keep whatever fade it had (0.998 when it was itself still
+      // fading in), and with the replacement at 0 almost the whole tile was a hole for a frame, the ground below showing as a black grainy tile
+      if (r && r.fadeT0 && r.mesh) gt.fade = Math.min(1, (now - r.fadeT0) / (FADE_S * 1000)); else gt.fade = f;
+      gt.fadeDir = 0; gt.mesh.visible = true; gt.drawFrame = frame;
       if (gt.geoVersion !== g.version) { const c = g.toXZ(gt.clat, gt.clon); gt.wx = c.x; gt.wz = c.z; gt.geoVersion = g.version; }
       gt.mesh.position.set(gt.wx - camWorld.x, -camWorld.y, gt.wz - camWorld.z); gt.mesh.scale.x = g.cos0 / gt.cosB;
-      return true;
-    });
-    for (const t of this.drawn) if (t.drawFrame !== this.frame && t.mesh) t.mesh.visible = false;
-    this.prevDrawn = drawnSet;
-    this.drawn = drawn;
+      ghosts[keep++] = gt;
+    }
+    ghosts.length = keep;
+    for (const t of this.drawn) if (t.drawFrame !== frame && t.mesh) t.mesh.visible = false;
+    this._drawnB = this.drawn; this.drawn = drawn;
 
-    Object.assign(this.stats, { visible: shown, draws: shown, leaves: draws, tris: shown * TRIS, tiles: this.tiles.size, splits, k: +k.toFixed(2), want: leafCount, perZ: S.map((s) => s.size).join(",") });
-    if (this.frame % 20 === 0) this.trimDem();
+    const st = this.stats;
+    st.visible = shown; st.draws = shown; st.leaves = draws; st.tris = shown * TRIS; st.tiles = this.tiles.size; st.splits = splits; st.k = Math.round(k * 100) / 100; st.want = leafCount;
+    if (frame % 30 === 1) { let s = ''; for (let z = 0; z <= maxZ + 1; z++) { let n = 0; const L = SL[z]; if (L) for (let i = 0; i < L.length; i++) if (L[i].sel === stamp && L[i].selI === i) n++; s += (z ? ',' : '') + n; } st.perZ = s; }
+    if (frame % 20 === 0) this.trimDem();
     const tileCap = Math.max(650, this.leafCap * 2.5);
-    if (this.tiles.size > tileCap || this.texBytes > this.texCap) {
-      const old = [...this.tiles.values()].filter((t) => t.drawFrame !== this.frame && now - t.wantedAt > 4000).sort((a, b) => a.wantedAt - b.wantedAt);
+    if ((frame & 7) === 3 && (this.tiles.size > tileCap || this.texBytes > this.texCap)) {
+      const old = this._old; old.length = 0;
+      for (const t of this.tiles.values()) if (t.drawFrame !== frame && now - t.wantedAt > 4000) old.push(t);
+      old.sort(byWanted);
       for (let i = 0; i < old.length && (this.tiles.size > tileCap * 0.8 || this.texBytes > this.texCap * 0.85); i++) this.disposeTile(old[i]);
+      old.length = 0;
     }
   }
 }

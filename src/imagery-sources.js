@@ -15,6 +15,16 @@ const mb = ['https://server.arcgisonline.com', 'https://services.arcgisonline.co
     [s, n],
   ],
   vb = [
+    // listed first: the Rhineland-Palatinate box below overlaps Luxembourg
+    {
+      id: 'lu',
+      name: 'Geoportail (Luxembourg, 20 cm)',
+      min: 13,
+      max: 19,
+      slots: 4,
+      url: (z, x, y) => `https://wmts.geoportail.lu/opendata/wmts/ortho_latest/GLOBAL_WEBMERCATOR_4_V3/${z}/${x}/${y}.jpeg`,
+      areas: [[[5.78, 49.52], [5.84, 49.85], [6.1, 50.15], [6.45, 50.1], [6.48, 49.8], [6.35, 49.5], [5.98, 49.47]]],
+    },
     {
       id: 'ign',
       name: 'IGN (France, 20 cm)',
@@ -184,6 +194,40 @@ const mb = ['https://server.arcgisonline.com', 'https://services.arcgisonline.co
       slots: 10,
       url: (z, x, y) => `https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/${z}/${x}/${y}.jpg`,
       areas: [Oi(129.4, 31.0, 142.2, 41.6), Oi(139.3, 41.3, 145.9, 45.6), Oi(127.6, 26.0, 128.4, 26.9)],
+    },
+    // Added after fetching a real tile from each service. Outside its coverage a service answers with a ~1 kB placeholder, so the polygons stay inside the borders.
+    {
+      id: 'es',
+      name: 'PNOA (Spain, 25-50 cm)',
+      min: 13,
+      max: 19,
+      slots: 8,
+      url: (z, x, y) =>
+        `https://www.ign.es/wmts/pnoa-ma?service=WMTS&request=GetTile&version=1.0.0&layer=OI.OrthoimageCoverage&style=default&tilematrixset=GoogleMapsCompatible&TileMatrix=${z}&TileRow=${y}&TileCol=${x}&format=image/jpeg`,
+      areas: [
+        [[-9.25, 43.1], [-8.2, 43.7], [-1.9, 43.4], [-1.4, 43.1], [0.7, 42.75], [3.1, 42.4], [3.1, 41.8], [0.9, 40.7], [-0.3, 39.4], [-0.25, 38.7], [-0.7, 37.65], [-2.1, 36.75], [-4.4, 36.7], [-5.5, 36.1], [-6.3, 36.6], [-7.3, 37.25], [-7.35, 38.2], [-6.95, 39.1], [-7.1, 39.7], [-6.85, 40.3], [-6.8, 41.0], [-6.2, 41.6], [-6.55, 41.95], [-8.1, 41.85], [-8.8, 42.05]],
+        Oi(1.2, 38.65, 4.3, 40.05),
+        Oi(-18.1, 27.7, -13.4, 29.4),
+      ],
+    },
+    {
+      id: 'pl',
+      name: 'Geoportal ORTO (Poland, 25 cm)',
+      min: 13,
+      max: 19,
+      slots: 8,
+      url: (z, x, y) =>
+        `https://mapy.geoportal.gov.pl/wss/service/PZGIK/ORTO/WMTS/StandardResolution?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=ORTO&STYLE=default&FORMAT=image/jpeg&TILEMATRIXSET=EPSG:3857&TILEMATRIX=EPSG:3857:${z}&TILEROW=${y}&TILECOL=${x}`,
+      areas: [[[14.3, 53.9], [16.5, 54.55], [18.5, 54.8], [19.5, 54.4], [22.7, 54.3], [23.4, 53.9], [23.5, 52.5], [23.15, 51.6], [24.0, 50.8], [22.55, 49.15], [19.8, 49.25], [18.9, 49.5], [18.0, 50.05], [16.9, 50.4], [16.25, 50.7], [15.0, 51.05], [14.85, 51.9], [14.6, 52.6], [14.2, 53.0]]],
+    },
+    {
+      id: 'ee',
+      name: 'Maa-amet (Estonia)',
+      min: 13,
+      max: 18,
+      slots: 6,
+      url: (z, x, y) => `https://tiles.maaamet.ee/tm/tms/1.0.0/foto@GMC/${z}/${x}/${2 ** z - 1 - y}.png`,
+      areas: [[[21.8, 58.2], [22.2, 58.95], [23.4, 59.25], [25.5, 59.65], [28.0, 59.45], [27.95, 58.8], [27.4, 57.95], [27.3, 57.6], [26.2, 57.6], [25.25, 57.8], [24.4, 57.95], [23.6, 57.95], [23.25, 58.1], [22.2, 57.85]]],
     },
   ],
   SOURCES = {

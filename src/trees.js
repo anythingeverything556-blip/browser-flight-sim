@@ -749,7 +749,7 @@ class Trees {
           const u = mat.uniforms && mat.uniforms.uBorn;
           if (!u) return;
           const t = Math.min(1, (performance.now() - this.userData.born) / 1100);
-          u.value = t * t * (3 - 2 * t); mat.uniformsNeedUpdate = true;
+          const f = t * t * (3 - 2 * t); if (u.value !== f) { u.value = f; mat.uniformsNeedUpdate = true; }
         }),
         (v.userData.casterMat = this.casterOf.get(h)),
         v.layers.enable(SHADOW_LAYER),

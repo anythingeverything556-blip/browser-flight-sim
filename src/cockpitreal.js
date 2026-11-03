@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { PANEL_GAUGES, PANEL_W, PANEL_H } from './panel.js';
+import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 
 // Pilot's cockpit and canopy rebuilt from museum photographs of the SR-71 (model space: x nose, y up, z right; eye at 11.22, 3.31, 0).
 // The original cockpit meshes are hidden by the caller. Everything here shares edges with its neighbours so nothing floats.
@@ -155,9 +157,15 @@ function dialGrid(w, h, cols, rows, top, specs, deco) {
     x.font = `${Math.round(rad * 0.15)}px ${FONT}`; x.fillText(sp.u, cx, cy + rad * 0.52);
   }
   const live = cnv(w, h), lx = live.getContext('2d');
-  return { canvas: live, draw(st, dt = 0.15) {
+  // change gate: the easing always steps, but the canvas is only redrawn (and re-uploaded) when a needle has moved by more than ~0.2 degrees
+  return { canvas: live, drawn: false, draw(st, dt = 0.15) {
+    let moved = !this.drawn;
+    for (const c of cells) { const tv = c.sp.v(st); c.val = c.val === undefined ? tv : c.val + (tv - c.val) * (1 - Math.exp(-dt * 4)); c.a = ang(c.sp, c.val); if (!(Math.abs(c.a - c.drawnA) <= 0.004)) moved = true; }
+    if (!moved) return false;
+    this.drawn = true;
     lx.drawImage(face, 0, 0);
-    for (const c of cells) { const { sp, cx, cy } = c, tv = sp.v(st); c.val = c.val === undefined ? tv : c.val + (tv - c.val) * (1 - Math.exp(-dt * 4)); const a = ang(sp, c.val); lx.save(); lx.translate(cx, cy); lx.rotate(a); lx.fillStyle = '#f4f4f4'; lx.beginPath(); lx.moveTo(-rad * 0.04, 0); lx.lineTo(0, -rad * 0.8); lx.lineTo(rad * 0.04, 0); lx.closePath(); lx.fill(); lx.fillStyle = '#2c2e30'; lx.beginPath(); lx.arc(0, 0, rad * 0.07, 0, 7); lx.fill(); lx.restore(); }
+    for (const c of cells) { const { cx, cy } = c, a = c.a; c.drawnA = a; lx.save(); lx.translate(cx, cy); lx.rotate(a); lx.fillStyle = '#f4f4f4'; lx.beginPath(); lx.moveTo(-rad * 0.04, 0); lx.lineTo(0, -rad * 0.8); lx.lineTo(rad * 0.04, 0); lx.closePath(); lx.fill(); lx.fillStyle = '#2c2e30'; lx.beginPath(); lx.arc(0, 0, rad * 0.07, 0, 7); lx.fill(); lx.restore(); }
+    return true;
   } };
 }
 
@@ -288,13 +296,51 @@ export function buildRealCockpit(model, panel, skinMat) {
   const pm = new THREE.MeshBasicMaterial({ map: panelTex, toneMapped: false, side: THREE.DoubleSide });
   pm.onBeforeCompile = (shader) => {
     shader.uniforms.uPanelDynamicMap = { value: panel.dynamicTexture };
-    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uPanelDynamicMap;');
-    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\nvec4 panelOverlayColor = texture2D(uPanelDynamicMap, vMapUv);\ndiffuseColor.rgb = mix(diffuseColor.rgb, panelOverlayColor.rgb, panelOverlayColor.a);');
+    // the attitude/heading column comes from its own small, fast-updated canvas (panel.js FAST_RECT); both are sampled, no branch around a fetch
+    shader.uniforms.uPanelFastMap = { value: panel.fastTexture }; shader.uniforms.uPanelFastRect = { value: panel.fastRect };
+    shader.fragmentShader = shader.fragmentShader.replace('#include <common>', '#include <common>\nuniform sampler2D uPanelDynamicMap;\nuniform sampler2D uPanelFastMap;\nuniform vec4 uPanelFastRect;');
+    shader.fragmentShader = shader.fragmentShader.replace('#include <map_fragment>', '#include <map_fragment>\nvec2 panelFastUv = (vMapUv - uPanelFastRect.xy) / (uPanelFastRect.zw - uPanelFastRect.xy);\nfloat panelInFast = step(0.0, panelFastUv.x) * step(panelFastUv.x, 1.0) * step(0.0, panelFastUv.y) * step(panelFastUv.y, 1.0);\nvec4 panelOverlayColor = mix(texture2D(uPanelDynamicMap, vMapUv), texture2D(uPanelFastMap, clamp(panelFastUv, 0.0, 1.0)), panelInFast);\ndiffuseColor.rgb = mix(diffuseColor.rgb, panelOverlayColor.rgb, panelOverlayColor.a);');
   };
-  pm.customProgramCacheKey = () => 'sr71-panel-dynamic-overlay-v1';
+  pm.customProgramCacheKey = () => 'sr71-panel-dynamic-overlay-v2';
   panelMats.push(pm);
   const U = [580 / 2048, 1262 / 2048];
   const panelPick = [add(interior, facet(outerL.x, outerL.z, 12.03, -ZC, [0, 0, U[0], 1]), pm, 'RC_PanelL'), add(interior, facet(12.03, -ZC, 12.03, ZC, [U[0], 0, U[1], 1]), pm, 'RC_PanelC'), add(interior, facet(12.03, ZC, outerR.x, outerR.z, [U[1], 0, 1, 1]), pm, 'RC_PanelR')];
+
+  // ===== panel relief: a machined bezel and a convex glass lens over every round gauge, so the dials have depth and catch the light =====
+  {
+    const facets = [
+      { a: [outerL.x, outerL.z], b: [12.03, -ZC], u0: 0, u1: U[0] },
+      { a: [12.03, -ZC], b: [12.03, ZC], u0: U[0], u1: U[1] },
+      { a: [12.03, ZC], b: [outerR.x, outerR.z], u0: U[1], u1: 1 },
+    ];
+    const bezelGeos = [], lensGeos = [], boltGeos = [];
+    const basis = new THREE.Matrix4();
+    for (const key of Object.keys(PANEL_GAUGES)) {
+      const gdef = PANEL_GAUGES[key]; if (!gdef || !(gdef.r > 0)) continue;
+      const u = gdef.x / PANEL_W, v = 1 - gdef.y / PANEL_H, f = facets.find((q) => u >= q.u0 && u <= q.u1); if (!f) continue;
+      const t = (u - f.u0) / (f.u1 - f.u0), px = f.a[0] + (f.b[0] - f.a[0]) * t, pz = f.a[1] + (f.b[1] - f.a[1]) * t;
+      const tan = V(f.b[0] - f.a[0], 0, f.b[1] - f.a[1]).normalize();
+      const lenW = Math.hypot(f.b[0] - f.a[0], f.b[1] - f.a[1]), worldPerPx = lenW / ((f.u1 - f.u0) * PANEL_W), R = gdef.r * worldPerPx;
+      const pos = V(px + LEAN * v, Y0 + v * (Y1 - Y0), pz);
+      let nrm = V().crossVectors(tan, V(LEAN, Y1 - Y0, 0)).normalize(); if (nrm.x > 0) nrm.negate();
+      const side = V().crossVectors(nrm, tan).normalize();
+      basis.makeBasis(tan, side.clone().multiplyScalar(side.y < 0 ? -1 : 1), nrm);
+      const put = (geo, off) => { const g = geo.clone(); g.applyMatrix4(basis); g.translate(pos.x + nrm.x * off, pos.y + nrm.y * off, pos.z + nrm.z * off); return g; };
+      const ring = new THREE.TorusGeometry(R * 1.04, Math.max(0.0025, R * 0.075), 8, 40);
+      bezelGeos.push(put(ring, 0.003));
+      const lip = new THREE.CylinderGeometry(R * 1.13, R * 1.13, 0.004, 40, 1, true).rotateX(Math.PI / 2);
+      bezelGeos.push(put(lip, 0.0005));
+      const cap = new THREE.SphereGeometry(R * 3.2, 28, 4, 0, Math.PI * 2, 0, Math.asin(Math.min(0.95, (R * 0.98) / (R * 3.2)))).rotateX(Math.PI / 2).translate(0, 0, -R * 3.2 + 0.0055);
+      lensGeos.push(put(cap, 0.003));
+      for (let k = 0; k < 4; k++) { const ang = Math.PI / 4 + k * Math.PI / 2, bolt = new THREE.SphereGeometry(Math.max(0.0016, R * 0.045), 6, 4); bolt.translate(Math.cos(ang) * R * 1.2, Math.sin(ang) * R * 1.2, 0); boltGeos.push(put(bolt, 0.0025)); }
+    }
+    if (bezelGeos.length) {
+      const bezelMat = std({ color: 0x23262a, roughness: 0.38, metalness: 0.85 });
+      merged(interior, bezelGeos.concat(boltGeos), bezelMat, 'RC_Bezels');
+      const lensMat = std({ color: 0xffffff, roughness: 0.03, metalness: 0, transparent: true, opacity: 0.09, depthWrite: false });
+      const lens = merged(interior, lensGeos, lensMat, 'RC_Lenses'); lens.renderOrder = 4;
+    }
+  }
   // cheeks beside the wings: the left carries the button-ringed display (painted on the same face, so it can never float), the right a dial cluster
   const cheekY0 = Y0 - 0.06, cheekY1 = Y1;
   const cL = quad(V(11.74, cheekY0, -0.60), V(outerL.x, cheekY0, outerL.z), V(outerL.x + LEAN, cheekY1, outerL.z), V(11.74 + LEAN, cheekY1, -0.60));
@@ -302,9 +348,10 @@ export function buildRealCockpit(model, panel, skinMat) {
   const ringImg = ringDisplay(256);
   const gridL = dialGrid(512, 1024, 3, 3, 472, LEFT_DIALS, (x, w, top) => x.drawImage(ringImg, w / 2 - 224, 12, 448, 448)), gridR = dialGrid(512, 1024, 3, 6, 0, RIGHT_DIALS);
   const texL = mkTex(gridL.canvas), texR = mkTex(gridR.canvas);
+  for (const t of [texL, texR]) { t.generateMipmaps = false; t.minFilter = THREE.LinearFilter; } // re-uploaded live: no mip chain rebuilt on every upload
   add(interior, cL, lit(texL), 'RC_CheekL');
   add(interior, cR, lit(texR), 'RC_CheekR');
-  const cheek = { acc: 1, update(st, dt) { this.acc += dt; if (this.acc < 0.12) return; const d = this.acc; this.acc = 0; gridL.draw(st, d); gridR.draw(st, d); texL.needsUpdate = texR.needsUpdate = true; } };
+  const cheek = { acc: 1, update(st, dt) { this.acc += dt; if (this.acc < 0.12) return; const d = this.acc; this.acc = 0; if (gridL.draw(st, d)) texL.needsUpdate = true; if (gridR.draw(st, d)) texR.needsUpdate = true; } };
   { const z = { rpm: [0, 0], cit: 15, altFt: 0, fuelLb: 0, noz: [0, 0], bypass: [0, 0], egt: [0, 0], ff: [0, 0], spikeIn: 0 }; gridL.draw(z); gridR.draw(z); }
   // glare shield: V-shaped shelf closing the nose end of the opening, sloping up to the windshield sill
   const shelfPts = [[outerL.x + LEAN, outerL.z], [12.03 + LEAN, -ZC], [12.03 + LEAN, ZC], [outerR.x + LEAN, outerR.z], [11.8, 0.56], [12.1, 0.49], [12.3, 0.41], [12.45, 0.31], [12.58, 0.1], [12.58, -0.1], [12.45, -0.31], [12.3, -0.41], [12.1, -0.49], [11.8, -0.56]];
@@ -335,15 +382,7 @@ export function buildRealCockpit(model, panel, skinMat) {
   const topQ = (g, w, texMat, name) => { const m = add(g, quad(V(10.85, 0, -w / 2), V(10.85, 0, w / 2), V(11.8, 0, w / 2), V(11.8, 0, -w / 2)), texMat, name); return m; };
   // The throttle plate (left) and the circuit-breaker panel (right) are painted into the console textures themselves, so they are exactly flush
   // with the surface and can never overlap the printed switches around them. Console texture: u across (outboard -> inboard), v along (aft -> nose).
-  const throttlePlate = (x, w, h) => {
-    const X = (u) => u * w, Y = (v) => (1 - v) * h;
-    x.fillStyle = '#0c0d0f'; x.beginPath(); x.roundRect(X(0.1), Y(0.7), X(0.4) - X(0.1), Y(0.18) - Y(0.7), 10); x.fill();
-    x.strokeStyle = '#3a3e44'; x.lineWidth = 4; x.stroke();
-    x.fillStyle = '#020202'; x.beginPath(); x.roundRect(X(0.2), Y(0.653), X(0.4) - X(0.2), Y(0.295) - Y(0.653), 9); x.fill();
-    x.strokeStyle = '#555a61'; x.lineWidth = 2; x.stroke();
-    x.fillStyle = '#8a8f96'; for (const [u, v] of [[0.13, 0.21], [0.47, 0.21], [0.13, 0.67], [0.47, 0.67]]) { x.beginPath(); x.arc(X(u), Y(v), 5, 0, 7); x.fill(); }
-    x.fillStyle = '#d8dadc'; x.font = `bold 13px ${FONT}`; x.textAlign = 'center'; x.fillText('IDLE', X(0.3), Y(0.285) + 14); x.fillText('MAX A/B', X(0.3), Y(0.665) - 6);
-  };
+  const throttlePlate = () => {}; // the throttle housing is real geometry now (see below); the texture only leaves its area free
   const breakerCv = breakerPanel(190, 430);
   topQ(consL, 0.424, std({ map: mkTex(switchBank(512, 1024, 11, { skip: (u, v) => u < 0.12 || (u < 0.5 && v > 0.1 && v < 0.76), after: throttlePlate })), roughness: 0.6 }), 'RC_ConsoleL');
   topQ(consR, 0.424, std({ map: mkTex(switchBank(512, 1024, 12, { skip: (u, v) => u < 0.12 || (u > 0.5 && v < 0.52) || (u > 0.12 && u < 0.45 && v > 0.6 && v < 0.96), after: (x, w, h) => x.drawImage(breakerCv, 0.55 * w, 0.53 * h, 190, 430) })), roughness: 0.6 }), 'RC_ConsoleR');
@@ -355,16 +394,66 @@ export function buildRealCockpit(model, panel, skinMat) {
     add(interior, quad(V(11.8, 2.2, zi), V(11.8, 2.2, zo), V(11.8, yTop(zo), zo), V(11.8, yTop(zi), zi)), paintBlue);
     add(interior, quad(V(10.85, 2.2, zi), V(10.85, 2.2, zo), V(10.85, yTop(zo), zo), V(10.85, yTop(zi), zi)), paintBlue);
   }
-  // throttle quadrant (left console, outboard half): housing with a slot, two black levers with red knobs, and a coiled cord down the outside
+  // throttle quadrant (left console, outboard half), all 3D: an extruded housing with two real through-slots and bevelled edges, a dark slot liner, raised
+  // detent ticks, a printed scale, two shaped grips (ribbed bulb, red band, finger-lift, thumb button) on stems that pivot well below the console top (so the
+  // grips travel along the slots like a real quadrant), a gloved hand and a pressure-suit forearm that follow the levers, and the coiled cord.
   const throttles = [];
   {
-    for (const dz of [-0.025, 0.025]) {
-      const piv = new THREE.Group(); piv.position.set(11.3, 0.004, -0.085 + dz); piv.rotation.z = 0.5; consL.add(piv);
-      const lever = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.011, 0.19, 12), black); lever.position.y = 0.095; piv.add(lever);
-      const collar = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.014, 12), metal); collar.position.y = 0.17; piv.add(collar);
-      const knob = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.022, 0.05, 18), redMat); knob.position.y = 0.2; piv.add(knob);
-      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.02, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), redMat); cap.position.y = 0.225; piv.add(cap);
+    const HX0 = 11.02, HX1 = 11.515, HZ0 = -0.1696, HZ1 = 0.0, HH = 0.011, PIV_X = 11.3, PIV_Z = -0.085, PIV_Y = -0.27, GZ = 0.025;
+    const rrect = (path, x0, y0, x1, y1, r) => { path.moveTo(x0 + r, y0); path.lineTo(x1 - r, y0); path.absarc(x1 - r, y0 + r, r, -Math.PI / 2, 0, false); path.lineTo(x1, y1 - r); path.absarc(x1 - r, y1 - r, r, 0, Math.PI / 2, false); path.lineTo(x0 + r, y1); path.absarc(x0 + r, y1 - r, r, Math.PI / 2, Math.PI, false); path.lineTo(x0, y0 + r); path.absarc(x0 + r, y0 + r, r, Math.PI, Math.PI * 1.5, false); };
+    const outline = new THREE.Shape(); rrect(outline, HX0, -HZ1, HX1, -HZ0, 0.012);
+    const SLOT = [11.165, 11.42], liner = std({ color: 0x020203, roughness: 0.9, metalness: 0 });
+    for (const dz of [-GZ, GZ]) {
+      const zc = PIV_Z + dz, hole = new THREE.Path(); rrect(hole, SLOT[0], -zc - 0.0085, SLOT[1], -zc + 0.0085, 0.0085); outline.holes.push(hole);
+      add(consL, new THREE.BoxGeometry(SLOT[1] - SLOT[0], 0.002, 0.017), liner, 'RC_ThrSlotLiner').position.set((SLOT[0] + SLOT[1]) / 2, 0.0015, zc);
+    }
+    const hg = new THREE.ExtrudeGeometry(outline, { depth: HH, bevelEnabled: true, bevelThickness: 0.0016, bevelSize: 0.0016, bevelSegments: 2, curveSegments: 10 }); hg.rotateX(-Math.PI / 2); hg.computeVertexNormals();
+    add(consL, hg, std({ color: 0x1b1d21, roughness: 0.5, metalness: 0.35 }), 'RC_ThrHousing');
+    const topY = HH + 0.0016 + 0.0004;
+    for (const [x, z] of [[HX0 + 0.012, HZ0 + 0.012], [HX0 + 0.012, HZ1 - 0.012], [HX1 - 0.012, HZ0 + 0.012], [HX1 - 0.012, HZ1 - 0.012]]) { const sc = add(consL, new THREE.CylinderGeometry(0.0042, 0.0042, 0.0016, 10), metal, 'RC_ThrScrew'); sc.position.set(x, topY, z); }
+    // detent ticks either side of the slots at idle, mil and the afterburner stops, and a printed scale on a thin sheet laid on the housing
+    const tickMat = std({ color: 0xcfd2d6, roughness: 0.5 });
+    for (const f of [0, 0.5, 0.74, 1]) for (const zc of [HZ0 + 0.012, HZ1 - 0.012]) { const t = add(consL, new THREE.BoxGeometry(0.0022, 0.0012, f === 0.5 ? 0.014 : 0.009), tickMat, 'RC_ThrTick'); t.position.set(SLOT[0] + (SLOT[1] - SLOT[0]) * f, topY, zc); }
+    { const cv = cnv(512, 128), x = cv.getContext('2d'); x.clearRect(0, 0, 512, 128); x.fillStyle = '#e3e5e8'; x.font = `bold 20px ${FONT}`; x.textAlign = 'center';
+      x.fillText('IDLE', 512 * 0.06, 64); x.fillText('MIL', 512 * 0.5, 38); x.fillText('MAX A/B', 512 * 0.94, 64); x.font = `bold 13px ${FONT}`; x.fillText('THROTTLES', 256, 112);
+      const sheet = add(consL, quad(V(HX0 + 0.02, topY + 0.0003, HZ0 + 0.006), V(HX0 + 0.02, topY + 0.0003, HZ1 - 0.006), V(HX1 - 0.02, topY + 0.0003, HZ1 - 0.006), V(HX1 - 0.02, topY + 0.0003, HZ0 + 0.006)), std({ map: mkTex(cv), transparent: true, roughness: 0.6, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -2 }), 'RC_ThrScale'); sheet.renderOrder = 3; }
+    // friction knob on the outboard edge
+    { const k = add(consL, new THREE.CylinderGeometry(0.011, 0.0125, 0.016, 16), black, 'RC_ThrFriction'); k.position.set(11.0, 0.011, -0.1696 + 0.03); k.rotation.z = Math.PI / 2; }
+
+    const gripProfile = [[0.0065, 0], [0.0105, 0.004], [0.0142, 0.016], [0.0156, 0.036], [0.0152, 0.056], [0.0135, 0.07], [0.009, 0.0785], [0.003, 0.0805], [0, 0.0805]].map(([r, y]) => new THREE.Vector2(r, y));
+    const gripGeo = new THREE.LatheGeometry(gripProfile, 20), stemGeo = new THREE.CylinderGeometry(0.0058, 0.0072, 1, 10), blackGrip = std({ color: 0x0c0d0f, roughness: 0.78, metalness: 0.05 });
+    const GRIP_Y = 0.15 - PIV_Y; // height of the grip base above the pivot (grip base 0.15 above the console top)
+    for (const dz of [-GZ, GZ]) {
+      const piv = new THREE.Group(); piv.position.set(PIV_X, PIV_Y, PIV_Z + dz); piv.rotation.z = 0.36; consL.add(piv);
+      const stem = new THREE.Mesh(stemGeo, metal); stem.scale.y = GRIP_Y; stem.position.y = GRIP_Y / 2; piv.add(stem);
+      const grip = new THREE.Mesh(gripGeo, blackGrip); grip.position.y = GRIP_Y; piv.add(grip);
+      for (let i = 0; i < 6; i++) { const rib = new THREE.Mesh(new THREE.TorusGeometry(0.0154, 0.0011, 6, 20), black); rib.rotation.x = Math.PI / 2; rib.position.y = GRIP_Y + 0.02 + i * 0.0085; piv.add(rib); }
+      const band = new THREE.Mesh(new THREE.TorusGeometry(0.0108, 0.0019, 8, 20), redMat); band.rotation.x = Math.PI / 2; band.position.y = GRIP_Y + 0.005; piv.add(band);
+      const lift = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.0035, 0.022), metal); lift.position.set(0.016, GRIP_Y - 0.012, 0); piv.add(lift);
+      const btn = new THREE.Mesh(new THREE.CylinderGeometry(0.0052, 0.0056, 0.0045, 14), redMat); btn.position.y = GRIP_Y + 0.0815; piv.add(btn);
       throttles.push(piv); piv.traverse((o) => { if (o.isMesh) o.userData.thr = true; });
+    }
+    // the pilot's left hand on both grips. Fingers are loops around the pair, so the grips show between the finger bands, and the hand tilts with them.
+    {
+      const hand = new THREE.Group(); hand.position.set(PIV_X, PIV_Y, PIV_Z); hand.rotation.z = 0.36; consL.add(hand);
+      const glove = std({ color: 0xd8d4ca, roughness: 0.82, metalness: 0 }), suit = std({ color: 0xe9e7e1, roughness: 0.75, metalness: 0 }), pad = std({ color: 0x3b3d42, roughness: 0.9 });
+      const hy = GRIP_Y + 0.043, FW = 0.058, cap = (r, len, mat, parent) => new THREE.Mesh(new THREE.CapsuleGeometry(r, len, 4, 8), mat);
+      const palm = new THREE.Mesh(new RoundedBoxGeometry(0.03, 0.082, 0.112, 3, 0.012), glove); palm.position.set(-0.04, hy, 0); hand.add(palm);
+      const back = new THREE.Mesh(new RoundedBoxGeometry(0.012, 0.07, 0.1, 2, 0.005), pad); back.position.set(-0.058, hy + 0.002, 0); hand.add(back);
+      for (let i = 0; i < 4; i++) {
+        const y = hy - 0.03 + i * 0.02, r = 0.0098 - (i === 3 ? 0.0012 : 0);
+        const front = cap(r, FW - 0.012, glove); front.rotation.x = Math.PI / 2; front.position.set(0.0235, y, 0); hand.add(front);
+        for (const sz of [-1, 1]) { const side = cap(r, 0.034, glove); side.rotation.z = Math.PI / 2; side.position.set(-0.0, y, sz * 0.0505); hand.add(side); }
+      }
+      const thumb = cap(0.0105, 0.045, glove); thumb.position.set(-0.006, hy + 0.043, 0.0555); thumb.rotation.set(0.25, 0, -0.55); hand.add(thumb);
+      // the forearm does not swing with the lever (it would point up like a club at full power): it follows the wrist by translation only, and keeps its direction
+      const wristDir = V(-0.85, 0.12, 0.51).normalize(), wristL = V(-0.052, hy, 0.01), armG = new THREE.Group(); consL.add(armG);
+      const cuff = new THREE.Mesh(new THREE.CylinderGeometry(0.041, 0.041, 0.022, 20), metal); cuff.position.copy(wristDir).multiplyScalar(0.014); cuff.quaternion.setFromUnitVectors(V(0, 1, 0), wristDir); armG.add(cuff);
+      const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.04, 0.34, 20), suit); arm.position.copy(wristDir).multiplyScalar(0.19); arm.quaternion.setFromUnitVectors(V(0, 1, 0), wristDir); armG.add(arm);
+      const fold = new THREE.Mesh(new THREE.TorusGeometry(0.046, 0.004, 6, 22), suit); fold.position.copy(wristDir).multiplyScalar(0.12); fold.quaternion.setFromUnitVectors(V(0, 0, 1), wristDir); armG.add(fold);
+      throttles.armSync = (ang) => { const c = Math.cos(ang), sn = Math.sin(ang); armG.position.set(PIV_X + wristL.x * c - wristL.y * sn, PIV_Y + wristL.x * sn + wristL.y * c, PIV_Z + wristL.z); };
+      throttles.armSync(0.36);
+      throttles.push(hand);
     }
     const coil = helix(V(11.04, 0.012, -0.188), V(10.9, 0.012, -0.188), 0.009, 10, 90);
     add(consL, tube(coil, 0.0028, 180, 6), black, 'RC_ThrottleCable');
@@ -403,9 +492,9 @@ export function buildRealCockpit(model, panel, skinMat) {
     for (const z of [-0.3, 0.3]) add(interior, new THREE.CylinderGeometry(0.045, 0.045, 0.3, 20).translate(10.62, 2.42, z), bottle, 'RC_Bottle'); }
 
   void T;
-  const THR_IDLE = 0.5, THR_FULL = -0.4;
+  const THR_IDLE = 0.36, THR_FULL = -0.30;
   const controls = { set(st) {
-    if (st.throttle !== undefined) for (const t of throttles) t.rotation.z = THR_IDLE + (THR_FULL - THR_IDLE) * Math.min(1, Math.max(0, st.throttle));
+    if (st.throttle !== undefined) { const ang = THR_IDLE + (THR_FULL - THR_IDLE) * Math.min(1, Math.max(0, st.throttle)); for (const t of throttles) t.rotation.z = ang; throttles.armSync && throttles.armSync(ang); }
     if (st.mach !== undefined && Math.abs(st.mach - machShown) > 0.008) { machShown = st.mach; drawMachNeedle(machCtx, machFace, 256, st.mach); machTex.needsUpdate = true; }
     if (stick && st.stick) { stick.rotation.z = st.stick.p * 0.2; stick.rotation.x = st.stick.r * 0.2; }
   } };
