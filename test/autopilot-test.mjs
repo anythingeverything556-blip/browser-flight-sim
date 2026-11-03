@@ -64,7 +64,8 @@ for (const [from, to, gear] of [[250, 150, false], [250, 150, true], [250, 200, 
   check('altitude hold in gusty air (about 6 m/s)', dev < 250 && aoa < 0.26, `max deviation ${dev.toFixed(0)} ft, max AoA ${(aoa * 57.3).toFixed(1)} deg`);
 }
 for (const [label, opts, secs, lim] of [['150 kt', { altM: 3048, kt: 250 }, 200, 25], ['Mach 3', { altM: 24000, mach: 3 }, 900, 26]]) {
-  const r = makeRig(opts), fast = !!opts.mach; r.engage({ spd: !fast, mach: fast, alt: true, hdg: true }); Object.assign(r.ap.target, { hdg: 270, spd: 150 / KT, mach: 3 });
+  const r = makeRig(opts), fast = !!opts.mach; r.fdm.realism.unstarts = false; // the random unstart hazard (~1 in 6 runs over 900 s at Mach 3) made this check fail at random; it tests heading hold, not unstarts
+  r.engage({ spd: !fast, mach: fast, alt: true, hdg: true }); Object.assign(r.ap.target, { hdg: 270, spd: 150 / KT, mach: 3 });
   let bank = 0; r.run(secs, 20, (rr) => { bank = Math.max(bank, Math.abs(attitude(rr.fdm.quat).bank) * 57.3); });
   const h = attitude(r.fdm.quat).heading, e = Math.abs(((h - 270 + 540) % 360) - 180), dAlt = Math.abs(r.fdm.pos.y - opts.altM) * FT;
   check(`180 degree heading change ${label}`, e < 3 && bank < lim + 6 && dAlt < 300 && !r.fdm.crashed, `final heading error ${e.toFixed(1)} deg, max bank ${bank.toFixed(0)}, altitude change ${dAlt.toFixed(0)} ft`);

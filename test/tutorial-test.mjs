@@ -20,7 +20,7 @@ check('each step advances only when its action happens', () => {
   c.onGround = false; c.agl = 20; tick(t, c, 8); assert.equal(STEPS[t.i].id, 'gear');
   c.gearDown = false; tick(t, c, 8); assert.equal(STEPS[t.i].id, 'climb');
   c.altFt = 7000; tick(t, c, 8); assert.equal(STEPS[t.i].id, 'trim');
-  c.throttle = 0.85; tick(t, c, 8); assert.equal(STEPS[t.i].id, 'ap');
+  c.throttle = 0.85; tick(t, c, 8); assert.equal(STEPS[t.i].id, 'ap'); // no air brake step: the real SR-71 had none (round 5)
   c.apOn = true; tick(t, c, 8); assert.equal(STEPS[t.i].id, 'apalt');
   c.apAltFt = 8000; tick(t, c, 8); assert.equal(STEPS[t.i].id, 'aphdg');
   c.apHdg = 180; tick(t, c, 8); assert.equal(STEPS[t.i].id, 'aphdg', 'must also wait for the turn to finish');
@@ -36,24 +36,35 @@ check('hints react to what the pilot is doing', () => {
   c.iasKt = 320; assert.equal(tick(t, c).hint, '');
   t.i = 2; t.entered = false; c.onGround = true; c.xtk = 15; assert.match(tick(t, c).hint, /Steer left/);
 });
+check('the climb step teaches the real profile: low and fast to about 400 kt, then pull up', () => {
+  const climb = STEPS.find((x) => x.id === 'climb');
+  assert.match(climb.text, /400 kt/); assert.match(climb.text, /15 to 20 degrees/);
+  const c = { ...base, onGround: false, gearDown: false, pitchDeg: 10, iasKt: 560 };
+  assert.match(climb.hint(c), /raise the nose/i);
+});
+check('the final card points to the new controls', () => {
+  const t = new Tutorial(); t.start(base); t.i = STEPS.length; const v = tick(t, base, 1);
+  for (const key of ['T ', 'J ', 'C ', 'B ']) assert.ok(v.text.includes(key), `missing ${key}`);
+  for (const key of ['F for', 'N for', 'air brake', 'reverse thrust']) assert.ok(!v.text.includes(key), `still mentions ${key}`);
+});
 check('skip step moves on', () => {
   const t = new Tutorial(); t.start(base); tick(t, base); t.skip(); tick(t, base, 8); assert.equal(t.i, 1);
 });
 
-const td = (o) => ({ sink: 1, kt: 155, off: 2, dist: 400, belly: false, ...o });
+const td = (o) => ({ sink: 1, kt: 180, vref: 176, off: 2, dist: 400, belly: false, ...o }); // round 4: speed is scored against the weight's touchdown reference
 check('landing score: a smooth landing is an A, a hard one is not', () => {
   assert.equal(scoreLanding(td()).total, 100); assert.equal(scoreLanding(td()).grade, 'A');
-  const hard = scoreLanding(td({ sink: 4, kt: 190, off: 20, dist: 2500 }));
+  const hard = scoreLanding(td({ sink: 4, kt: 215, off: 20, dist: 2500 }));
   assert.ok(hard.total < 35 && hard.tips.length >= 3, `hard=${hard.total}`);
   assert.equal(scoreLanding(td({ belly: true })).total, 0);
 });
 check('landing mission: final, flare, touchdown, rollout, score', () => {
-  const m = createMission('landhand', {}), s = { agl: 300, vy: -4, onGround: false, iasKt: 180, gs: 92, throttle: 0.3, crashed: null, gearDown: true, chute: 0, ilsValid: true, gsDev: 0, locXtk: 1, thrDist: 2000 };
+  const m = createMission('landhand', {}), s = { agl: 300, vy: -4, onGround: false, iasKt: 180, gs: 92, throttle: 0.3, crashed: null, gearDown: true, chute: 0, ilsValid: true, gsDev: 0, locXtk: 1, thrDist: 2000, vrefKt: 172 };
   m.update(0.2, s); assert.equal(m.phase, 'final'); assert.match(m.coach().title, /ILS/);
   s.agl = 40; m.update(0.2, s); assert.equal(m.phase, 'flare');
   s.agl = 20; s.vy = -4; m.update(0.2, s); assert.match(m.coach().hint, /Pull back/);
   s.vy = -1.4; m.update(0.2, s);
-  s.agl = 2; s.onGround = true; s.thrDist = -350; s.iasKt = 158; const ev = m.update(0.2, s);
+  s.agl = 2; s.onGround = true; s.thrDist = -350; s.iasKt = 178; const ev = m.update(0.2, s);
   assert.equal(ev.event, 'touchdown'); assert.equal(m.phase, 'rollout'); assert.ok(m.score.total >= 85, 'score ' + m.score.total);
   s.gs = 2; const end = m.update(0.2, s); assert.equal(end.event, 'done'); assert.match(m.coach().title, /Score/);
 });
