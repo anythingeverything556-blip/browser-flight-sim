@@ -18,6 +18,18 @@ On Windows you can double-click `start.bat` instead.
 For a static build: `npm run build`, then serve the `dist/` folder with any web server
 (it must be served over http, not opened as a file).
 
+## Tutorial, landing school and missions
+
+Pick one under **Mission** on the start sheet.
+
+- **Tutorial**: you fly, it coaches. Eleven steps (camera, afterburner, take-off roll, rotate, gear up, climb, throttle, autopilot, altitude, heading, take control). Each step waits for you to do it and gives live hints, such as "too steep" or "right of the centre line". **Skip step** and **Hide coach** are on the card.
+- **Landing 1**: starts on a 10 NM final. The autopilot flies the ILS down to 150 ft, then you flare and land. Landing 2 starts on a 5 NM final and you hand-fly the ILS. Both show live glideslope, centre line, speed and sink rate, coach the flare and rollout, and score the landing out of 100 (sink rate 40, touchdown speed 20, centre line 20, touchdown point 20), with tips on what to fix.
+- **High & Fast**: climb above 70,000 ft and hold Mach 3.0 or more for 20 s.
+- **Recon run**: fly over five orange beacons in order. Closer passes score up to 100 each. The targets are also loaded as autopilot waypoints, so NAV can fly the route.
+- **Watch demo**: the jet flies a take-off, climb and autopilot sequence by itself, then hands over.
+
+The default camera is free orbit: it starts behind the jet, drag to swing round, scroll to zoom. V cycles the other views.
+
 ## Features
 
 - **Real world:** Esri World Imagery (up to zoom 20 where available) draped over AWS terrain tiles in a
@@ -32,9 +44,11 @@ For a static build: `npm run build`, then serve the `dist/` folder with any web 
 - **Weather:** Clear, Fair, Scattered, Overcast, Rain, Storm, Fog and Gusty presets set cloud cover, wind,
   turbulence and visibility, and add rain streaks that sweep past at flight speed, a grey gloom, a fog veil,
   lightning and delayed thunder.
-- **Sound:** all synthesised (no samples): per-engine rumble, roar, hiss and compressor whine with the slow wobble of
+- **Sound:** synthesised (the voice warnings are the only recorded clips): per-engine rumble, roar, hiss and compressor whine with the slow wobble of
   real jet noise, a rolling afterburner growl, wind, tyre rumble over runway joints, a hydraulic pump with door and
   lock clunks, rain, thunder, and modal crash sounds (struck metal, tearing, a sub-bass explosion that arrives late).
+- **Voice warnings:** spoken "PULL UP", stall, over-G, overspeed, gear and low-fuel call-outs in a US fighter, US airliner
+  or Russian fighter (Su-27 style) AI voice, chosen under Settings → Warning voice; Settings → Voice warnings turns them off.
 - **Crashes:** fireball with flash and shock ring, boiling soot, burning fuel along the slide, a tall smoke column,
   plate-shaped debris, a flickering fire light; slow motion for the first moments and a camera that backs off to frame it.
 - **3D buildings:** Overture Maps buildings worldwide (keyless PMTiles: OpenStreetMap merged with Google and Microsoft
@@ -44,6 +58,7 @@ For a static build: `npm run build`, then serve the `dist/` folder with any web 
   with windows that light up at night; sat on the terrain and kept off runways. Falls back to OpenFreeMap (OSM) if offline.
 - **3D trees:** instanced trees where OpenStreetMap land cover says woods/parks and where the satellite photo shows
   canopy, coloured from the photo, species by climate (palms in the tropics, conifers up north), swaying in the wind.
+- **Tree variants:** regional colour, crown shape and scale follow latitude, elevation, season and available OpenStreetMap species tags.
 - **Water and sky:** OpenStreetMap water polygons rendered as physically based water (Fresnel sky reflection, waves,
   sun glint); single-scattering Rayleigh/Mie/ozone sky with matching aerial perspective; lit volumetric-looking cumulus.
 - **8,200+ airports and 10,600+ runways worldwide**, 700+ of them military (incl. KXTA Homey/Area 51,
@@ -95,15 +110,16 @@ For a static build: `npm run build`, then serve the `dist/` folder with any web 
 
 | Key | Action | Key | Action |
 | --- | --- | --- | --- |
-| ↑ / ↓ | Pitch down / up | PgUp / PgDn, + / − | Throttle (top 25 % = afterburner) |
-| ← / → | Roll | 0 / 9 | Idle / full afterburner |
+| ↑ / ↓ | Pitch down / up | E / Q, + / −, PgUp / PgDn, [ / ] | Throttle (top 25 % = afterburner) |
+| ← / → or A / D | Roll (A / D steer the nose wheel on the ground) | 0 / 9 | Idle / full afterburner |
 | Z / X (or , / .) | Rudder and nose-wheel steering | G | Landing gear |
 | Home / End | Pitch trim | B or Space | Wheel brakes |
 | Shift+B | Parking brake | C | Drag chute |
-| A | Autopilot | V / Shift+V | Next / previous camera |
+| K | Autopilot | V / Shift+V | Next / previous camera |
 | M | Map | P | Pause |
 | R | Reset | Y | Slew mode |
 | H / I | HUD overlay / instrument strip | O | Sound |
+| U | Recover: the autopilot unloads, levels the wings, adds power and levels off (stall, spin, unusual attitude) | F3 / Shift+F3 / F4 | Performance overlay / copy diagnostics / 1:1 pixel test |
 
 **Typical takeoff:** press 9 for full afterburner, pull back gently (↓) at about 210 kt,
 raise the gear (G) once you're climbing, then use the Autopilot panel to set Mach 3.2 and 80,000 ft.
@@ -115,6 +131,8 @@ raise the gear (G) once you're climbing, then use the Autopilot panel to set Mac
 npm test
 node test/dem-test.mjs   # corrupt elevation rows/columns are repaired; clean terrain and real ridges are left alone
 node test/fdm-test.mjs   # take-off roll, rotation, climb, zero timestep: finite state, no crash
+node test/autopilot-test.mjs  # closed loop on the real flight model: speed changes, stall / min-speed / overspeed protection, recovery
+node test/workstats-test.mjs  # dirty-flag logic: HUD redraw rate, panel change gate
 ```
 
 The original archive referred to further flight-model test scripts (`test/trim-test.mjs`, `test/handling-test.mjs`, ...) and a
@@ -126,6 +144,29 @@ Press **F3** for the performance overlay: frame-time percentiles, CPU time per p
 HUD), GPU time of the scene render when the browser exposes timer queries, draw calls and triangles, terrain/building loading, and a log
 of recent hitches (frames over 40 ms) with the phase that took the time. A long CPU phase is main-thread work; time that no phase
 explains is the GPU or the driver.
+
+F3 also shows canvas and render-target sizes against the window and `devicePixelRatio`, and a *work per s (done/skipped)* line that counts how
+often the HUD, the 2D rain canvas and the cockpit panel really redrew versus skipped because nothing changed. **Shift+F3** copies a
+diagnostics report (GPU string, screen, the F3 numbers) to the clipboard for sending; nothing is uploaded. **F4** draws a 1-device-pixel
+checkerboard: a clean fine grid means the page maps 1:1 to the screen, wide bands or moire mean the browser is scaling.
+
+F3 also splits GPU time by pass (shadow maps, scene, AO, glass, clouds, composite, bloom, SMAA) where the browser exposes timer queries, and shows
+done/skipped counts for each shadow cascade. **F5-F9** switch world shadows, AO, volumetric clouds, SMAA and bloom off one at a time: if a flicker or
+a slowdown goes away when one is switched off, that is the pass to look at. The render-resolution slider defaults to 200 % (75-250 %).
+
+**Cockpit frame cost.** The renderer uses a logarithmic depth buffer, so every material writes its own depth and the GPU cannot skip a hidden fragment
+before running its shader. In the cockpit that meant the heavy exterior-skin shader ran for the inside of the fuselage, and the terrain and sky shaders for
+the ground and sky behind the instrument panel, glare shield and consoles. Each cockpit frame now first draws the opaque cockpit parts into a full-size
+depth mask (`src/occlusion.js`) and the skin, the cockpit's lit materials, the terrain and the trees skip any fragment that lies behind it; a skipped
+fragment would have lost the depth test anyway, so the picture is the same. F3 shows the mask size and draw count and a *cockpit mask* GPU pass, and
+**F10** cycles through test views, one of which switches the mask off, so the difference can be read on a real GPU. `tools/cockpitcost.mjs` prints the
+per-draw GPU time with the mask off and on and compares the two pictures pixel by pixel (software renderer: relative cost and correctness only).
+
+`tools/` also holds the measurement scripts used on the software renderer (`flicker.mjs`, `overdraw.mjs`, `cpuprof.mjs`, `cockpitprof2.mjs`, `cockpitcost.mjs`, `shadowstats.mjs`,
+`programs.mjs`, `cloudshadow-step.mjs`, `gearshots.mjs`); they need `puppeteer-core` and Chrome. A software GPU cannot tell real frame rate.
+
+`tools/netaudit.mjs` logs the first minutes of network traffic (requests and bytes per host, duplicate URLs, cache hits); it needs
+`puppeteer-core` and Chrome (`CHROME=/path/to/chrome`).
 
 `window.__sim` exposes the simulator objects (flight model, terrain, camera rig, `spawn()`, `advance()`, ...) for scripted tests.
 
@@ -148,7 +189,7 @@ smooth lines on either side; on 1,032 real mountain tiles this removed every res
 - `src/flight.js` flight dynamics (with `atmosphere.js`, `handling.js`, `turbulence.js`) · `src/terrain.js` real-world scenery (`terrain-worker.js`, `terrain-dem.js`) · `src/buildings.js` 3D buildings (`buildings-worker.js`, `facades.js`) · `src/trees.js` vegetation (`trees-worker.js`) · `src/atmos.js` atmosphere, `src/terrain-shader.js` ground/water shading
   · `src/airportdb.js` airports, runways and lighting · `src/nav.js` route and ILS guidance
   · `src/sky.js` sky and time of day · `src/clouds.js` · `src/aircraft.js` model, afterburner, chute and lights
-  · `src/panel.js` cockpit instruments · `src/camera.js`, `src/controls.js`, `src/hud.js`, `src/autopilot.js`,
+  · `src/panel.js` cockpit instruments · `src/occlusion.js` hidden-surface mask for the cockpit view · `src/camera.js`, `src/controls.js`, `src/hud.js`, `src/autopilot.js`,
   `src/map.js`, `src/audio.js`, `src/geo.js`, `src/main.js` · `src/boot.js` checks for WebGL 2 and starts the app.
 
 Scenery © Esri, Maxar, Earthstar Geographics · Terrain © Mapzen / AWS Terrain Tiles · Airports © OurAirports (public domain) · Runway geometry © OpenStreetMap contributors (ODbL) · Buildings © Overture Maps Foundation (ODbL; includes OpenStreetMap, Google Open Buildings CC BY 4.0, Microsoft Building Footprints ODbL), fallback OpenMapTiles via OpenFreeMap · Charts © FAA.

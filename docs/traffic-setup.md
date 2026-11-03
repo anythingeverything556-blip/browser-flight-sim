@@ -8,6 +8,17 @@ The app requests `GET /api/traffic?lat=…&lon=…&dist=54`. The Pages Function 
 2. No credentials are required for the default adsb.lol endpoint. Requests use a fixed path and a descriptive `User-Agent`.
 3. Confirm the deployment can reach `api.adsb.lol`; provider availability and Cloudflare egress acceptance are external dependencies.
 
+## Why the default source fails on Cloudflare
+
+Measured from a Pages Function on 2026-10-13: api.adsb.lol answers 429 (403 without a descriptive User-Agent), opendata.adsb.fi, api.adsb.one and api.airplanes.live return 403 bot-blocks, OpenSky times out, and ADSBexchange wants a purchased key. Cloudflare's shared egress IPs are the problem, not the code, so the fix is a relay on a host that is not on Cloudflare.
+
+## Quick path: `tools/traffic-relay.mjs`
+
+1. On a machine outside Cloudflare (home PC, VPS, Fly.io, Render), run `RELAY_TOKEN=<long random string> RELAY_CONTACT=you@example.com node tools/traffic-relay.mjs` (Node 18+, no install step). It serves `GET /v2/point/{lat}/{lon}/{radius}` and `GET /health`, caches each 0.25 degree cell for 15 s, tries adsb.lol then adsb.fi, backs off 30 s after a 429/403 and serves a stale result for up to 15 minutes.
+2. Give it an HTTPS address (Caddy, a Cloudflare Tunnel, or `ngrok http 8787`). The relay must stay running.
+3. Run `CLOUDFLARE_API_TOKEN=... RELAY_URL=https://your-relay RELAY_TOKEN=<same string> bash tools/set-traffic-relay.sh`. It sets `TRAFFIC_PROXY_URL`, `TRAFFIC_ALLOWED_HOSTS` and `TRAFFIC_API_KEY` on the Pages project and redeploys.
+4. Check `https://sr71-blackbird.pages.dev/api/traffic?lat=51.5&lon=-0.1&dist=54` returns aircraft. `test/relay-test.mjs` covers the relay and the function together offline.
+
 ## Use an owner-operated relay or keyed provider
 
 1. Configure the relay to accept `GET /v2/point/{lat}/{lon}/{radius}` and return an ADS-B JSON response containing an `aircraft` or `ac` array. Keep the path contract fixed; the Pages Function always constructs this path itself.

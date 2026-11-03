@@ -1,9 +1,21 @@
 # Cloudflare Pages response headers. Hashed build files never change under the same name; the big static assets rarely do.
+# Security headers for every response. The CSP lists exactly the hosts the game fetches (imagery, DEM, buildings, trees, weather, Leaflet map tiles); blob: workers and wasm are for Draco.
+# Cloudflare Web Analytics (enabled on the Pages project): its beacon script and its reporting endpoint.
+# Enforced: checked with the production build in Chrome (boot, flight, map, Germany and Japan teleports, all worker fetches): no violations (sr71-tools/verify/csp-check.mjs).
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: SAMEORIGIN
+  Permissions-Policy: accelerometer=(), camera=(), display-capture=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=(), fullscreen=(self), gamepad=(self)
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://static.cloudflareinsights.com; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https://server.arcgisonline.com https://services.arcgisonline.com https://tiles.arcgis.com; connect-src 'self' blob: https://cloudflareinsights.com https://server.arcgisonline.com https://services.arcgisonline.com https://ags.cuzk.cz https://cyberjapandata.gsi.go.jp https://data.geopf.fr https://geo.api.vlaanderen.be https://geo4.service24.rlp.de https://geoservices.bayern.de https://geoservices.buergernetz.bz.it https://maps.six.nsw.gov.au https://mapsneu.wien.gv.at https://mapy.geoportal.gov.pl https://service.pdok.nl https://tiles.maaamet.ee https://wmts.geo.admin.ch https://wmts.geoportail.lu https://www.ign.es https://tiles.openfreemap.org https://stac.overturemaps.org https://overturemaps-extras-us-west-2.s3.amazonaws.com https://elevation-tiles-prod.s3.amazonaws.com https://s3.amazonaws.com https://api.open-meteo.com; worker-src 'self' blob:; font-src 'self' data:; media-src 'self' blob: data:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'
+
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 /models/*
   Cache-Control: public, max-age=604800, stale-while-revalidate=86400
 /draco/*
+  Cache-Control: public, max-age=2592000
+/fonts/*
   Cache-Control: public, max-age=2592000
 /data/*
   Cache-Control: public, max-age=86400, stale-while-revalidate=604800
