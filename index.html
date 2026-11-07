@@ -42,15 +42,17 @@
   </nav>
 
   <div id="hero" aria-label="Blackbird flight simulator">
-    <div class="h-kicker">Flight simulator in your browser</div>
+    <div class="h-kicker"><svg class="h-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z"/></svg>Flight simulator in your browser</div>
     <h1>Blackbird</h1>
     <p>Fly the SR-71, a Cessna 172 or the Vision Jet from 8,200+ real airports, over satellite imagery and terrain at full scale.</p>
-    <button type="button" class="linkbtn hero-terms js-terms">Terms &amp; credits</button>
     <div class="hero-loader">
       <div class="hero-loader-head"><span>Starting up</span><span id="loadmsg" aria-live="polite">Loading aircraft…</span></div>
       <div id="loadline"><div id="loadbar"></div></div>
     </div>
   </div>
+
+  <div id="hero-ac"></div>
+  <button type="button" class="linkbtn hero-terms js-terms">Terms &amp; credits</button>
 
   <section class="sheet" id="sheet-flight" aria-labelledby="flight-heading">
     <header>
@@ -59,36 +61,47 @@
       <button type="button" class="x" data-close aria-label="Close flight setup"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
     <div class="body">
-      <div class="lbl">Aircraft</div>
-      <div class="ac-cards" id="ac-cards" role="radiogroup" aria-label="Aircraft">
-        <button type="button" class="ac-card" data-v="sr71" role="radio" aria-checked="false"><b>Lockheed SR-71A Blackbird</b><span>Mach 3.2 reconnaissance jet · 2 × J58 · 85,000 ft</span></button>
-        <button type="button" class="ac-card" data-v="c172" role="radio" aria-checked="false"><b>Cessna 172SP Skyhawk</b><span>Four-seat trainer · 180 hp · 122 KTAS</span></button>
-        <button type="button" class="ac-card" data-v="sf50" role="radio" aria-checked="false"><b>Cirrus Vision Jet SF50 G3</b><span>Single-engine personal jet · FJ33-5A · 311 KTAS · FL310</span></button>
-      </div>
-      <div class="sub" id="ac-note"></div>
-      <div class="card home">
-        <div class="lbl">Home base</div>
-        <div class="row"><div><b id="home-name">—</b><div class="sub" id="home-sub"></div></div><button type="button" id="home-go" class="ghost" disabled>Start here</button></div>
-      </div>
-      <label class="lbl" for="dep-q">Departure airport</label>
-      <div class="search"><input id="dep-q" type="search" placeholder="ICAO, IATA or name, e.g. KEDW, LAX, Kadena" autocomplete="off" aria-label="Search departure airports" /><div id="dep-results" class="results"></div></div>
-      <div class="card" id="dep-card"></div>
-      <div class="lbl">Start profile</div>
-      <div class="seg" id="start-mode" role="group" aria-label="Flight start profile">
-        <button type="button" data-v="runway" class="on">On runway</button><button type="button" data-v="approach">10 NM final</button><button type="button" data-v="cruise">Mach 3.2 cruise</button>
-      </div>
-      <label class="lbl" for="intro-tod">Time of day <span id="intro-tod-l" class="val"></span></label>
-      <input type="range" id="intro-tod" min="0" max="24" step="0.25" value="15" aria-label="Departure time of day" />
-      <div class="lbl">Weather</div>
-      <div class="seg wrap" id="intro-wx" role="group" aria-label="Departure weather"><button type="button" data-v="clear">Clear</button><button type="button" data-v="few" class="on">Fair</button><button type="button" data-v="scattered">Scattered</button><button type="button" data-v="overcast">Overcast</button><button type="button" data-v="rain">Rain</button><button type="button" data-v="storm">Storm</button><button type="button" data-v="fog">Fog</button><button type="button" data-v="windy">Gusty</button></div>
-      <div class="lbl">Mission</div>
-      <div class="seg wrap" id="mission-mode" role="group" aria-label="Mission">
-        <button type="button" data-v="free" class="on">Free flight</button><button type="button" data-v="tutorial">Tutorial</button><button type="button" data-v="landassist">Landing 1</button><button type="button" data-v="landhand">Landing 2</button><button type="button" data-v="highfast">High &amp; Fast</button><button type="button" data-v="recon">Recon run</button><button type="button" data-v="tour">Watch demo</button>
-      </div>
-      <div class="sub" id="mission-blurb">No objectives</div>
+      <div id="ac-slot"><div id="ac-pick">
+        <div class="lbl">Aircraft</div>
+        <div class="ac-cards" id="ac-cards" role="radiogroup" aria-label="Aircraft">
+        <button type="button" class="ac-card" data-v="sr71" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z"/></svg><span class="ac-name"><b>Lockheed SR-71A Blackbird</b><small>Strategic reconnaissance jet</small></span><span class="ac-specs"><span>Mach 3.2</span><span>85,000 ft</span><span>2 × J58</span></span></button>
+        <button type="button" class="ac-card" data-v="c172" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M24 5h16v2H24zM30 8h4l1 4v6h25v8H35l-1.2 22H44v5H33.5L33 58h-2l-.5-5H20v-5h10.2L29 26H4v-8h25v-6Z"/></svg><span class="ac-name"><b>Cessna 172SP Skyhawk</b><small>Four-seat trainer</small></span><span class="ac-specs"><span>122 KTAS</span><span>180 hp</span><span>4 seats</span></span></button>
+        <button type="button" class="ac-card" data-v="sf50" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 5c1.6 0 2.8 2.5 3.2 7l.4 12L58 31v3.5L36 34l-.4 10L44 53v3l-9-2.5-1 4.5h-4l-1-4.5-9 2.5v-3l8.4-9L28 34 6 34.5V31l22.4-7 .4-12c.4-4.5 1.6-7 3.2-7Z"/></svg><span class="ac-name"><b>Cirrus Vision Jet SF50 G3</b><small>Single-engine personal jet</small></span><span class="ac-specs"><span>311 KTAS</span><span>FL310</span><span>FJ33-5A</span></span></button>
+        </div>
+        <div class="sub" id="ac-note"></div>
+      </div></div>
+      <section class="grp" aria-labelledby="grp-dep">
+        <h3 class="grp-h" id="grp-dep">Departure</h3>
+        <div class="card home">
+          <div class="lbl">Home base</div>
+          <div class="row"><div><b id="home-name">—</b><div class="sub" id="home-sub"></div></div><button type="button" id="home-go" class="ghost">Start here</button></div>
+        </div>
+        <label class="lbl" for="dep-q">Airport</label>
+        <div class="search"><input id="dep-q" type="search" placeholder="ICAO, IATA or name, e.g. KEDW, LAX, Kadena" autocomplete="off" aria-label="Search departure airports" /><div id="dep-results" class="results"></div></div>
+        <div class="card" id="dep-card"></div>
+        <div class="lbl">Start</div>
+        <div class="seg" id="start-mode" role="group" aria-label="Flight start profile">
+          <button type="button" data-v="runway" class="on">On runway</button><button type="button" data-v="approach">10 NM final</button><button type="button" data-v="cruise">Mach 3.2 cruise</button>
+        </div>
+      </section>
+      <section class="grp" aria-labelledby="grp-cond">
+        <h3 class="grp-h" id="grp-cond">Conditions</h3>
+        <label class="lbl" for="intro-tod">Time of day <span id="intro-tod-l" class="val"></span></label>
+        <input type="range" id="intro-tod" min="0" max="24" step="0.25" value="15" aria-label="Departure time of day" />
+        <div class="lbl">Weather</div>
+        <div class="seg wrap" id="intro-wx" role="group" aria-label="Departure weather"><button type="button" data-v="clear">Clear</button><button type="button" data-v="few" class="on">Fair</button><button type="button" data-v="scattered">Scattered</button><button type="button" data-v="overcast">Overcast</button><button type="button" data-v="rain">Rain</button><button type="button" data-v="storm">Storm</button><button type="button" data-v="fog">Fog</button><button type="button" data-v="windy">Gusty</button></div>
+      </section>
+      <section class="grp" aria-labelledby="grp-mission">
+        <h3 class="grp-h" id="grp-mission">Mission</h3>
+        <div class="seg wrap" id="mission-mode" role="group" aria-label="Mission">
+          <button type="button" data-v="free" class="on">Free flight</button><button type="button" data-v="tutorial">Tutorial</button><button type="button" data-v="landassist">Landing 1</button><button type="button" data-v="landhand">Landing 2</button><button type="button" data-v="highfast">High &amp; Fast</button><button type="button" data-v="recon">Recon run</button><button type="button" data-v="tour">Watch demo</button>
+        </div>
+        <div class="sub" id="mission-blurb">No objectives</div>
+      </section>
     </div>
     <footer class="sheet-foot">
-      <button type="button" id="start-btn" class="cta" disabled>Start flight</button>
+      <div class="foot-sum" id="flight-sum" aria-live="polite"></div>
+      <button type="button" id="start-btn" class="cta">Start flight</button>
       <label class="check"><input type="checkbox" id="make-home" /> <span>Make this my home base</span></label>
     </footer>
   </section>
@@ -136,6 +149,8 @@
     <div class="body">
       <button type="button" id="ap-takeoff" class="ghost wide">Auto take-off (T): full power, rotate, gear up, climb to the target altitude below</button>
       <button type="button" id="ap-cruise" class="ghost wide">Climb to cruise: 85,000 ft at Mach 3.2 (FLCH)</button>
+      <button type="button" id="ap-tuneils" class="ghost wide">Tune ILS ahead (\): nearest runway in front, needles and HSI live without the autopilot</button>
+      <button type="button" id="ap-refuel" class="ghost wide">Refuel (L): stopped on the ground, or the SR-71 from a tanker below 30,000 ft</button>
       <button type="button" id="ap-goaround" class="ghost wide">Go-around (J): full power, wings level, climb 600 m, gear up</button>
       <button type="button" id="ap-master" class="cta">Engage autopilot</button>
       <div class="modes" id="ap-modes" role="group" aria-label="Autopilot modes">
@@ -201,6 +216,7 @@
       <label class="lbl" for="vol">Master volume <span id="vol-l" class="val"></span></label>
       <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7" aria-label="Master volume" />
       <label class="check"><input type="checkbox" id="opt-voice" checked /> <span>Voice warnings<small>Spoken call-outs for pull up, stall, over-G, overspeed, gear and fuel</small></span></label>
+      <label class="check"><input type="checkbox" id="opt-callouts" checked /> <span>Altitude call-outs<small>Radio altitude on landing: 100, 90 … 10 ft, then "Retard" until the thrust is at idle</small></span></label>
       <div class="lbl">Warning voice</div>
       <div class="seg wrap" id="voice-style" role="group" aria-label="Warning voice"><button type="button" data-v="betty" class="on" title="US fighter jet style female voice: &quot;Pull up, pull up&quot;">US fighter</button><button type="button" data-v="gpws" title="US airliner GPWS style male voice: &quot;Terrain, pull up&quot;">US airliner</button><button type="button" data-v="rita" title="Russian fighter (Su-27 &quot;Rita&quot;) style call-outs in Russian: &quot;Опасная высота! Выводи!&quot;">Russian</button></div>
       <p class="note">Choosing a voice plays its pull-up call-out. Russian uses the Su-27 style phrases, e.g. "Опасная высота! Выводи!" (dangerous altitude, pull out).</p>
@@ -261,7 +277,7 @@
       </table>
       <div class="prose">
         <h3>Typical sortie</h3>
-        <ol>
+        <ol id="help-sortie">
           <li>Press <b>9</b>: the J58s take ~6 s to spool and the afterburners light with a green TEB flash.</li>
           <li>Rotate gently at <b>~210 kt</b>, pitch 10°, gear up (<b>G</b>) once climbing.</li>
           <li><b>Flight assist</b> (Options, off by default): when you let go of the stick the jet levels its wings and settles its climb or descent over ~10 seconds, so you can look around at Mach 3. Touch the stick and it hands control straight back. <b>Landing aid</b> (Options, on): gear down and under 150 ft it eases the sink rate for the flare; pressing the pitch keys switches it off so you can flare by hand.</li>
@@ -271,7 +287,7 @@
           <li>Fly final at ~175 kt, touch down below 160 kt, chute (<b>C</b>) and brakes.</li>
         </ol>
         <h3>Cockpit</h3>
-        <p>The front panel is live: ADI with flight director and glideslope, HSI with bearing/DME to the active waypoint and localizer, KIAS/Mach, triple display, altimeter, VSI, g, AoA, clock, fuel, gear lights, both engines' RPM, EGT, nozzle and fuel flow, spike and bypass positions, CIT and annunciators.</p>
+        <p id="help-cockpit">The front panel is live: ADI with flight director and glideslope, HSI with bearing/DME to the active waypoint and localizer, KIAS/Mach, triple display, altimeter, VSI, g, AoA, clock, fuel, gear lights, both engines' RPM, EGT, nozzle and fuel flow, spike and bypass positions, CIT and annunciators.</p>
         <p class="note"><button type="button" class="linkbtn js-terms">Terms &amp; credits</button></p>
       </div>
     </div>
@@ -279,6 +295,7 @@
 
   <div id="status" aria-label="Flight status">
     <span id="st-state" class="chip live">Flying</span>
+    <button type="button" id="st-warp" class="chip warp" title="Time warp (`): click for 1x" hidden></button>
     <span id="st-near" class="chip"></span>
     <span id="st-time" class="chip"></span>
     <span id="st-fps" class="chip dim"></span>
@@ -337,6 +354,22 @@
     <div class="card"><h2 id="crash-title">Aircraft lost</h2><p id="crash-why"></p><button type="button" id="crash-reset" class="cta">Restart (R)</button><button type="button" id="crash-apt" class="ghost wide">Choose another airport</button></div>
   </div>
 
+  <div id="tp" role="dialog" aria-modal="true" aria-labelledby="tp-title" hidden>
+    <form class="card" id="tp-form" autocomplete="off">
+      <h3 id="tp-title">Teleport</h3>
+      <p class="tp-where" id="tp-where"></p>
+      <div class="tp-grid">
+        <label>Altitude <small id="tp-alt-u">ft MSL</small><input id="tp-alt" type="number" step="500" required /></label>
+        <label>Heading <small>° true</small><input id="tp-hdg" type="number" min="0" max="360" step="1" required /></label>
+        <label>Speed <small>KIAS</small><input id="tp-spd" type="number" step="10" required /></label>
+        <label>Climb angle <small>° (− descend)</small><input id="tp-gam" type="number" min="-20" max="30" step="1" value="0" /></label>
+      </div>
+      <div class="tp-quick" id="tp-quick" role="group" aria-label="Presets"></div>
+      <label class="check"><input type="checkbox" id="tp-gear" /> <span>Gear down</span></label>
+      <label class="check"><input type="checkbox" id="tp-ap" /> <span>Autopilot holds this altitude, heading and speed</span></label>
+      <div class="tp-btns"><button type="button" class="ghost" id="tp-cancel">Cancel</button><button type="submit" class="cta" id="tp-go">Teleport</button></div>
+    </form>
+  </div>
   <div id="terms" role="dialog" aria-modal="true" aria-labelledby="terms-title" hidden>
     <div class="terms-card">
       <header><h2 id="terms-title">Terms &amp; credits</h2><button type="button" class="x" id="terms-close" aria-label="Close terms and credits"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button></header>
