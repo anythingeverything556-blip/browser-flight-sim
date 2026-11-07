@@ -26,6 +26,9 @@ export const GEAR = [
   { name: 'right', p: B(-4.90, -STATIC_SINK, 2.54), k: 1.7e6, c: 2.8e5, steer: false, brake: true, R: 0.52, J: 22 },
 ];
 // Airframe points that must never touch the ground.
+// landing forgiveness (everyone found landings too hard): the gear takes up to 7 m/s at first touch (was 5.5) and 4.5 with the strut bottomed (was 3);
+// a nozzle, tail cone or wingtip touching at landing speed with the jet sinking under 2.5 m/s scrapes instead of crashing
+const LAND_SINK_MAX = 7, LAND_SINK_BOTTOM = 4.5, SCRAPE_VS = 2.5, SCRAPE_PARTS = /nozzle|tail cone|wingtip|aft belly/;
 export const HARD = [
   ['nose probe', B(17.6, 2.25, 0)], ['tail cone', B(-15.3, 2.7, 0)],
   ['left wingtip', B(-11.5, 2.05, -8.42)], ['right wingtip', B(-11.5, 2.05, 8.42)],
@@ -395,9 +398,11 @@ export class FlightModel {
     if (this.chute === 'deployed') {
       this.chuteOpen = Math.min(1, this.chuteOpen + dt / 1.5);
       const ias = V * Math.sqrt(atm.rho / 1.225);
-      if (ias > 110) { this.chute = 'failed'; this.events.push('chute-fail'); }
+      // over the limit the canopy streams out and blossoms for about half a second (chuteOpen 0.35), carrying a fraction of its drag, then tears loose
+      const over = ias > 110;
+      if (over && this.chuteOpen >= 0.35) { this.chute = 'failed'; this.events.push('chute-fail'); }
       else if (V > 1) {
-        const D = 0.5 * atm.rho * V * V * 45 * this.chuteOpen;
+        const D = 0.5 * atm.rho * V * V * 45 * this.chuteOpen * (over ? 0.25 : 1);
         const fc = _fc.copy(air).normalize().multiplyScalar(-D);
         F.add(fc);
         T.add(_rc.copy(CHUTE_POINT).sub(cgv).applyQuaternion(this.quat).cross(fc));
@@ -424,9 +429,9 @@ export class FlightModel {
       onGround = true;
       const vp = _vp.crossVectors(wWorld, r).add(this.vel);
       if (!was && vp.y < -0.3) this.events.push({ type: 'touch', vs: -vp.y, wheel: i });
-      if (!was && vp.y < -5.5) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+      if (!was && vp.y < -LAND_SINK_MAX) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
       if (pen > 0.75) {
-        if (vp.y < -3) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+        if (vp.y < -LAND_SINK_BOTTOM) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
         // ground rose under a slowly sinking wheel: finer elevation data arrived, not an impact
         this.pos.y += pen - 0.12; pen = 0.12;
       }
@@ -490,6 +495,7 @@ export class FlightModel {
     if (!this.unlimitedFuel) this.fuel = Math.max(0, this.fuel - ffTotal * dt);
 
     // hard points
+    if (this.scrapeT) this.scrapeT = Math.max(0, this.scrapeT - dt);
     for (let hi = 0; hi < HARD.length; hi++) {
       const name = HARD[hi][0], p = HARD[hi][1];
       const r = _r.copy(p).sub(cgv).applyQuaternion(this.quat);
@@ -498,19 +504,27 @@ export class FlightModel {
       if (py < gy - 0.05) {
         // parked or taxiing slowly when the terrain refines: lift clear instead of declaring a crash
         if (onGround && gs < 15 && Math.abs(this.vel.y) < 2) { this.pos.y += gy - py + 0.05; continue; }
+        if (SCRAPE_PARTS.test(name) && gs < 140 && this.vel.y > -(onGround ? LAND_SINK_MAX : SCRAPE_VS)) { // wheels down: the gear took the arrival, the tail only scrapes
+          this.pos.y += gy - py + 0.03; if (this.w.z > 0) this.w.z *= 0.2; this.w.x *= 0.5;
+          if (!this.scrapeT) this.events.push({ type: 'scrape', part: name });
+          this.scrapeT = 1; continue;
+        }
         if (this.crashOff) { this.absorb(gy - py + 0.05); continue; }
         this.crash(`${name} hit the ground`); return;
       }
     }
 
     const nz = fb.y / (m * grav) + (onGround ? this.contacts.reduce((s, c) => s + c, 0) / (m * grav) : 0);
+    // the structure limit counts flight loads only: a firm touchdown's gear reaction is the gear's own limit (the sink-rate checks), and read as
+    // 'airframe overstressed' on landings players thought were fine
+    const nzAero = fb.y / (m * grav);
     const ias = V * Math.sqrt(atm.rho / 1.225);
     const buffet = smooth(0.2, 0.32, alpha) * 0.8 + (M > 0.93 && M < 1.1 ? 0.12 : 0)
       + (onGround ? Math.min(1, gs / 90) * 0.18 : 0) + this.gearPos * Math.max(0, ias - 140) / 120 * 0.25
       + (this.chute === 'deployed' ? 0.15 * this.chuteOpen : 0);
     const hCG = (MAC_LE - mp.cgx) / C, sm = lerpTable(AC_TAB, M) - hCG, Pde = CM_DE * eff * DE_MAX;
     // control-power read-outs for the autopilot's gain scheduling: angular accel per unit command, and elevator per g (static)
-    this.out = { V, M, qbar, alpha, beta, rho: atm.rho, a: atm.a, T: atm.T, thrust, nz, CL, CD, buffet, ff: ffTotal, ias,
+    this.out = { V, M, qbar, alpha, beta, rho: atm.rho, a: atm.a, T: atm.T, thrust, nz, nzAero, CL, CD, buffet, ff: ffTotal, ias,
       cg: hCG, staticMargin: sm, inletStress: this.inletStress, pitchPower: Pde * qS * C / I.z, rollPower: CL_DA * rollEff(M) * DA_MAX * qS * SPAN / I.x, yawPower: CN_DR * yawEff(M) * DR_MAX * qS * SPAN / I.y,
       dePerG: qS > 1 ? Math.min(1.5, Math.max(sm, 0.02) * m * grav / (qS * Pde)) : 1.5 };
   }

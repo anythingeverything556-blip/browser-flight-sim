@@ -48,6 +48,10 @@ export const KEY_ACTIONS = [
   { id: 'sound', label: 'Sound on / off', group: 'Simulator', keys: ['KeyO'] },
   { id: 'help', label: 'Help (this list)', group: 'Simulator', keys: ['Slash', 'F1'] },
   { id: 'slew', label: 'Slew mode on / off', group: 'Simulator', keys: ['KeyY'] },
+  { id: 'timeWarp', label: 'Time warp: 1x, 2x, 4x, 8x, 16x (cycles; back to 1x below 1,000 ft)', group: 'Simulator', keys: ['Backquote'] },
+  { id: 'cockpitMap', label: 'Moving map on / off', group: 'Simulator', keys: ['KeyN'] },
+  { id: 'tuneIls', label: 'Tune the ILS of the nearest runway ahead (no autopilot needed)', group: 'Autopilot and aids', keys: ['Backslash'] },
+  { id: 'refuel', label: 'Refuel (stopped on the ground; SR-71 also from a tanker below 30,000 ft)', group: 'Ground and gear', keys: ['KeyL'] },
   { id: 'slewUp', label: 'Slew mode: climb', group: 'Slew mode', hold: true, ctx: 'slew', keys: ['PageUp'] },
   { id: 'slewDown', label: 'Slew mode: descend', group: 'Slew mode', hold: true, ctx: 'slew', keys: ['PageDown'] },
 ];

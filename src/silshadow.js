@@ -54,7 +54,7 @@ void main() {
     // penumbra: the sun's 0.53 deg disc over the distance from the airframe to the ground, plus a few centimetres of softness
     const blurUv = (0.05 + 0.0093 * dist) / (2 * this.r), u = m.material.uniforms;
     u.uBlur.value = blurUv; u.uLod.value = Math.max(0, Math.log2(blurUv * this.size / 2));
-    u.uOpacity.value = 0.62 * Math.min(1, env.daylight * 1.5) * Math.max(0, Math.min(1, (this.fadeEnd - agl) / (this.fadeEnd - 400)));
+    u.uOpacity.value = 0.62 * Math.min(1, env.daylight * 1.5) * (1 - 0.85 * (env.overcast || 0)) * Math.max(0, Math.min(1, (this.fadeEnd - agl) / (this.fadeEnd - 400))); // overcast: no direct sun
   }
 
   // redraws the silhouette when the airframe's shape as seen from the sun changes; extra: other values that change the shape (flaps, gear...)

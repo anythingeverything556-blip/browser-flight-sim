@@ -138,11 +138,12 @@ export class Clouds {
     this._keys = new Float64Array(COUNT); this._sortAt = -1e9; this._sortPos = new THREE.Vector3(1e9, 0, 0);
   }
 
+  setAnchor(a) { this.anchor = { x: a.x, y: a.y }; }
   // camWorld: camera position (m); cover 0..1; base: cloud base altitude (m); wind: Vector2 (x, z m/s) the layer drifts with; now: seconds
   update(camWorld, env, cover, base, wind, now = 0) {
     const u = this.uniforms;
     u.uCam.value.copy(camWorld); u.uCover.value = cover; u.uBase.value = base;
-    if (wind) u.uDrift.value.set((wind.x * now) % SPAN, (wind.y * now) % SPAN);
+    if (wind) { const A = this.anchor || { x: 0, y: 0 }; u.uDrift.value.set((((wind.x * now - A.x) % SPAN) + SPAN) % SPAN, (((wind.y * now - A.y) % SPAN) + SPAN) % SPAN); } // anchor: cloudlayer.js
     this.mesh.visible = cover > 0.01;
     if (!this.mesh.visible) return;
     const t = performance.now();

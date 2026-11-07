@@ -4,6 +4,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { C172_CG, C172_GEAR } from './c172.js';
 import { C172Gauges } from './c172gauges.js';
+import { GlassWater } from './glasswater.js';
 import { attitude } from './autopilot.js';
 import { buildOverhead, buildControls, buildTailWheel, cabinMaterials, patchSurface, surfaceKind, CABIN_FILL, TW_RETRACT, THROTTLE_TRAVEL } from './c172cabin.js';
 
@@ -503,6 +504,10 @@ export class C172Visual {
     this.gauges = new C172Gauges(); model.add(this.gauges.mesh);
     let draws = 0, tris = 0; model.traverse((o) => { if (o.isMesh && o.geometry.attributes.position.count) { draws++; tris += (o.geometry.index ? o.geometry.index.count : o.geometry.attributes.position.count) / 3; } });
     this.stats = { draws, tris: Math.round(tris), merged: groups.size };
+    // rain on the glass: the same drops as the SR-71's canopy, on the windshield and the windows (the top of the windshield is y 1.90)
+    // static meshes are merged per material by now: the windshield is the Glass_Tint mesh, the side and rear windows Glass / Glass_Rear (not the gauge covers)
+    const panes = []; model.traverse((o) => { if (o.isMesh && o.material && /^Glass(_Tint|_Rear)?$/.test(o.material.name)) panes.push(o); });
+    if (panes.length) { this.glassWater = new GlassWater({ ridge: 1.9 }); for (const o of panes) this.glassWater.attach(o, model); }
     return this;
   }
 
@@ -955,7 +960,11 @@ void main() {
       const u = this.shadow.material.uniforms;
       u.uBlur.value = blurUv; u.uLod.value = Math.max(0, Math.log2(texels / 2));
       // a sharp shadow is as dark as the cascade shadows around it; spread over a wide penumbra it fades, and goes with height
-      u.uOpacity.value = 0.62 * Math.min(1, env.daylight * 1.5) * Math.max(0, Math.min(1, (SHADOW_FADE_END - agl) / (SHADOW_FADE_END - 400)));
+      u.uOpacity.value = 0.62 * Math.min(1, env.daylight * 1.5) * (1 - 0.85 * (env.overcast || 0)) * Math.max(0, Math.min(1, (SHADOW_FADE_END - agl) / (SHADOW_FADE_END - 400))); // overcast: no direct sun
+    }
+    if (this.glassWater && env) {
+      const sun = (this._sunM ||= new THREE.Vector3()).copy(env.sunDir).applyQuaternion((this._qi ||= new THREE.Quaternion()).copy(this.root.quaternion).invert());
+      this.glassWater.update(dt, { rain: this.rainEff || 0, V: (fdm.out && fdm.out.V) || 0, sun, daylight: env.daylight ?? 1, near: view === 'cockpit' || camWorld.distanceTo(fdm.pos) < 30 });
     }
   }
 }

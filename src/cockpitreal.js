@@ -233,7 +233,7 @@ export function buildRealCockpit(model, panel, skinMat) {
   const black = std({ color: 0x15171a, roughness: 0.55, metalness: 0.2 });
   const greyTray = std({ color: 0x6d7378, roughness: 0.5, metalness: 0.35 });
   const metal = std({ color: 0x9a968a, roughness: 0.42, metalness: 0.7 });
-  const frameMat = std({ color: 0x6a665c, roughness: 0.5, metalness: 0.6 });
+  const frameMat = std({ color: 0x26282b, roughness: 0.72, metalness: 0.25 }); // painted frame: the bare metallic finish mirrored the sky and read as chrome
   const redMat = std({ color: 0xb42a1c, roughness: 0.4, metalness: 0.1 });
 
   // ===== canopy: one lofted gable shared by all glass, rails and bows =====
@@ -261,33 +261,32 @@ export function buildRealCockpit(model, panel, skinMat) {
 
   const rail = [], rib = [];
   const T = 0.03;
-  for (let k = 0; k < XS.length - 1; k++) for (const s of [0, 1]) {
-    rail.push(beam(sec[k].S[s], sec[k + 1].S[s], 0.03, 0.026), beam(sec[k].H[s], sec[k + 1].H[s], 0.02, 0.02));
-  }
-  for (let k = 0; k < XS.length - 1; k++) rail.push(beam(sec[k].R, sec[k + 1].R, 0.02, 0.02));
+  // Frame: sills, the windscreen bow (where the fixed windscreen meets the hatch), the rear bow and the windscreen's centre post. The shoulder
+  // rails, the two extra hatch ribs and the diagonal pillars crossed the glass as a truss of bars the real canopy does not have.
+  const WS = 4; // section index of the windscreen bow (x = 12.0)
+  for (let k = 0; k < XS.length - 1; k++) for (const s of [0, 1]) rail.push(beam(sec[k].S[s], sec[k + 1].S[s], 0.034, 0.03));
+  for (let k = WS; k < XS.length - 1; k++) rail.push(beam(sec[k].R, sec[k + 1].R, 0.02, 0.02)); // windscreen top edge
   const ribAt = (k, t) => { const q = sec[k]; rib.push(beam(q.S[0], q.H[0], t), beam(q.H[0], q.R, t), beam(q.R, q.H[1], t), beam(q.H[1], q.S[1], t)); };
-  ribAt(0, 0.04); ribAt(3, 0.024); ribAt(5, 0.03); ribAt(7, 0.03);
-  rail.push(beam(V(12.57, SILL, 0), V(12.57, ridgeY(12.57), 0), 0.026, 0.02)); // front centre post
+  ribAt(0, 0.04); ribAt(WS, 0.05);
+  rail.push(beam(V(12.57, SILL, 0), V(12.57, ridgeY(12.57), 0), 0.03, 0.024)); // front centre post
   merged(canopy, rail.concat(rib), frameMat, 'RC_Frame');
   // rear closing bow so the hatch has a back wall
   { const q = sec[0], g = new THREE.BufferGeometry(), P = [q.S[0], q.H[0], q.R, q.H[1], q.S[1]];
     g.setAttribute('position', new THREE.Float32BufferAttribute(P.flatMap((p) => [p.x - 0.02, p.y, p.z]), 3)); g.setIndex([0, 1, 2, 0, 2, 3, 0, 3, 4]); g.computeVertexNormals();
     add(canopy, g, skinMat ? skinMat : black, 'RC_RearBow'); }
-  // rivets along the sill rails
-  { const n = 70, im = new THREE.InstancedMesh(new THREE.SphereGeometry(0.007, 6, 4), metal, n * 2), M = new THREE.Matrix4(); let i = 0;
-    for (const s of [-1, 1]) for (let j = 0; j < n; j++) { const x = 10.66 + (j / (n - 1)) * 1.9, w = hwAt(x); M.setPosition(x, SILL + 0.017, s * (w - 0.012)); im.setMatrixAt(i++, M); }
-    canopy.add(im); }
-  // windshield A-pillars: in the photographs each runs from the panel's side corner up to the apex and carries the row of orange lamps
-  { const n = 11, lampMat = new THREE.MeshStandardMaterial({ color: 0xff7a2a, emissive: 0xff5410, emissiveIntensity: 1.6, roughness: 0.3 }), im = new THREE.InstancedMesh(new THREE.SphereGeometry(0.0085, 10, 8), lampMat, n * 2), M = new THREE.Matrix4(); let i = 0;
-    const post = [];
-    for (const sd of [-1, 1]) {
-      const a = V(12.1, SILL + 0.01, sd * (hwAt(12.1) - 0.01)), b = V(12.56, ridgeY(12.56) - 0.02, sd * 0.045);
-      post.push(beam(a, b, 0.034, 0.03));
-      const dir = b.clone().sub(a);
-      for (let j = 0; j < n; j++) { const p = a.clone().addScaledVector(dir, 0.08 + (0.84 * j) / (n - 1)); p.x -= 0.022; p.z -= sd * 0.012; M.setPosition(p); im.setMatrixAt(i++, M); }
+  // the hatch roof is metal (the windows are its sides): a dark spine from the rear bow to the windscreen bow, just inside the glass, so the
+  // view up is a roof and not a greenhouse. Its edges sit on the shoulder line between ridge and side window.
+  { const g = [], up = 0.006;
+    for (let k = 0; k < WS; k++) for (const sd of [0, 1]) {
+      const a = sec[k], b = sec[k + 1], ea = a.R.clone().lerp(a.H[sd], 0.55), eb = b.R.clone().lerp(b.H[sd], 0.55);
+      const P = [ea, eb, b.R, a.R].map((p) => V(p.x, p.y - up, p.z * 0.985));
+      g.push(sd ? quad(P[0], P[1], P[2], P[3]) : quad(P[1], P[0], P[3], P[2]));
     }
-    merged(canopy, post, frameMat, 'RC_APillars'); lamps.push(lampMat); canopy.add(im); }
-
+    const roofMat = std({ color: 0x1d2024, roughness: 0.85, metalness: 0.1, side: THREE.DoubleSide });
+    merged(canopy, g, roofMat, 'RC_HatchRoof');
+    const edge = [];
+    for (let k = 0; k < WS; k++) for (const sd of [0, 1]) { const a = sec[k], b = sec[k + 1]; edge.push(beam(a.R.clone().lerp(a.H[sd], 0.55), b.R.clone().lerp(b.H[sd], 0.55), 0.022, 0.018)); }
+    merged(canopy, edge, frameMat, 'RC_HatchEdge'); }
   // ===== instrument panel: three facets, centre flat, wings angled in =====
   const Y0 = 2.52, Y1 = 3.05, LEAN = 0.045, ZC = 0.158, TH = 33 * Math.PI / 180;
   const WLw = 0.267, WRw = 0.362;
@@ -361,8 +360,8 @@ export function buildRealCockpit(model, panel, skinMat) {
   // hooded round indicator at the top centre and its shroud
   const machFace = roundGaugeFace(256), machCv = cnv(256, 256), machCtx = machCv.getContext('2d'); drawMachNeedle(machCtx, machFace, 256, 0);
   const machTex = mkTex(machCv); let machShown = -1;
-  { const faceMat = lit(machTex), face = new THREE.Mesh(new THREE.CircleGeometry(0.062, 32), faceMat); face.position.set(12.215, 3.155, 0); face.rotation.y = -Math.PI / 2; interior.add(face);
-    const hood = new THREE.CylinderGeometry(0.078, 0.078, 0.1, 28, 1, true).rotateZ(Math.PI / 2).translate(12.165, 3.155, 0);
+  { const faceMat = lit(machTex), face = new THREE.Mesh(new THREE.CircleGeometry(0.046, 32), faceMat); face.position.set(12.2, 3.125, 0); face.rotation.y = -Math.PI / 2; interior.add(face);
+    const hood = new THREE.CylinderGeometry(0.058, 0.058, 0.08, 28, 1, true).rotateZ(Math.PI / 2).translate(12.16, 3.125, 0);
     add(interior, hood, black, 'RC_Hood');
  }
   // large hinged grey display tray under the centre panel

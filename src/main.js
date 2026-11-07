@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { Geo, haversine, bearing, D2R } from './geo.js';
+import { Geo, haversine, bearing, D2R, destination } from './geo.js';
 import { stickGearing, rollGearing } from './handling.js';
 import { Tour } from './tour.js';
 import { Tutorial } from './tutorial.js';
@@ -27,7 +27,7 @@ import { AIRCRAFT_TYPES, aircraftChoice } from './aircrafts.js';
 import { setCallsign } from './atc.js';
 import { airData } from './airdata.js';
 import { isa } from './atmosphere.js';
-import { cloudTop } from './cloudlayer.js';
+import { cloudTop, cloudAnchor } from './cloudlayer.js';
 import { AircraftSystems } from './systems.js';
 import { AircraftVisual } from './aircraft.js';
 import { configureCameraAircraft, CameraRig, VIEWS, VIEW_NAMES } from './camera.js';
@@ -48,6 +48,7 @@ import { Atc, buildAtis } from './atc.js';
 import { JetBlast } from './blast.js';
 import { liveWeather } from './metar.js';
 import { Traffic } from './traffic.js';
+import { TouchdownReporter } from './touchdown.js';
 import { Airflow } from './airflow.js';
 import { CloudShadow } from './cloudshadow.js';
 import { warmShaders, warmLate, warmTextures, whenIdle, finishPrograms } from './warmup.js';
@@ -56,10 +57,11 @@ import { nextScale, nextPressure, floorFor, dynReady, lowerPreset, DYN } from '.
 import { TakeoffAid, RotationAssist } from './autotakeoff.js';
 import { mountKeymap } from './keymap-ui.js';
 import { BuildingCollider, C172_COLLIDE_POINTS, C172_PAD, SF50_COLLIDE_POINTS, SF50_PAD } from './buildcollide.js';
-import { makeAutoTrim, autoTrimStep, AT as AUTO_TRIM } from './autotrim.js';
+import { makeAutoTrim, autoTrimStep, AT as AUTO_TRIM, AT_C172 } from './autotrim.js';
 import { slewExit } from './slew.js';
 import { esc } from './esc.js';
 import { firstRunGfx } from './gpuclass.js';
+import { CockpitMap } from './cockpitmap.js';
 import { isReversed } from './depth.js';
 import { setPanelHardware } from './panel.js';
 import { DEFAULT_VOICE_STYLE, voiceStyle } from './voicewarn.js';
@@ -175,9 +177,13 @@ if (!settings.gfxV7) { settings.gfxV7 = true; settings.dynres = true; LS.set('se
 if (!settings.gfxV5) { settings.gfxV5 = true; LS.set('settings', settings); }
 const saveSettings = () => LS.set('settings', settings);
 audio.setVoice(settings.voiceWarn !== false, settings.voiceStyle, BASE);
+if (settings.callouts === undefined) settings.callouts = true;
+audio.setCallouts(settings.callouts);
 // player's key bindings (Settings → Keyboard controls)
 const keymap = mountKeymap({ root: $('keymap'), help: $('help-keys'), leverHint: $('tl-hint'), controls, settings, save: saveSettings, toast: (m, w) => toast(m, w) });
 const state = { paused: false, slew: false, pending: null, lastSpawn: null, lastGround: 34, bump: 0, overG: 0, coneSilent: false, navOut: {}, started: false };
+const WARPS = [1, 2, 4, 8, 16], warp = { i: 0 }; // time warp (see setWarp)
+const warpX = () => WARPS[warp.i];
 const turb = new Turbulence();
 // Skyhawk hands-off assist state (src/handsoff.js); dropped at every spawn so a held heading never carries into the next flight
 const handsOff = {}, stick172 = { de: 0, da: 0 }; const resetHandsOff = () => { for (const k of Object.keys(handsOff)) delete handsOff[k]; stick172.de = stick172.da = 0; };
@@ -211,6 +217,7 @@ function moveOrigin(lat, lon) {
 }
 
 function spawn(s, meta) {
+  state.refuel = null; if (warp.i) { warp.i = 0; $('st-warp').hidden = true; } // a new position starts at 1x with no tanker
   buildingHit.reset(); buildingHit.hasPrev = false;
   state.ditch = false;
   if (wreck.active) {
@@ -235,6 +242,7 @@ function spawn(s, meta) {
   if (meta && meta.rwy) nav.setArrival(meta.rwy, meta.end);
   nav.legStart = null; // the active leg restarts from the new position
   state.pending = { ...s, t0: performance.now() };
+  touchdown.reset();
   atc.reset(); audio.resetForSpawn(); // the crash and fire sounds of the last flight carried into this one
   terrain.requestHeight(s.lat, s.lon);
   $('crash').style.display = 'none';
@@ -305,7 +313,8 @@ function freeOrbitBehind() {
   setView('orbit'); Object.assign(rig.orbit, { az: -((s ? s.hdg : 0) * Math.PI) / 180, el: 0.2, dist: IS_C172 ? 16 : IS_SF50 ? 19 : 60 });
 }
 function beginFlight() {
-  document.body.classList.remove('intro'); state.started = true; controls.enabled = true; openSheet(null);
+  if (settings.cmap !== false && !cmap.visible) cmap.toggle(true); // on by default once flying; N hides it
+  document.body.classList.remove('intro'); state.started = true; controls.enabled = true; openSheet(null); placeAircraftPicker();
   syncStripH();
   toast('W/S pitch · A/D roll (steer the nose wheel on the ground) · ? all keys');
 }
@@ -408,7 +417,7 @@ function renderHome() {
 }
 $('home-go').addEventListener('click', () => {
   const a = db.ready && homeAirport(); if (!a) return;
-  startWarm(); spawnAt(a, home.rwy, home.end, missionSpawnMode(missionKind, 'runway')); beginFlight(); startMission();
+  startWarm(); spawnAt(a, home.rwy, home.end, missionSpawnMode(missionKind, 'runway')); beginFlight(); if (state.pending) showLoadUi(); startMission();
   if (settings.metarAuto) loadMetar(a, true);
 });
 
@@ -434,6 +443,7 @@ function renderDep() {
   const a = dep.apt; if (!a) return;
   $('dep-card').innerHTML = `${airportHeader(a)}<div class="lbl">Runway</div><div class="chips">${a.runways.flatMap((r, i) => r.ends.map((e, k) =>
     `<button class="endbtn ${dep.rwy === i && dep.end === k ? 'on' : ''}" data-r="${i}" data-e="${k}">${e.ident} <small>${fmtLen(r.len)}</small></button>`)).join('')}</div>`;
+  renderSum();
   $('dep-card').querySelectorAll('.endbtn').forEach((b) => b.addEventListener('click', () => { dep.rwy = +b.dataset.r; dep.end = +b.dataset.e; renderDep(); prefetchPlace(); }));
 }
 // scenery for the chosen runway starts loading as soon as it is picked, not when Start is pressed
@@ -443,6 +453,21 @@ function prefetchPlace() {
 }
 searchBox($('dep-q'), $('dep-results'), (a) => { dep.apt = a; dep.rwy = 0; dep.end = 0; renderDep(); prefetchPlace(); });
 seg('start-mode', (v) => { dep.mode = v; });
+// one line above Start flight says what it will do: aircraft, runway, start (or mission), time and weather
+function renderSum() {
+  const on = (id) => { const b = document.querySelector(`#${id} button.on`); return b && !b.hidden ? b.textContent : ''; };
+  const a = dep.apt, r = a && a.runways[dep.rwy], e = r && r.ends[dep.end];
+  const start = missionKind && missionKind !== 'free' ? on('mission-mode') : on('start-mode');
+  $('flight-sum').textContent = [AIRCRAFT_TYPES[AIRCRAFT].short, a ? `${a.ident}${e ? ` ${e.ident}` : ''}` : '', start, $('intro-tod-l').textContent, on('intro-wx')].filter(Boolean).join(' · ');
+}
+['click', 'input'].forEach((ev) => $('sheet-flight').addEventListener(ev, () => queueMicrotask(renderSum)));
+// the aircraft picker sits over the scene on the start screen of a wide window, and inside Flight setup otherwise (phones, in flight)
+const acPick = $('ac-pick'), acWide = matchMedia('(min-width: 1180px) and (min-height: 640px)');
+function placeAircraftPicker() {
+  const to = document.body.classList.contains('intro') && acWide.matches ? $('hero-ac') : $('ac-slot');
+  if (acPick.parentElement !== to) to.appendChild(acPick);
+}
+acWide.addEventListener('change', placeAircraftPicker); placeAircraftPicker();
 // aircraft picker: the current one is marked; picking the other saves it and reloads into it
 {
   const cards = [...document.querySelectorAll('#ac-cards .ac-card')];
@@ -460,6 +485,11 @@ seg('start-mode', (v) => { dep.mode = v; });
     const cruise = document.querySelector('#start-mode [data-v="cruise"]'); if (cruise) cruise.textContent = '8,000 ft cruise';
     document.querySelectorAll('#mission-mode button').forEach((b) => { if (b.dataset.v !== 'free') b.hidden = true; });
     const h = $('help-heading'); if (h) h.textContent = 'Flying the Skyhawk';
+    // the sortie and cockpit text in index.html is the Blackbird's (J58s, afterburners, chute): the Skyhawk gets its own
+    $('help-sortie').innerHTML = ['Full throttle (<b>Shift</b> or <b>E</b>; the first push releases the parking brake), keep the centreline with <b>A</b>/<b>D</b> (nose-wheel steering).',
+      'Rotate at <b>55 KIAS</b> with a light pull and climb at <b>74 KIAS</b>.', 'No autopilot is fitted: trim with <b>;</b> and <b>\'</b> and fly by hand; <b>F</b> and <b>Shift+F</b> step the flaps.',
+      'Plan the arrival on the <b>Map</b> (route, arrival runway, distance and ETE).', 'Fly final at about <b>65 KIAS</b> with flaps down, close the throttle (<b>Q</b>) over the threshold and flare.'].map((t) => `<li>${t}</li>`).join('');
+    $('help-cockpit').textContent = 'The six-pack and tachometer are live: airspeed, attitude, altimeter, turn coordinator, heading and vertical speed, redrawn from the flight model.';
     document.title = document.title.replace(/SR-71[^|–-]*/, 'Cessna 172SP Skyhawk ');
   }
   if (IS_SF50) {
@@ -467,6 +497,11 @@ seg('start-mode', (v) => { dep.mode = v; });
     const cruise = document.querySelector('#start-mode [data-v="cruise"]'); if (cruise) cruise.textContent = 'FL250 cruise';
     document.querySelectorAll('#mission-mode button').forEach((b) => { if (b.dataset.v !== 'free') b.hidden = true; });
     const h = $('help-heading'); if (h) h.textContent = 'Flying the Vision Jet';
+    $('help-sortie').innerHTML = ['Runway starts set 50 % flaps and take-off trim. Take-off thrust with <b>Shift</b> or <b>E</b> (the first push releases the parking brake).',
+      'Rotate at <b>90 KIAS</b> with a light pull, gear up (<b>G</b>) once climbing, climb at <b>120 KIAS</b>, then flaps up (<b>Shift+F</b>).',
+      'Keep below 250 KIAS: 210 with the gear down, 190 with 50 % flaps, 150 with full flaps.', 'In <b>Autopilot</b> use <b>Climb to cruise</b> (FL280, FLCH); <b>J</b> is a go-around and <b>Shift+U</b> Safe Return lands at the nearest suitable airport.',
+      'Plan the arrival on the <b>Map</b>, pick the arrival runway, then use <b>NAV</b> and <b>APPR</b> (or the autoland).', 'Fly final with full flaps at about <b>90 KIAS</b> (VREF 89), touch down and brake.'].map((t) => `<li>${t}</li>`).join('');
+    $('help-cockpit').textContent = 'The two large Perspective Touch+ style displays are live: the PFD (attitude, speed and altitude tapes, HSI, flight director) and the MFD (engine N1, ITT, fuel flow, fuel, gear, flaps, pressurisation, navigation and alerts).';
     document.title = document.title.replace(/SR-71[^|–-]*/, 'Cirrus Vision Jet SF50 ');
   }
 }
@@ -487,13 +522,16 @@ function applyWeather(id) {
 const bootMetar = settings.weather === 'metar' && settings.metarWx;
 weather.set(bootMetar ? settings.metarWx : WEATHER[settings.weather] || WEATHER.few); setIntroWx(bootMetar ? '' : settings.weather || 'few'); setWxPreset(bootMetar ? '' : settings.weather || 'few');
 $('start-btn').addEventListener('click', () => {
-  if (state.pending) return; // rapid clicks spawned and started the mission again while the world loaded
+  // rapid clicks after the start spawned and started the mission again while the world loaded. Before the start, a pending spawn is only the
+  // menu's background scenery (boot, runway pick): the click must go ahead, or Start flight seemed to need several clicks.
+  if (state.pending && state.started) return;
   const a = dep.apt || (db.ready && homeAirport()); if (!a) return;
   if ($('make-home').checked) setHome(a, dep.rwy, dep.end);
   const mode = missionKind === 'tutorial' || missionKind === 'tour' ? 'runway' : missionKind === 'landassist' ? 'approach' : missionKind === 'landhand' ? 'final' : dep.mode;
   startWarm(); spawnAt(a, dep.rwy, dep.end, mode);
   if (mode !== 'runway') { fdm.gearDown = mode === 'approach' || mode === 'final'; fdm.gearPos = fdm.gearDown ? 1 : 0; }
   beginFlight();
+  if (state.pending) showLoadUi();
   if (settings.metarAuto) loadMetar(a, true);
   freeOrbitBehind();
   startMission();
@@ -585,12 +623,22 @@ const C172_TIPS = ['Shift (or E) and Q move the throttle.', 'F and Shift+F step 
 const lsEl = $('loadscreen'), LS_TIPS = IS_SF50 ? SF50_TIPS : IS_C172 ? C172_TIPS : ['Shift (or E) and Q move the throttle. 9 lights both afterburners.', 'Above Mach 2.3 keep the sideslip small or an inlet can unstart.', 'The J58 engines need about six seconds to spool up.', 'V cycles the cameras, M opens the map, ? shows every control.', 'Pull the drag chute with C after touchdown, below 200 knots.', 'The throttle lever on the right edge works with the mouse.'];
 const loadUi = { shown: false, since: 0, done: false, tip: 0, fade: 0 };
 const lsStep = (n, st) => { const li = lsEl.querySelector(`[data-step="${n}"]`); if (li) li.className = st; };
+// Start flight shows the loading screen in the click itself: it used to wait 300 ms for the frame loop, which looked like the button had done
+// nothing until the engine sound (let through only once the world is ready) started. Teleports keep the 300 ms grace in updateLoadUi.
+function showLoadUi(now = performance.now()) {
+  if (loadUi.shown) return;
+  loadUi.shown = true; loadUi.done = false; loadUi.since = loadUi.since || now; loadUi.p = 0; lsEl.hidden = false; lsEl.classList.remove('out');
+  ['aircraft', 'elevation', 'imagery', 'shaders', 'weather'].forEach((n) => lsStep(n, ''));
+  $('ls-fill').style.width = '0%'; $('ls-pct').textContent = '0%';
+  const a = state.lastSpawn && state.lastSpawn.meta && state.lastSpawn.meta.rwy && state.lastSpawn.meta.rwy.ap;
+  $('ls-sub').textContent = a ? `${a.ident} — ${a.name}` : 'Loading terrain and imagery…';
+}
 function updateLoadUi(now) {
   const pend = state.pending && state.started ? state.pending : null;
   if (pend) {
     loadUi.done = false;
     if (!loadUi.since) loadUi.since = now;
-    if (!loadUi.shown && now - loadUi.since > 300) { loadUi.shown = true; lsEl.hidden = false; lsEl.classList.remove('out'); const a = state.lastSpawn && state.lastSpawn.meta && state.lastSpawn.meta.rwy && state.lastSpawn.meta.rwy.ap; $('ls-sub').textContent = a ? `${a.ident} — ${a.name}` : 'Loading terrain and imagery…'; }
+    if (!loadUi.shown && now - loadUi.since > 300) showLoadUi(now);
     if (!loadUi.shown) return;
     const elevOk = terrain.heightReady(pend.lat, pend.lon) || terrain.heightAt(pend.lat, pend.lon) !== null, waited = performance.now() - pend.t0;
     const gs = elevOk ? groundStatus(pend) : { ok: false, p: 0 };
@@ -621,6 +669,7 @@ function atcCtx() {
 }
 const airflow = new Airflow(scene), cloudShadow = new CloudShadow();
 TERRAIN_UNIFORMS.uCsTex.value = cloudShadow.rt.texture; TERRAIN_UNIFORMS.uCsTex2.value = cloudShadow.rtOld.texture;
+const touchdown = new TouchdownReporter();
 const traffic = new Traffic(scene, geo, BASE); traffic.enabled = settings.traffic !== false; traffic.onFail = (message) => toast(message || 'Live traffic unavailable', true);
 // ---------- clickable cockpit: throttle levers (drag), gear lever, A/P ENGAGED lamp, chute and brake lamps on the panel ----------
 const pickRay = new THREE.Raycaster(), pickNdc = new THREE.Vector2(), pickDrag = { on: false, y0: 0, t0: 0 };
@@ -734,15 +783,62 @@ const mapPanel = new MapPanel($('map'), db, nav, {
   onAirport: (a) => { const box = $('map-apt'); box.className = 'card'; box.innerHTML = airportDetail(a, true) + `<div class="lbl">Arrival</div><div class="chips">${a.runways.flatMap((r, i) => r.ends.map((e, k) => `<button class="endbtn" data-act="ils:${i}:${k}">ILS ${e.ident}</button>`)).join('')}</div>`; bindActions(box, a); },
   addWaypoint: (lat, lon) => nav.add({ lat, lon, name: `WP${nav.wps.length + 1}` }),
   directTo: (lat, lon) => { nav.directTo({ lat, lon, name: 'DCT' }, aircraftLatLon()); toast('Direct to waypoint'); },
-  teleport: (lat, lon) => {
-    // each type arrives at its own cruise: the Blackbird's 230 m/s floor is ~447 KTAS, which broke the Vision Jet and the Skyhawk up on arrival
-    const alt = IS_C172 ? 8000 / FT : Math.max(fdm.pos.y, 3000);
-    const spd = IS_GA ? (IS_SF50 ? 180 : 105) / KT / Math.sqrt(isa(alt).rho / 1.225) : Math.max(fdm.vel.length(), 230);
-    spawn({ lat, lon, alt, hdg: attitude(fdm.quat).heading, speed: spd, ground: false });
-    fdm.gearDown = false; fdm.gearPos = 0; toast('Teleported');
-    if (state.started) { if (missionSurvivesTeleport(missionKind)) startMission(); else { clearMission(); toast(`${MISSIONS[missionKind] ? MISSIONS[missionKind].name : 'Mission'} ended by the teleport`); } }
-  },
+  teleport: (lat, lon) => openTeleport(lat, lon),
 });
+// ---------- moving map (N): a compact navigation display that stays up while flying, in the cockpit or outside ----------
+const cmap = new CockpitMap(document.body, db, { onPickAirport: (a) => { openSheet('airports'); showAirport(a); }, onClose: () => { settings.cmap = false; saveSettings(); } });
+controls.on('cockpitMap', () => { settings.cmap = cmap.toggle(); saveSettings(); });
+// ---------- teleport dialog: altitude, heading, speed, climb angle, gear and an autopilot hold, prefilled from the flight (or the type's cruise) ----------
+const TP_KIAS = IS_C172 ? [50, 160] : IS_SF50 ? [80, 300] : [150, 450]; // what each type can fly at the far end
+const TP_PRESETS = IS_C172 ? [['Cruise', 8000, 105, 0, false], ['Pattern', 1500, 80, 0, false], ['Final', 1000, 70, -3, true]]
+  : IS_SF50 ? [['Cruise FL250', 25000, 180, 0, false], ['Approach', 3000, 140, 0, true], ['Final', 1500, 100, -3, true]]
+    : [['Mach 3.2 cruise', 80000, 340, 0, false], ['Subsonic', 25000, 320, 0, false], ['Approach', 3000, 200, -3, true]];
+const tp = { lat: 0, lon: 0 };
+function openTeleport(lat, lon) {
+  Object.assign(tp, { lat, lon });
+  const flying = state.started && !fdm.onGround && !fdm.crashed, u = settings.metric ? 1 : FT;
+  const def = TP_PRESETS[0], alt = flying ? fdm.pos.y * FT : def[1], kias = flying ? Math.round(ias() * KT) : def[2];
+  $('tp-alt-u').textContent = settings.metric ? 'm MSL' : 'ft MSL'; $('tp-alt').step = settings.metric ? 100 : 500;
+  $('tp-alt').value = Math.round((alt / FT) * u / 100) * 100; $('tp-hdg').value = Math.round(attitude(fdm.quat).heading) % 360;
+  $('tp-spd').value = Math.min(TP_KIAS[1], Math.max(TP_KIAS[0], kias)); $('tp-gam').value = 0; $('tp-gear').checked = false; $('tp-ap').checked = !IS_C172 && flying && ap.on;
+  $('tp-ap').parentElement.style.display = IS_C172 ? 'none' : '';
+  $('tp-where').textContent = `${Math.abs(lat).toFixed(4)}°${lat >= 0 ? 'N' : 'S'} ${Math.abs(lon).toFixed(4)}°${lon >= 0 ? 'E' : 'W'}`;
+  $('tp-quick').innerHTML = TP_PRESETS.map((p, i) => `<button type="button" class="ghost" data-i="${i}">${esc(p[0])}</button>`).join('');
+  $('tp-quick').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { const p = TP_PRESETS[+b.dataset.i];
+    $('tp-alt').value = Math.round((p[1] / FT) * u / 100) * 100; $('tp-spd').value = p[2]; $('tp-gam').value = p[3]; $('tp-gear').checked = p[4]; }));
+  $('tp').hidden = false; controls.enabled = false; setTimeout(() => $('tp-alt').focus(), 0);
+}
+function closeTeleport() { $('tp').hidden = true; controls.enabled = state.started; }
+$('tp-cancel').addEventListener('click', closeTeleport);
+$('tp').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') closeTeleport(); });
+$('tp').addEventListener('pointerdown', (e) => { if (e.target === $('tp')) closeTeleport(); });
+$('tp-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const num = (id, d) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : d; };
+  const alt = Math.max(150, num('tp-alt', 10000) / (settings.metric ? 1 : FT)), hdg = ((num('tp-hdg', 0) % 360) + 360) % 360;
+  const kias = Math.min(TP_KIAS[1], Math.max(TP_KIAS[0], num('tp-spd', TP_KIAS[0]))), gamma = Math.max(-20, Math.min(30, num('tp-gam', 0)));
+  const speed = kias / KT / Math.sqrt(isa(alt).rho / 1.225); // KIAS (about EAS) to true airspeed at that height
+  const gear = $('tp-gear').checked, hold = $('tp-ap').checked && !IS_C172;
+  closeTeleport(); openSheet(null);
+  spawn({ lat: tp.lat, lon: tp.lon, alt, hdg, speed, ground: false, gamma });
+  fdm.gearDown = gear; fdm.gearPos = gear ? 1 : 0; state.apAfterSpawn = hold;
+  toast(`Teleported: ${Math.round(settings.metric ? alt : alt * FT).toLocaleString()} ${settings.metric ? 'm' : 'ft'}, ${Math.round(hdg)}°, ${Math.round(kias)} KIAS`);
+  if (state.started) { if (missionSurvivesTeleport(missionKind)) startMission(); else { clearMission(); toast(`${MISSIONS[missionKind] ? MISSIONS[missionKind].name : 'Mission'} ended by the teleport`); } }
+});
+// live ADS-B on the map: "Fly alongside" puts the jet 450 m behind and 120 m right of a real aircraft, at its altitude, track and speed
+// (clamped to what this type can fly)
+const ALONGSIDE_MS = IS_C172 ? [28, 64] : IS_SF50 ? [55, 160] : [130, 950];
+function flyAlongside(e) {
+  if (!state.started || state.pending || e.alt == null) return;
+  const back = destination(e.lat, e.lon, (e.trk + 180) % 360, 450), at = destination(back.lat, back.lon, (e.trk + 90) % 360, 120);
+  const speed = Math.min(ALONGSIDE_MS[1], Math.max(ALONGSIDE_MS[0], e.gs / KT));
+  spawn({ lat: at.lat, lon: at.lon, alt: Math.max(150, e.alt / FT), hdg: e.trk, speed, ground: false });
+  fdm.gearDown = false; fdm.gearPos = 0; openSheet(null);
+  toast(`Alongside ${e.call || e.reg || e.hex.toUpperCase()}${e.type ? ' · ' + e.type : ''}`);
+  if (missionSurvivesTeleport(missionKind)) startMission(); else { clearMission(); toast(`${MISSIONS[missionKind] ? MISSIONS[missionKind].name : 'Mission'} ended by the move`); }
+}
+mapPanel.attachLive({ base: BASE, settings, save: () => saveSettings(), ownship: () => (state.started ? aircraftLatLon() : null),
+  canFlyTo: () => state.started && !state.pending && !fdm.crashed, onFlyAlongside: flyAlongside, onFollowStop: () => mapPanel.setFollow(false) });
 function renderRoute() {
   const ll = state.started ? aircraftLatLon() : null;
   let prev = ll;
@@ -822,7 +918,7 @@ document.querySelectorAll('#ap-modes button').forEach((b) => b.addEventListener(
   if (on && MODE_GROUPS[m]) MODE_GROUPS[m].forEach((x) => { ap.modes[x] = false; });
   ap.modes[m] = on;
   if (m === 'nav' && on && !nav.wps.length) { ap.modes.nav = false; ap.modes.hdg = true; toast('No flight plan — add waypoints on the Map', true); }
-  if (m === 'appr' && on && !nav.arrival) { ap.modes.appr = false; toast('Choose an arrival runway first (Airports → ILS)', true); }
+  if (m === 'appr' && on && !nav.arrival) { ap.modes.appr = false; toast('Tune an ILS first: \\ for the runway ahead, or Airports → ILS', true); }
   else if (m === 'appr' && on && !ap.on && !fdm.onGround) engageAp(); // armed APPR without the A/P flew nothing (FLCH already engaged it)
   if (m === 'flch' && on) { if (!ap.on) engageAp(); if (!ap.modes.spd && !ap.modes.mach) ap.modes.spd = true; }
   if (m === 'vs' && on) apInputs.vs.value = Math.round(fdm.vel.y * 196.85 / 100) * 100;
@@ -1204,6 +1300,7 @@ bindCheck('opt-rotassist', 'rotAssist', () => rotAssist.reset());
 bindCheck('opt-handsoff', 'handsOff', resetHandsOff);
 bindCheck('opt-autotrim', 'autoTrim');
 bindCheck('opt-landaid', 'landAid', () => landAid.on && landAid.disengage());
+bindCheck('opt-callouts', 'callouts', (on) => audio.setCallouts(on));
 bindCheck('opt-voice', 'voiceWarn', (on) => { audio.setVoice(on, settings.voiceStyle); $('voice-style').classList.toggle('off', !on); });
 $('voice-style').classList.toggle('off', settings.voiceWarn === false);
 const setVoiceStyle = seg('voice-style', (v) => { settings.voiceStyle = voiceStyle(v); saveSettings(); audio.init(); audio.setVoice(settings.voiceWarn !== false, settings.voiceStyle); audio.previewVoice(); });
@@ -1257,6 +1354,67 @@ controls.on('gear', () => {
   if (fdm.onGround && fdm.gearDown) { toast('Weight on wheels — gear locked down', true); return; }
   fdm.gearDown = !fdm.gearDown; toast(fdm.gearDown ? 'Gear down' : 'Gear up');
 });
+// ---------- time warp: the simulation runs 2-16 steps per frame. Air only, above 1,000 ft: near the ground a 16x frame is a quarter of a second of
+// flying between two looks, so it drops back to 1x there (and on a crash, a warning, the take-off or landing aids) ----------
+function warpBlock() {
+  if (!state.started || state.pending) return 'start a flight first';
+  if (fdm.crashed) return 'crashed';
+  if (fdm.onGround) return 'on the ground';
+  if ((fdm.pos.y - state.lastGround - CG_H) * FT < 1000) return 'below 1,000 ft';
+  if (takeoff.on || landAid.on) return takeoff.on ? 'auto take-off' : 'landing aid';
+  return null;
+}
+function setWarp(i, why) {
+  i = Math.max(0, Math.min(WARPS.length - 1, i)); if (i === warp.i) return;
+  warp.i = i; const b = $('st-warp'); b.hidden = !i; b.textContent = `${WARPS[i]}× TIME`;
+  toast(i ? `Time warp ${WARPS[i]}×` : `Time warp off${why ? ': ' + why : ''}`, !!why);
+}
+controls.on('timeWarp', () => { const b = warpBlock(); if (b && !warp.i) { toast(`Time warp needs the air above 1,000 ft (${b})`, true); return; } setWarp(warp.i + 1 >= WARPS.length ? 0 : warp.i + 1); });
+$('st-warp').addEventListener('click', () => setWarp(0));
+
+// ---------- refuel: stopped on the ground (fuel truck, about 20 s), or the Blackbird from a KC-135 below 30,000 ft and Mach 0.9 (boom contact, about 60 s) ----------
+const FUEL_CAP = FUEL_MAX;
+function refuelBlock() {
+  if (!state.started || state.pending || fdm.crashed) return 'Start a flight first';
+  if (fdm.unlimitedFuel) return 'Unlimited fuel is on (Settings)';
+  if (fdm.fuel >= FUEL_CAP - 1) return 'Tanks are full';
+  if (fdm.onGround) return Math.hypot(fdm.vel.x, fdm.vel.z) > 1.5 ? 'Stop the aircraft to refuel' : null;
+  if (IS_GA) return 'Refuel on the ground: land and stop';
+  if (fdm.pos.y * FT > 30000 || (fdm.out.M || 0) > 0.9) return 'Tanker refuelling: below 30,000 ft and Mach 0.9';
+  return null;
+}
+controls.on('refuel', () => {
+  if (state.refuel) { state.refuel = null; toast('Refuelling stopped'); return; }
+  const b = refuelBlock(); if (b) { toast(b, true); return; }
+  state.refuel = { air: !fdm.onGround, rate: FUEL_CAP / (fdm.onGround ? 20 : 60) };
+  toast(fdm.onGround ? 'Fuel truck connected: refuelling (L to stop)' : 'Tanker contact: refuelling, hold steady (L to stop)');
+});
+function refuelStep(dt) {
+  const r = state.refuel; if (!r) return;
+  const b = refuelBlock();
+  if (b && b !== 'Tanks are full') { state.refuel = null; toast(r.air ? `Disconnected from the tanker: ${b.toLowerCase()}` : `Refuelling stopped: ${b.toLowerCase()}`, true); return; }
+  fdm.fuel = Math.min(FUEL_CAP, fdm.fuel + r.rate * dt);
+  if (fdm.fuel >= FUEL_CAP - 1) { fdm.fuel = FUEL_CAP; state.refuel = null; toast('Tanks full'); }
+}
+
+// ---------- ILS: tune the nearest runway ahead without the autopilot; the needles, the HSI and the panel show it, APPR can follow it later ----------
+function tuneIlsAhead() {
+  const ll = aircraftLatLon(), hdg = attitude(fdm.quat).heading; let best = null;
+  for (const { a } of db.near(ll.lat, ll.lon, 60)) for (const r of a.runways) r.ends.forEach((e, k) => {
+    if (!r.ils || !r.ils(k)) return;
+    const d = haversine(ll.lat, ll.lon, e.start.lat, e.start.lon), brg = bearing(ll.lat, ll.lon, e.start.lat, e.start.lon);
+    const off = Math.abs(((brg - hdg + 540) % 360) - 180), align = Math.abs(((e.hdg - hdg + 540) % 360) - 180);
+    const score = d / 1852 + off * 0.15 + align * 0.05; // ahead and lined up beats merely close
+    if (off < 70 && (!best || score < best.score)) best = { a, r, k, score, d };
+  });
+  if (!best) { toast('No ILS runway ahead within 30 NM (Airports → ILS picks any runway)', true); return; }
+  nav.setArrival(best.r, best.k); renderRoute();
+  toast(`ILS tuned: ${best.a.ident} runway ${best.r.ends[best.k].ident} · ${best.r.ils(best.k)} · ${(best.d / 1852).toFixed(1)} NM`);
+}
+controls.on('tuneIls', tuneIlsAhead);
+$('ap-tuneils').addEventListener('click', () => { if (state.started) tuneIlsAhead(); });
+$('ap-refuel').addEventListener('click', () => controls.handlers.refuel && controls.handlers.refuel());
+
 controls.on('chute', () => {
   if (IS_C172) { toast('No drag chute on the Skyhawk', true); return; }
   if (IS_SF50) { toast('No drag chute on the Vision Jet', true); return; }
@@ -1403,7 +1561,7 @@ function simulate(dt) {
   } else { assist.release(); landAid.on && landAid.disengage(); }
   if (!ap.on || !(ap.modes.spd || ap.modes.mach)) fdm.throttle = controls.throttle;
   // auto-trim: with the stick idle (and no autopilot / assist flying it) the trim follows the pitch rate to zero
-  if ((!IS_GA || IS_SF50) && !ap.on && !assist.on && !takeoff.on && !landAid.on) fdm.trim = autoTrimStep(autoTrim, { enabled: settings.autoTrim !== false && !controls.trimUp && !controls.trimDown, trim: fdm.trim, q: fdm.w.z, power: IS_SF50 ? fdm.out.pitchPower * SF50_TRIM_AUTH : fdm.out.pitchPower, alpha: fdm.out.alpha || 0, stick: controls.axes.pitch, V: fdm.out.V || 0, onGround: fdm.onGround, dt }, IS_SF50 ? SF50_AUTO_TRIM : undefined);
+  if (!ap.on && !assist.on && !takeoff.on && !landAid.on) fdm.trim = autoTrimStep(autoTrim, { enabled: settings.autoTrim !== false && !controls.trimUp && !controls.trimDown, trim: fdm.trim, q: fdm.w.z, power: IS_SF50 ? fdm.out.pitchPower * SF50_TRIM_AUTH : IS_C172 ? fdm.out.pitchPower * 0.6 : fdm.out.pitchPower, alpha: fdm.out.alpha || 0, stick: controls.axes.pitch, V: fdm.out.V || 0, onGround: fdm.onGround, dt }, IS_SF50 ? SF50_AUTO_TRIM : IS_C172 ? AT_C172 : undefined);
   // the Vision Jet's trim wheel spans its whole range (take-off trim alone sits past 0.6); the Blackbird keeps its +-0.6 elevon trim
   if (controls.trimUp) fdm.trim = Math.min(TRIM_LIM, fdm.trim + TRIM_RATE * dt);
   if (controls.trimDown) fdm.trim = Math.max(-TRIM_LIM, fdm.trim - TRIM_RATE * dt);
@@ -1443,8 +1601,9 @@ function simulate(dt) {
       }
     }
   }
-  state.overG = (fdm.out.nz > 6 || fdm.out.nz < -3) ? state.overG + dt : 0; // the airframe is far weaker under negative g
-  if (settings.crash && state.overG > 0.25 && !fdm.crashed) fdm.crash(`airframe overstressed (${fdm.out.nz.toFixed(1)} g)`, 'overstress');
+  const nzS = fdm.out.nzAero ?? fdm.out.nz; // flight loads only: gear reaction at touchdown is the gear's limit, not the airframe's
+  state.overG = (nzS > 6 || nzS < -3) ? state.overG + dt : 0; // the airframe is far weaker under negative g
+  if (settings.crash && state.overG > 0.25 && !fdm.crashed) fdm.crash(`airframe overstressed (${nzS.toFixed(1)} g)`, 'overstress');
   for (const e of fdm.events) {
     if (e === 'gear-lock') { audio.play('gear-lock'); state.bump += 0.15; }
     else if (e === 'crash-absorbed') { state.bump += 0.5; if (performance.now() - (state.absorbedAt || 0) > 3000) { state.absorbedAt = performance.now(); toast('Impact ignored (Crash is off)', true); } }
@@ -1462,12 +1621,14 @@ function simulate(dt) {
     else if (e.type === 'gear-interlock') toast('Weight on wheels — gear lever back down', true);
     else if (e.type === 'gear-overspeed') toast(`Gear speed exceeded (VLE ${SF50.VLE} KIAS)`, true);
     else if (e === 'chute-fail') toast('Drag chute torn off — deploy below 210 kt', true);
-    else if (e.type === 'scrape') { audio.play('touch', 0.6); state.bump += 0.6; toast('Tail strike — ease the back pressure at rotation', true); }
-    else if (e.type === 'touch') { if (e.vs > 0.5) audio.play('touch', Math.min(1.5, e.vs / 2)); state.bump += Math.min(1.5, e.vs * 0.4); if (e.wheel > 0 && e.vs > 0.3) toast(`Touchdown ${Math.round(e.vs * 196.85)} fpm`); }
+    else if (e.type === 'scrape') { audio.play('touch', 0.6); state.bump += 0.6; toast(e.part && e.part !== 'tail' ? `${e.part[0].toUpperCase() + e.part.slice(1)} scraped the runway — less nose-up or bank at touchdown` : 'Tail strike — ease the back pressure at rotation', true); }
+    else if (e.type === 'touch') { if (e.vs > 0.5) audio.play('touch', Math.min(1.5, e.vs / 2)); state.bump += Math.min(1.5, e.vs * 0.4); }
     else if (e.type === 'ab-light') { audio.play('ab-light', rig.view === 'cockpit' ? 0.5 : 1); visual.event(e); state.bump += 0.25; }
     else if (e.type === 'unstart') { audio.play('unstart'); visual.event(e); state.bump += 2.2; toast(`${e.engine ? 'RIGHT' : 'LEFT'} INLET UNSTART — restarting`, true); }
     else if (e.type === 'restart') toast(`${e.engine ? 'Right' : 'Left'} inlet restarted`);
   }
+  // one message per landing, not one per wheel contact (touchdown.js)
+  { const sink = touchdown.frame(fdm.events, dt, fdm.onGround); if (sink !== null) toast(`Touchdown ${Math.round(sink * 196.85)} fpm`); }
   fdm.events.length = 0;
   if (Math.hypot(fdm.pos.x, fdm.pos.z) > 30000) {
     const ll = aircraftLatLon();
@@ -1543,6 +1704,7 @@ function holdAudio() { const hold = state.paused || document.hidden; if (hold) a
 // cloud cover and base ease toward the chosen weather over ~25 s instead of re-rolling the whole sky the moment a preset or METAR loads
 const cloudEff = { cover: settings.clouds, base: settings.cloudBase };
 const cloudXZ = new THREE.Vector2(), cloudWind = new THREE.Vector2();
+const cloudAnchorAt = { v: -1, until: 0 };
 const navCue = { mode: 'ILS', lateral: NaN, vertical: NaN };
 const clampN = (v, lim) => Math.max(-1, Math.min(1, v / lim));
 // ILS needles (positive = fly right / fly down), or the LNAV cross-track while NAV is engaged
@@ -1565,7 +1727,11 @@ function frameBody(now) {
   state.navOut = nav.update(ll, fdm.pos.y, fdm.vel.length());
   if (nav.sequenced) { toast(`Waypoint ${nav.sequenced}`); nav.sequenced = null; }
   if (state.pending) finishPending();
-  else if (!state.paused && !fdm.crashed) simulate(dt);
+  else if (state.apAfterSpawn) { state.apAfterSpawn = false; engageAp(); syncAp(); } // teleport dialog: hold what was asked for
+  else if (!state.paused && !fdm.crashed) {
+    for (let k = warpX(); k > 0 && !fdm.crashed; k--) { simulate(dt); refuelStep(dt); }
+    if (warp.i) { const b = warpBlock(); if (b) setWarp(0, b); }
+  }
   perf.mark('sim');
 
   // nearest airport (tower camera): widening searches scan thousands of airports over the ocean, so refresh it only occasionally
@@ -1580,14 +1746,17 @@ function frameBody(now) {
   rig.update(dt, fdm, groundAt, new THREE.Vector3(twp.x, tw ? tw.a.elev : fdm.pos.y, twp.z), shake);
   const cw = rig.world, cll = geo.toLatLon(cw.x, cw.z);
   env.visibility = settings.vis;
-  env.update(cll.lat, cw.y, state.paused ? 0 : dt, settings.runClock);
+  // how closed the cloud deck above the camera is: dims the sun and greys the sky light (sky.js); above the deck the sun is back
+  { const c = cloudEff.cover, top = cloudTop(cloudEff.base, c), k = Math.min(1, Math.max(0, (c - 0.6) / 0.4)), above = Math.min(1, Math.max(0, (cw.y - cloudEff.base) / Math.max(1, top - cloudEff.base)));
+    env.overcast = k * k * (3 - 2 * k) * (1 - above) * (post.clouds || clouds.mesh.visible ? 1 : 0.6); }
+  env.update(cll.lat, cw.y, state.paused ? 0 : dt * warpX(), settings.runClock);
   // oxygen and the other consumables only run while a flight is flying (they ran on through pause, the menu and loading, and never refilled)
   systemsState = aircraftSystems.step(dt, { active: state.started && !state.paused && !state.pending,
     altitudeFt: fdm.pos.y * FT, engineRpm: fdm.engines.map((e) => (fdm.crashed ? 0 : 55 + 45 * e.dry - (e.unstart > 0 ? 9 : 0))),
     afterburner: fdm.engines.map((e) => e.ab > 0.01), gearMoving: fdm.gearPos > 0.001 && fdm.gearPos < 0.999,
     fuelKg: fdm.fuel, fuelAftKg: fdm.fuelAft, lightsOn: env.daylight < 0.25,
   });
-  updateMission(state.paused ? 0 : dt);
+  updateMission(state.paused ? 0 : dt * warpX());
   const rainCam = { q: [camera.quaternion.x, camera.quaternion.y, camera.quaternion.z, camera.quaternion.w], fov: camera.fov, alt: rig.world.y,
     vel: rig.view === 'tower' || rig.view === 'flyby' ? [0, 0, 0] : [fdm.vel.x, fdm.vel.y, fdm.vel.z] };
   for (const ev of weather.update(state.paused ? 0 : dt, fdm.out.V || 0, rig.view === 'cockpit', rainCam)) audio.play('thunder', ev.level, ev.distance);
@@ -1613,6 +1782,12 @@ function frameBody(now) {
   perf.mark('scenery');
   const windTo = (settings.windDir + 180) * Math.PI / 180, windAloft = Math.max(9, settings.windSpd * 2.5); // wind aloft is stronger than the 10 m wind; never calmer than ~9 m/s so the drift is visible
   cloudWind.set(Math.sin(windTo) * windAloft, -Math.cos(windTo) * windAloft);
+  // the cloud field is anchored to the Earth, not to the spawn point (cloudlayer.js): re-anchor whenever the world origin moves or the day changes
+  if (geo.version !== cloudAnchorAt.v || Date.now() > cloudAnchorAt.until) {
+    const A = cloudAnchor(geo.lat0, geo.lon0), v2 = new THREE.Vector2(A.x, A.z);
+    vclouds.setAnchor(v2, A.evo0); cloudShadow.setAnchor(v2, A.evo0); clouds.setAnchor(v2);
+    cloudAnchorAt.v = geo.version; cloudAnchorAt.until = (A.day + 1) * 86400000;
+  }
   cloudEff.cover += (settings.clouds - cloudEff.cover) * (1 - Math.exp(-dt / 25)); cloudEff.base += (settings.cloudBase - cloudEff.base) * (1 - Math.exp(-dt / 25));
   clouds.update(cw, env, cloudEff.cover, cloudEff.base, cloudWind, now / 1000);
 
@@ -1759,12 +1934,16 @@ function frameBody(now) {
       inMachConeAhead: coneSilent, doppler: a / Math.max(a * 0.3, a - vRad), mach: M, engines: IS_SF50 ? [fdm.engines[0]] : fdm.engines, fan: IS_SF50, piston: IS_C172 ? { rpm: fdm.rpm || 0, thr: fdm.throttle } : null,
       crashed: !!fdm.crashed, rho: out.rho || 1.2, ias: iasMs * KT, onGround: fdm.onGround, gs: fdm.vel.length(), rain: weather.rain,
       gearMoving: fdm.gearPos > 0.001 && fdm.gearPos < 0.999, warnTone: warn.pullUp ? 2 : (warn.stall ? 1 : 0), warn,
+      callout: { aglFt: (fdm.pos.y - state.lastGround - CG_H) * FT, vsFpm: fdm.vel.y * FT * 60, onGround: fdm.onGround, throttle: fdm.throttle, crashed: fdm.crashed },
     });
   } catch (e) { console.warn('audio', e); }
 
   perf.mark('hud+audio');
   // overlays
   const inside = rig.view === 'cockpit';
+  if (state.started && cmap.visible) { const cl = aircraftLatLon(), n = state.navOut || {};
+    cmap.update({ lat: cl.lat, lon: cl.lon, hdg: attitude(fdm.quat).heading, trackDeg: (Math.atan2(fdm.vel.x, -fdm.vel.z) * 180 / Math.PI + 360) % 360, gsKt: Math.hypot(fdm.vel.x, fdm.vel.z) * KT,
+      altFt: fdm.pos.y * FT, route: nav.wps, activeIdx: nav.active, arrival: nav.arrival, ils: { valid: !!n.ilsValid, ident: n.ilsIdent, distNm: n.distNm }, metric: settings.metric }, now); }
   $('strip').style.display = settings.strip && (!inside || IS_GA) && state.started ? 'flex' : 'none';
   uiT += dt; mapT += dt;
   if (uiT > 0.1) {
@@ -1810,7 +1989,8 @@ function frameBody(now) {
     mapT = 0;
     const open = $('sheet-map').classList.contains('open');
     mapPanel.update(ll.lat, ll.lon, att.heading, fdm.vel, open);
-    mapPanel.setTraffic(traffic.list, open && traffic.enabled);
+    mapPanel.live.setActive(open);
+    if (!open && state.started && !state.pending) mapPanel.live.background(ll);
     if (open) renderRoute();
     syncAp();
   }
@@ -1859,13 +2039,16 @@ function prewarmCrash() { startWarm(); }
 
 // ---------- boot ----------
 (async () => {
-  const bar = (p, msg) => { $('loadbar').style.width = (p * 100) + '%'; if (msg) $('loadmsg').textContent = msg; };
+  const bar = (p, msg) => {
+    $('loadbar').style.width = (p * 100) + '%'; if (msg) $('loadmsg').textContent = msg;
+    if (window.__startQueued) { $('ls-fill').style.width = (p * 30) + '%'; $('ls-pct').textContent = Math.round(p * 30) + '%'; if (msg) $('ls-sub').textContent = msg; }
+  };
   try {
     await Promise.all([
       visual.load(`${BASE}models/${AC.model}`, (p) => bar(p * 0.6, 'Loading aircraft…')),
       db.load(`${BASE}data/airports.json`),
     ]);
-  } catch (e) { $('loadmsg').textContent = 'Loading failed: ' + e.message; console.error(e); return; }
+  } catch (e) { $('loadmsg').textContent = 'Loading failed: ' + e.message; lsEl.hidden = true; console.error(e); return; }
   bar(0.8, 'Loading scenery…');
   visual.registerOccluders(occlusion);
   visual.attachSelfShadow(env.sun); // self-shadow and the finest cascade draw the ~37k triangle LOD proxy, not the ~300k triangle airframe
@@ -1877,23 +2060,28 @@ function prewarmCrash() { startWarm(); }
   const a = homeAirport();
   dep.apt = a; dep.rwy = Math.min(home.rwy, a.runways.length - 1); dep.end = home.end;
   $('dep-q').value = `${a.ident} — ${a.name}`;
-  renderHome(); renderDep(); syncEnvUi(); renderRoute();
+  renderHome(); renderDep(); syncEnvUi(); renderSum(); renderRoute();
   spawn(a.runways[dep.rwy].spawn(dep.end, 'runway'), { rwy: a.runways[dep.rwy], end: dep.end });
   $('start-btn').disabled = false; $('home-go').disabled = false;
+  window.__simReady = true;
+  if (window.__startQueued) { const id = window.__startQueued; window.__startQueued = null; $(id).click(); } // clicked while loading: start now
   setView('orbit'); rig.orbit.az = 0.9; rig.orbit.el = 0.14; rig.orbit.dist = IS_C172 ? 16 : IS_SF50 ? 18 : 46;
   bar(1, 'Preparing graphics…');
   setTimeout(() => startWarm().then(() => { // once the first frames have set the lights and environment the shaders depend on
     visual.lateReady.then((late) => { if (!late.length) return; const undo = revealCockpit(late); try { return warmLate({ renderer, scene, camera, post }, late); } finally { undo(); } }).catch((e) => console.warn('late warm-up failed', e));
     whenIdle(() => warmTextures(renderer, visual.cockpitTextures()));
+    // the engine and wind sounds are ~40 s of synthesised noise buffers: build them now, while the menu is up, instead of in the first click
+    // (the context starts suspended without a gesture; the click's audio.init() only resumes it)
+    whenIdle(() => { try { audio.init(); } catch (e) { console.warn('audio prepare failed', e); } }, 6000);
   }), 700);
   // test hook: advance the simulation without waiting for animation frames
   const advance = (sec) => { for (let t = 0; t < sec; t += 1 / 60) { controls.update(1 / 60); state.navOut = nav.update(aircraftLatLon(), fdm.pos.y, fdm.vel.length(), (fdm.out.M || 0) > 1 ? 35 : 30); if (!state.paused && !fdm.crashed && !state.pending) simulate(1 / 60); } return { alt: fdm.pos.y, M: fdm.out.M, crashed: fdm.crashed }; };
   const advanceWreck = (sec) => { for (let t = 0; t < sec; t += 1 / 30) if (wreck.active) stepWreck(1 / 30, rig.world); return { t: wreck.t, settled: wreck.settled() }; };
   // advance until the wreck's own clock (which runs slow at first) reaches t
   const advanceWreckTo = (t) => { for (let n = 0; wreck.active && wreck.t < t && n < 5000; n++) stepWreck(1 / 30, rig.world); return { t: wreck.t, settled: wreck.settled() }; };
-  window.__sim = { aircraft: AIRCRAFT, autoland, configureCameraAircraft, depthMode: REV_DEPTH ? 'reversed' : 'log', cloudEff, shadows, takeoff, ap, rotAssist, controls, occlusion, occUniforms: OCC_UNIFORMS, GFX, applyGfx, stat, ChangeGate, cloudAdapt, warm, cloudShadow, airflow, traffic, perf, hud, post, vclouds, THREE, prewarmCrash, applyWeather, weather, simulate, advanceWreck, advanceWreckTo, fdm, wreck, terrain, buildings, trees, post, shadows, geo, db, nav, visual, rig, ap, spawn, spawnAt, setView, state, env, settings, controls, toggleAp, readAp, advance, attitude, audio, renderer, scene, camera, openSheet,
+  window.__sim = { aircraft: AIRCRAFT, cmap, warp, autoland, configureCameraAircraft, depthMode: REV_DEPTH ? 'reversed' : 'log', cloudEff, shadows, takeoff, ap, rotAssist, controls, occlusion, occUniforms: OCC_UNIFORMS, GFX, applyGfx, stat, ChangeGate, cloudAdapt, warm, cloudShadow, airflow, traffic, perf, hud, post, vclouds, THREE, prewarmCrash, applyWeather, weather, simulate, advanceWreck, advanceWreckTo, fdm, wreck, terrain, buildings, trees, post, shadows, geo, db, nav, visual, rig, ap, spawn, spawnAt, setView, state, env, settings, controls, toggleAp, readAp, advance, attitude, audio, renderer, scene, camera, openSheet,
     // round 4 test hooks: which mission runs, the map's teleport, and the restart key's action
     missionInfo: () => ({ kind: missionKind, mission: mission ? mission.constructor.name : null, phase: mission ? mission.phase : null, tour: tour.active, tutorial: tutorial.active, toasts: [...document.querySelectorAll('#toasts > *')].map((t) => t.textContent).slice(-3) }),
-    mapTeleport: (lat, lon) => mapPanel.cb.teleport(lat, lon), restart, holdForShaders, showAirport, homeAirport };
+    mapTeleport: (lat, lon) => mapPanel.cb.teleport(lat, lon), mapPanel, restart, holdForShaders, showAirport, homeAirport };
   state.bootT = performance.now(); requestAnimationFrame(frame); syncHiddenPump(); // a tab opened in the background never fires visibilitychange
 })();

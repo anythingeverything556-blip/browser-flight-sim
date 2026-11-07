@@ -228,10 +228,14 @@ class Environment {
     (this.envKey !== envKey || !this.envRT) &&
       (_ - this.envAt > 15e3 || !this.envRT || this.envKey === '') &&
       this.refreshEnv(envKey);
-    const b = 3.4,
+    // under a closed cloud deck (overcast 0..1, set by main.js from the cover above the camera) the direct sun is mostly gone and the
+    // sky light turns grey and dimmer: without this Rain and Overcast were lit like a clear day, with hard shadows
+    const oc = Math.min(1, Math.max(0, this.overcast || 0)),
+      b = 3.4 * (1 - 0.82 * oc),
       S = this.night * 0.5;
     ((this.sun.intensity = b), this.sun.color.setRGB(this.sunCol[0], this.sunCol[1], this.sunCol[2]));
-    const E = this.amb.map((D, N) => Math.PI * D * b * 1.8 + [0.05, 0.065, 0.1][N] * S);
+    const lum = (this.amb[0] + this.amb[1] + this.amb[2]) / 3,
+      E = this.amb.map((D, N) => Math.PI * (D + (lum * 1.15 - D) * oc) * 3.4 * 1.8 * (1 - 0.45 * oc) + [0.05, 0.065, 0.1][N] * S);
     this.hemi.color.setRGB(E[0], E[1], E[2]);
     const A = Math.max(0, Math.sin(h)) * b;
     (this.hemi.groundColor.setRGB(
@@ -243,6 +247,7 @@ class Environment {
       (this.starMat.size = 3.4 * Math.max(1, this.renderer.getPixelRatio() / 1.5)),
       (this.starMat.opacity = Math.max(this.night * 0.9, f * f * 0.25 * (1 - this.daylight * 0.5))),
       this.scene.fog.color.copy(this.fogDay),
+      oc > 0.01 && this.scene.fog.color.lerp((this._grey || (this._grey = new THREE.Color())).setScalar(((this.fogDay.r + this.fogDay.g + this.fogDay.b) / 3) * 0.78), oc), // grey haze under the deck
       (this.scene.fog.density = (115e-7 * Math.exp(-Math.max(0, e) / 7e3) + 2e-7) / (this.visibility || 1)));
   }
   refreshEnv(t) {

@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { EVO_SECONDS } from './vclouds.js';
+import { EVO_SECONDS, setTexOffsets } from './vclouds.js';
 
 // Shadows of the volumetric clouds on the ground, as a small map instead of per-pixel work in the terrain shader: a 160x160 texture
 // covering 20 km around the aircraft is re-rendered about three times a second (the clouds drift slowly), each texel tracing the sun ray
@@ -7,28 +7,29 @@ import { EVO_SECONDS } from './vclouds.js';
 const SIZE = 20000, N = 160, FADE = 0.33;
 const FRAG = `
 precision highp float; precision highp sampler3D;
-uniform sampler3D tShape; uniform vec3 uSun; uniform vec2 uOff, uRelC; uniform float uSize, uCover, uBase, uTop, uGround, uEvo;
+uniform sampler3D tShape; uniform vec3 uSun; uniform vec2 uOff, uRelC; uniform vec4 uT0, uT1; // uT*: cloudTexOffsets() of uOff (cloudlayer.js) uniform float uSize, uCover, uBase, uTop, uGround, uEvo;
 varying vec2 vUv;
 float h21(vec2 p) { p = fract(p * vec2(0.1031, 0.1030)); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }
 float vn2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }
 float weather(vec2 xz) { vec2 p = xz / 26000.0; return 0.3 * vn2(xz / 110000.0 + 19.0) + 0.3 * vn2(p) + 0.25 * vn2(p * 2.7 + 7.1) + 0.15 * vn2(p * 6.3 + 3.3); }
 // gx/gy: screen derivatives of the map position, taken before the loop: texture() in a loop with continue is a gradient op in dynamic flow (D3D X3595)
-float dens(vec2 wxz, float h, vec2 gx, vec2 gy) {
+float dens(vec2 rxz, float h, vec2 gx, vec2 gy) { // rxz: map position relative to uOff
   float hn = (h - uBase) / (uTop - uBase);
   if (hn <= 0.0 || hn >= 1.0) return 0.0;
-  vec3 wp = vec3(wxz.x, h, wxz.y);
-  float wv = weather(wp.xz);
-  float cov = clamp(uCover * (0.45 + 1.1 * wv), 0.0, 1.0), top = mix(0.4, 1.0, cov);
+  float wv = weather(rxz + uOff);
+  vec3 wp = vec3(rxz.x + wv * 5100.0, h, rxz.y + wv * 3700.0); // as vclouds.js: small coordinates, the offset is in uT*
+  float closed = smoothstep(0.8, 1.0, uCover), cov = mix(clamp(uCover * (0.45 + 1.1 * wv), 0.0, 1.0), 1.0, closed), top = mix(0.4, 1.0, cov); // as vclouds.js
   float clearLo = mix(0.38, 0.35, smoothstep(0.85, 1.0, uCover));
-  float prof = smoothstep(0.0, 0.08, hn) * (1.0 - smoothstep(top * 0.45, top, hn));
+  float prof = smoothstep(0.0, 0.05, hn) * mix(1.0, 0.55, smoothstep(0.0, top, hn)) * (1.0 - smoothstep(top * 0.6, top, hn)); // as vclouds.js
   vec3 wr = vec3(0.8 * wp.x - 0.6 * wp.z, wp.y, 0.6 * wp.x + 0.8 * wp.z);
   vec3 w3 = vec3(0.28 * wp.x + 0.96 * wp.z, wp.y, -0.96 * wp.x + 0.28 * wp.z); // a third scale at another angle, so the 64-cell noise tile never reads as a repeat
-  vec3 dx = vec3(gx.x, 0.0, gx.y), dy = vec3(gy.x, 0.0, gy.y), S1 = vec3(1.0 / 5600.0, 1.0 / 3800.0, 1.0 / 5600.0), S2 = vec3(1.0 / 14300.0, 1.0 / 5100.0, 1.0 / 14300.0), S3 = vec3(1.0 / 41000.0, 1.0 / 6700.0, 1.0 / 41000.0);
+  vec3 dx = vec3(gx.x, 0.0, gx.y), dy = vec3(gy.x, 0.0, gy.y), S1 = vec3(1.0 / 3400.0, 1.0 / 2600.0, 1.0 / 3400.0), S2 = vec3(1.0 / 8800.0, 1.0 / 4400.0, 1.0 / 8800.0), S3 = vec3(1.0 / 26000.0, 1.0 / 7000.0, 1.0 / 26000.0);
   mat3 R2 = mat3(0.8, 0.0, 0.6, 0.0, 1.0, 0.0, -0.6, 0.0, 0.8), R3 = mat3(0.28, 0.0, -0.96, 0.0, 1.0, 0.0, 0.96, 0.0, 0.28); // the rotations of wr and w3 (column-major)
-  float s = textureGrad(tShape, wp * S1 + vec3(0.0, uEvo, 0.0), dx * S1, dy * S1).r * 0.45
-          + textureGrad(tShape, wr * S2 + vec3(0.37, 0.37 + uEvo * 0.7, 0.37), (R2 * dx) * S2, (R2 * dy) * S2).r * 0.3
-          + textureGrad(tShape, w3 * S3 + vec3(0.71, 0.13 + uEvo * 0.5, 0.29), (R3 * dx) * S3, (R3 * dy) * S3).r * 0.25;
-  return clamp((s * prof - (1.0 - cov)) / max(cov, 0.1), 0.0, 1.0) * smoothstep(clearLo, clearLo + 0.08, wv);
+  float s = textureGrad(tShape, wp * S1 + vec3(uT0.x, uEvo, uT0.y), dx * S1, dy * S1).r * 0.5
+          + textureGrad(tShape, wr * S2 + vec3(0.37 + uT0.z, 0.37 + uEvo * 0.7, 0.37 + uT0.w), (R2 * dx) * S2, (R2 * dy) * S2).r * 0.32
+          + textureGrad(tShape, w3 * S3 + vec3(0.71 + uT1.x, 0.13 + uEvo * 0.5, 0.29 + uT1.y), (R3 * dx) * S3, (R3 * dy) * S3).r * 0.18;
+  s = mix(smoothstep(0.38, 0.64, s), 0.5 + 0.5 * smoothstep(0.3, 0.64, s), smoothstep(0.75, 1.0, uCover)); // as vclouds.js
+  return clamp((s * prof - (1.0 - cov)) / max(cov * 0.55, 0.06), 0.0, 1.0) * mix(smoothstep(clearLo, clearLo + 0.08, wv), 1.0, closed);
 }
 void main() {
   vec2 g = (vUv - 0.5) * uSize + uRelC;
@@ -38,7 +39,7 @@ void main() {
     float h = mix(uBase, uTop, 0.12 + 0.25 * float(i));
     if (h <= uGround) continue;
     float t = (h - uGround) / max(uSun.y, 0.05);
-    dm = max(dm, dens(g + uSun.xz * t + uOff, h, gx, gy));
+    dm = max(dm, dens(g + uSun.xz * t, h, gx, gy));
   }
   float sh = 1.0 - 0.85 * smoothstep(0.03, 0.4, dm) * smoothstep(0.04, 0.2, uSun.y);
   gl_FragColor = vec4(sh, sh, sh, 1.0);
@@ -48,7 +49,7 @@ export class CloudShadow {
   constructor() {
     this.rt = new THREE.WebGLRenderTarget(N, N, { type: THREE.UnsignedByteType, depthBuffer: false, minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, wrapS: THREE.ClampToEdgeWrapping, wrapT: THREE.ClampToEdgeWrapping });
     this.mat = new THREE.ShaderMaterial({
-      uniforms: { tShape: { value: null }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uOff: { value: new THREE.Vector2() }, uRelC: { value: new THREE.Vector2() }, uSize: { value: SIZE }, uEvo: { value: 0 }, uCover: { value: 0 }, uBase: { value: 3000 }, uTop: { value: 5000 }, uGround: { value: 0 } },
+      uniforms: { tShape: { value: null }, uSun: { value: new THREE.Vector3(0, 1, 0) }, uOff: { value: new THREE.Vector2() }, uT0: { value: new THREE.Vector4() }, uT1: { value: new THREE.Vector4() }, uRelC: { value: new THREE.Vector2() }, uSize: { value: SIZE }, uEvo: { value: 0 }, uCover: { value: 0 }, uBase: { value: 3000 }, uTop: { value: 5000 }, uGround: { value: 0 } },
       vertexShader: 'varying vec2 vUv; void main() { vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }', fragmentShader: FRAG, depthTest: false, depthWrite: false,
     });
     this.quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.mat); this.quad.frustumCulled = false;
@@ -61,6 +62,7 @@ export class CloudShadow {
     this.old = { center: new THREE.Vector2(), wind: new THREE.Vector2(), at: 0, valid: false }; this.fadeAt = -1e9; this.g = null;
   }
 
+  setAnchor(a, evo0 = 0) { this.anchor = { x: a.x, y: a.y }; this.evo0 = evo0; this.map.w = 0; } // see cloudlayer.js cloudAnchor; forces a redraw
   // cam: absolute world xz of the camera; wind: m/s drift of the cloud field; now: seconds
   update(renderer, { shape, cover, base, top, wind, now, cam, groundY, sunDir }) {
     if (!shape || cover < 0.02 || sunDir.y < 0.04) { this.map.w = 0; this.map2.w = 0; this.old.valid = false; return; }
@@ -74,9 +76,10 @@ export class CloudShadow {
       } else this.old.valid = false;
       // a smoothed ground height: the shadow's offset depends on it, and a step in it would shift the whole pattern
       this.g = this.g === null || first ? groundY : this.g + (groundY - this.g) * 0.35; groundY = this.g;
-      const u = this.mat.uniforms; u.tShape.value = shape; u.uSun.value.copy(sunDir); u.uCover.value = cover; u.uEvo.value = now / EVO_SECONDS; u.uBase.value = base; u.uTop.value = top; u.uGround.value = groundY;
+      const u = this.mat.uniforms; u.tShape.value = shape; u.uSun.value.copy(sunDir); u.uCover.value = cover; u.uEvo.value = now / EVO_SECONDS + (this.evo0 || 0); u.uBase.value = base; u.uTop.value = top; u.uGround.value = groundY;
       // the clouds are drawn at (position relative to the camera) + (camera - wind * time): the same arithmetic here
-      u.uOff.value.set(cam.x - wind.x * now, cam.z - wind.y * now); u.uRelC.value.set(cx - cam.x, cz - cam.z);
+      const A = this.anchor || { x: 0, y: 0 };
+      u.uOff.value.set(cam.x - wind.x * now + A.x, cam.z - wind.y * now + A.y); setTexOffsets(u, u.uOff.value.x, u.uOff.value.y); u.uRelC.value.set(cx - cam.x, cz - cam.z);
       const prev = renderer.getRenderTarget(), ac = renderer.autoClear; renderer.autoClear = true; renderer.setRenderTarget(this.rt); renderer.render(this.quad, this.cam); renderer.setRenderTarget(prev); renderer.autoClear = ac;
       this.center.set(cx, cz); this.at = now; this.windAt.copy(wind); this.sun.copy(sunDir);
     }

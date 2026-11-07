@@ -10,13 +10,16 @@ export const AT = {
   alphaSoft: 0.17,   // rad: above this trimming nose-up is blocked ...
   alphaHard: 0.23,   // ... and above this it trims nose-down (the stall protection onset)
   limit: 0.6,
+  minV: 50,          // m/s: below this the trim stays where it is (the Blackbird's take-off and landing speeds)
 };
+// the Skyhawk flies 30-60 m/s and had no auto-trim at all: every pull-up drifted back nose-down ("nose heavy") until trimmed by hand with ; and '
+export const AT_C172 = { ...AT, minV: 22, rate: 0.5, maxStep: 0.15 };
 
 export function makeAutoTrim() { return { idle: 0 }; }
 
 // s: state from makeAutoTrim; in: { trim, q (rad/s, + = nose up), power (rad/s^2 per unit elevon command), alpha, stick, V, onGround, enabled, dt }
 export function autoTrimStep(s, i, cfg = AT) {
-  if (!i.enabled || i.onGround || i.V < 50 || Math.abs(i.stick) > 0.03) { s.idle = 0; return i.trim; }
+  if (!i.enabled || i.onGround || i.V < (cfg.minV ?? 50) || Math.abs(i.stick) > 0.03) { s.idle = 0; return i.trim; }
   s.idle += i.dt;
   if (s.idle < cfg.idleAfter) return i.trim;
   const p = Math.max(0.3, i.power || 1);

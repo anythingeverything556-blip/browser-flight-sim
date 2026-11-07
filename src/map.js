@@ -1,5 +1,6 @@
 import { destination } from './geo.js';
 import { esc } from './esc.js';
+import { LiveAdsb } from './adsbmap.js';
 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -60,7 +61,7 @@ class MapPanel {
       (this.follow = !0),
       this.map.on('dragstart', () => this.setFollow(!1)),
       this.map.on('moveend zoomend', () => this.drawAirports()),
-      this.map.on('click', (l) => this.mapClick(l.latlng)));
+      this.map.on('click', (l) => { if (this.live && this.live.click(l.containerPoint)) return; this.mapClick(l.latlng); }));
     const a = Ue.Control.extend({
       onAdd: () => {
         const l = Ue.DomUtil.create('button', 'map-follow on');
@@ -81,6 +82,7 @@ class MapPanel {
     (new a({ position: 'topleft' }).addTo(this.map), n.onChange(() => this.drawRoute()));
   }
   setFollow(t) {
+    if (t && this.live) this.live.followSel = false; // following the jet and following a traffic aircraft exclude each other
     ((this.follow = t),
       this.followBtn && this.followBtn.classList.toggle('on', t),
       this.followBtn && this.followBtn.setAttribute('aria-pressed', String(t)),
@@ -97,7 +99,7 @@ class MapPanel {
     const want = new Set();
     let r = 0;
     for (const a of this.db.list) {
-      if ((a.type === 2 && e < 8) || (a.type === 1 && e < 6) || !i.contains([a.lat, a.lon])) continue;
+      if ((a.type === 2 && e < 8) || (a.type === 1 && e < 6) || (a.type === 0 && e < 5) || !i.contains([a.lat, a.lon])) continue; // below zoom 5 hundreds of rings buried the live traffic
       if (++r > 900) break;
       want.add(a);
       if (this.aptMarks.has(a)) continue;
@@ -181,36 +183,8 @@ class MapPanel {
           i.addTo(this.wpLayer));
       }));
   }
-  // Live ADS-B traffic on the map: one marker per aircraft, rotated to its track, shaped by its type class, dead-reckoned between polls.
-  setTraffic(list, show) {
-    if (!this.trafficLayer) { this.trafficLayer = Ue.layerGroup(); this.trafficMarks = new Map(); }
-    if (!show) { if (this.map.hasLayer(this.trafficLayer)) this.map.removeLayer(this.trafficLayer); return; }
-    if (!this.map.hasLayer(this.trafficLayer)) this.trafficLayer.addTo(this.map);
-    const SHAPES = {
-      airliner: 'M16 1 L17.6 11 L30 19 L30 21.6 L17.6 17.6 L17.2 26 L21 29 L21 30.6 L16 29.6 L11 30.6 L11 29 L14.8 26 L14.4 17.6 L2 21.6 L2 19 L14.4 11 Z',
-      small: 'M16 3 L17.4 12 L28 14 L28 16.4 L17.4 16 L17 26 L21 28 L21 29.6 L16 28.8 L11 29.6 L11 28 L15 26 L14.6 16 L4 16.4 L4 14 L14.6 12 Z',
-      heli: 'M16 4 L18 10 L18 20 L17 27 L19 29 L13 29 L15 27 L14 20 L14 10 Z M3 15 L29 17 L29 18 L3 16 Z',
-      jet: 'M16 2 L18 12 L27 25 L27 27 L18 24 L17 29 L16 30 L15 29 L14 24 L5 27 L5 25 L14 12 Z',
-    };
-    const shapeOf = (c) => (c === 'helicopter' ? 'heli' : c === 'ga' || c === 'turboprop' ? 'small' : c === 'fighter' || c === 'bizjet' ? 'jet' : 'airliner');
-    const now = performance.now() / 1000, seen = new Set();
-    for (const [id, e] of list) {
-      if (e.lat == null) continue;
-      seen.add(id);
-      const dtp = Math.min(40, now - e.at), th = (e.trk * Math.PI) / 180, m = e.vel * dtp;
-      const la = e.lat + (Math.cos(th) * m) / 111320, lo = e.lon + (Math.sin(th) * m) / (111320 * Math.max(0.2, Math.cos((e.lat * Math.PI) / 180)));
-      let mk = this.trafficMarks.get(id);
-      const label = `${esc(e.call || String(id).toUpperCase())}${e.type ? ' · ' + esc(e.type) : ''}<br>${Math.round((+e.alt * 3.28084) / 100) * 100} ft · ${Math.round(+e.vel * 1.94384)} kt`; // escaped: the fields come from third-party ADS-B JSON
-      if (!mk) {
-        const size = e.typeClass === 'widebody' ? 26 : e.typeClass === 'ga' || e.typeClass === 'helicopter' ? 16 : 20;
-        mk = Ue.marker([la, lo], { interactive: true, keyboard: false, zIndexOffset: 400, icon: Ue.divIcon({ className: 'tr-marker', iconSize: [size, size], iconAnchor: [size / 2, size / 2],
-          html: `<div class="tr-rot"><svg viewBox="0 0 32 32" width="${size}" height="${size}"><path d="${SHAPES[shapeOf(e.typeClass)]}"/></svg></div>` }) });
-        mk.bindTooltip(label, { direction: 'top', offset: [0, -8], className: 'tr-tip' }); mk.addTo(this.trafficLayer); this.trafficMarks.set(id, mk);
-      } else { mk.setLatLng([la, lo]); if (mk.getTooltip()) mk.setTooltipContent(label); }
-      const el = mk.getElement && mk.getElement(), rot = el && el.querySelector('.tr-rot'); if (rot) rot.style.transform = `rotate(${e.trk}deg)`;
-    }
-    for (const [id, mk] of this.trafficMarks) if (!seen.has(id)) { this.trafficLayer.removeLayer(mk); this.trafficMarks.delete(id); }
-  }
+  // Live ADS-B (src/adsbmap.js) is attached by main.js; kept out of the constructor so the map works without it (and in the Node tests).
+  attachLive(opts) { this.live = new LiveAdsb(this.map, opts); return this.live; }
   applyMarker() {
     this.marker.setLatLng(this.pos);
     const a = this.marker.getElement && this.marker.getElement(), l = a && a.querySelector('.ac-rot');
@@ -266,7 +240,8 @@ class MapPanel {
         this.trailDirty && (this.trail.setLatLngs(this.segs), (this.trailDirty = !1)),
         this.follow && this.pos && this.map.setView(this.pos, this.map.getZoom(), { animate: !1 }),
         this.drawAirports(!0),
-        this.drawRoute());
+        this.drawRoute(),
+        this.live && (this.live.setActive(!0), this.live.viewReady())); // traffic for where the map now is, not where it was last open
     }, 60);
   }
 }

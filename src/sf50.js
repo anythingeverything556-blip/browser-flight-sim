@@ -56,7 +56,7 @@ const GEAR_TIME = 6;                            // s for a full retraction or ex
 const STEER_LO = 20, STEER_HI = 2, STEER_FADE = 14; // nose-wheel angle at full pedal (deg): standing still, and from STEER_FADE m/s
 const CASTOR_MIN = 0.25, CASTOR_V0 = 8, CASTOR_V1 = 25;
 const TB_SF50 = 308; // N m per main wheel at full pedal (est.; fitted so max braking from VREF gives the published 1,622 ft landing ground roll)
-const TAIL_SCRAPE_VS = 1.5;
+const TAIL_SCRAPE_VS = 2.5; // was 1.5: landing forgiveness
 
 // ---- aerodynamics (est.) ----
 // lift / drag / pitch by flap angle (deg): incremental CL, CD and Cm, and CLmax (Fowler flaps)
@@ -342,9 +342,10 @@ export class SF50Model extends FlightModel {
       onGround = true;
       const vp = _vp.crossVectors(wWorld, rr).add(this.vel);
       if (!was && vp.y < -0.3) this.events.push({ type: 'touch', vs: -vp.y, wheel: i });
-      if (!was && vp.y < -4.5) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+      // was 4.5 / 3 m/s: landing forgiveness
+      if (!was && vp.y < -6) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
       if (pen > 0.35) {
-        if (vp.y < -3) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+        if (vp.y < -4.5) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
         this.pos.y += pen - 0.1; pen = 0.1;
       }
       const Fn = Math.max(0, g.k * pen - g.c * vp.y);
@@ -403,15 +404,18 @@ export class SF50Model extends FlightModel {
     }
 
     const nz = fb.y / (m * grav) + (onGround ? this.contacts.reduce((s, c) => s + c, 0) / (m * grav) : 0);
+    // the structure limit counts flight loads only: a firm touchdown's gear reaction is the gear's own limit (the sink-rate checks), and read as
+    // 'airframe overstressed' on landings players thought were fine
+    const nzAero = fb.y / (m * grav);
     // structure: ultimate load factor (1.5 x limit; flaps out +2 / 0 g, so -0.5 g is the floor there), or far past VMO
     const flapped = this.flaps > 1, nzUlt = 1.5 * (flapped ? SF50.NZ_FLAP_LIMIT : SF50.NZ_LIMIT), nzNeg = flapped ? -0.5 : 1.5 * SF50.NZ_NEG_LIMIT;
-    if (!this.crashOff && (nz > nzUlt || nz < nzNeg || iasKt > SF50.VMO * 1.2)) { this.crash(iasKt > SF50.VMO * 1.2 ? 'airframe failed past VMO' : `airframe overstressed (${nz.toFixed(1)} g)`, 'overstress'); return; }
+    if (!this.crashOff && (nzAero > nzUlt || nzAero < nzNeg || iasKt > SF50.VMO * 1.2)) { this.crash(iasKt > SF50.VMO * 1.2 ? 'airframe failed past VMO' : `airframe overstressed (${nzAero.toFixed(1)} g)`, 'overstress'); return; }
     const aoaNorm = clamp((alpha - zeroLiftAlpha(this.flaps, M)) / (as - zeroLiftAlpha(this.flaps, M)), 0, 1);
     const vfe = this.flaps > FLAP_DEG[1] + 1 ? SF50.VFE100 : this.flaps > 1 ? SF50.VFE50 : Infinity;
     const buffet = 0.6 * smooth(as - 0.05, as + 0.03, alpha) + (onGround ? Math.min(1, gs / 40) * 0.2 : 0) + Math.max(0, iasKt - 200) / 60 * 0.2
       + this.gearPos * Math.max(0, iasKt - SF50.VLE) / 15 * 0.3;
     const Pde = CM_DE * pg * DE_UP;
-    this.out = { V, M, qbar, alpha, beta, rho: atm.rho, a: atm.a, T: atm.T, thrust, nz, CL, CD, buffet, ff, ias, rpm: this.rpm, flaps: this.flaps,
+    this.out = { V, M, qbar, alpha, beta, rho: atm.rho, a: atm.a, T: atm.T, thrust, nz, nzAero, CL, CD, buffet, ff, ias, rpm: this.rpm, flaps: this.flaps,
       cg: (MAC_LE_X - mp.cgx) / C, staticMargin: -CMA / CLA + (mp.cgx - SF50_CG.x) / C, inletStress: 0, stall,
       aoaNorm, shaker: !onGround && aoaNorm > 0.85, pusher: !!this.pushing, n1: e.n1, n2: e.n2, itt: e.itt, flapOverspeed: iasKt > vfe, gearOverspeed: gearOver,
       pitchPower: Pde * qS * C / I.z, rollPower: CL_DA * DA_MAX * qS * SPAN / I.x, yawPower: CN_DR * DR_MAX * qS * SPAN / I.y,

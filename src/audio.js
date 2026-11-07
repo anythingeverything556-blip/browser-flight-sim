@@ -5,6 +5,7 @@
 //  - impacts are modal: struck metal is a handful of damped inharmonic partials, tearing is rough band-passed noise,
 //    explosions are a sub-bass sweep plus a filtered whoomp that arrives late and dull with distance, fire crackles
 import { VOICE_KEYS, VoiceScheduler, voiceStyle, voiceUrl, DEFAULT_VOICE_STYLE } from './voicewarn.js';
+import { AltCallouts, CALLOUT_KEYS } from './callouts.js';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -33,7 +34,7 @@ const FAN = { cabin: 0.55, rumble: 0.4, roar: 0.55, hiss: 1.1, pitch: 1.5, whine
 
 export class Audio {
   constructor() { this.ctx = null; this.enabled = true; this.volume = 0.7; this.held = false; this.last = new WeakMap(); this.wreckBus = null; this.route = null;
-    this.voiceOn = true; this.voiceStyle = DEFAULT_VOICE_STYLE; this.voiceBase = '/'; this.voiceClips = {}; this.voiceSrc = null; this.voiceSched = new VoiceScheduler(); }
+    this.voiceOn = true; this.voiceStyle = DEFAULT_VOICE_STYLE; this.voiceBase = '/'; this.voiceClips = {}; this.voiceSrc = null; this.voiceSched = new VoiceScheduler(); this.calloutsOn = true; this.callouts = new AltCallouts(); this.calloutClips = null; this.calloutSrc = null; }
 
   // ctx: an existing (e.g. offline) context, for tests
   init(ctx) {
@@ -209,6 +210,28 @@ export class Audio {
         .catch((e) => { clips.failed = true; console.warn('voice clip', style, key, e.message || e); });
     }
   }
+  // radio-altitude call-outs (100 ... 10, Retard): one clip set whatever the warning voice, fetched once after the first gesture
+  setCallouts(on) { this.calloutsOn = !!on; if (!on) this.callouts.reset(); this._loadCallouts(); }
+  _loadCallouts() {
+    if (!this.ctx || !this.calloutsOn || typeof window === 'undefined' || (this.calloutClips && !this.calloutClips.failed)) return;
+    if (this.calloutClips && performance.now() - this.calloutClips.at < 5000) return;
+    const clips = this.calloutClips = Object.assign(this.calloutClips || {}, { failed: false, at: performance.now() }), C = this.ctx;
+    for (const key of CALLOUT_KEYS) {
+      if (clips[key]) continue;
+      fetch(`${this.voiceBase || '/'}audio/voice/callouts/${key}.mp3`).then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(new Error(`${r.status} ${key}`))))
+        .then((b) => C.decodeAudioData(b)).then((buf) => { clips[key] = buf; }).catch((e) => { clips.failed = true; console.warn('call-out clip', key, e.message || e); });
+    }
+  }
+  _calloutStep(s, t, dt) {
+    if (!this.calloutsOn || !s.callout || s.paused) return;
+    this._loadCallouts();
+    const clips = this.calloutClips || {}, dur = (k) => (clips[k] ? clips[k].duration : 0);
+    if (this.voiceSched.speaking(t)) return; // a warning is talking: the call-out waits (the next one due replaces it)
+    const key = this.callouts.step(s.callout, dt, dur);
+    if (!key || !clips[key]) return;
+    if (this.calloutSrc) { try { this.calloutSrc.stop(); } catch { /* ended */ } }
+    const src = this.ctx.createBufferSource(); src.buffer = clips[key]; src.connect(this.voiceGain); src.start(); this.calloutSrc = src;
+  }
   _voiceDuration(key) {
     const set = this.voiceClips && this.voiceClips[this.voiceStyle], buf = set && set[key];
     if (!buf && this.voiceOn && set && set.failed) this._loadVoices();
@@ -250,6 +273,7 @@ export class Audio {
   }
   resetForSpawn() {
     if (this.voiceSrc || this.voiceSched.playing) this._stopVoice();
+    this.callouts.reset(); if (this.calloutSrc) { try { this.calloutSrc.stop(); } catch { /* ended */ } this.calloutSrc = null; }
     this.wreckFadeUntil = this.wreckScrapeUntil = this.wreckFireUntil = 0; this.wreckLevel = this.wreckScrapeLevel = this.wreckFireLevel = 0;
     if (!this.ctx) return;
     const C = this.ctx, t = C.currentTime;
@@ -508,6 +532,7 @@ export class Audio {
       const pick = this.voiceSched.step(s.warn, t, (k) => this._voiceDuration(k));
       if (pick) { if (pick.interrupt && this.voiceSrc) { try { this.voiceSrc.stop(); } catch { /* ended */ } } this._speak(pick.key); }
     }
+    if (s.crashed) this.callouts.reset(); else this._calloutStep(s, t, Math.max(0, Math.min(0.25, t - (this._coT || t)))); this._coT = t;
     const speaking = this.voiceOn && this.voiceSched.speaking(t);
     set(this.warnGain.gain, on * (speaking ? 0.02 : 0.1), 0.012);
     for (const o of this.warnOsc) set(o.frequency, f, 0.01);

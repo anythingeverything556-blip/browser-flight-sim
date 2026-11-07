@@ -40,7 +40,7 @@ const PFACTOR = 0.075; // m: P-factor and slipstream yaw moment per newton of th
 // rigging (the wings' incidence and aileron droop set at the factory): a rolling-moment coefficient that balances the engine torque in cruise
 // (75 % power, ~105 KIAS), so hands off it flies straight; at climb power and low speed the torque still wins and it rolls left, as a real one
 const CL_RIG = 0.0008;
-const TAIL_SCRAPE_VS = 1.5; // m/s: a tail touch with the CG sinking slower than this scrapes
+const TAIL_SCRAPE_VS = 2.5; // was 1.5: landing forgiveness // m/s: a tail touch with the CG sinking slower than this scrapes
 const TB_C172 = 520; // N m per main wheel at full pedal
 
 // lift / drag / pitch by flap angle (deg): incremental CL, CD and Cm, and CLmax
@@ -246,9 +246,10 @@ export class C172Model extends FlightModel {
       onGround = true;
       const vp = _vp.crossVectors(wWorld, rr).add(this.vel);
       if (!was && vp.y < -0.3) this.events.push({ type: 'touch', vs: -vp.y, wheel: i });
-      if (!was && vp.y < -4.0) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+      // was 4.0 / 2.5 m/s: landing forgiveness, the spring-steel gear takes a firm arrival
+      if (!was && vp.y < -5.5) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
       if (pen > 0.35) {
-        if (vp.y < -2.5) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+        if (vp.y < -3.5) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
         this.pos.y += pen - 0.1; pen = 0.1;
       }
       const Fn = Math.max(0, g.k * pen - g.c * vp.y);
@@ -327,12 +328,15 @@ export class C172Model extends FlightModel {
     }
 
     const nz = fb.y / (m * grav) + (onGround ? this.contacts.reduce((s, c) => s + c, 0) / (m * grav) : 0);
+    // the structure limit counts flight loads only: a firm touchdown's gear reaction is the gear's own limit (the sink-rate checks), and read as
+    // 'airframe overstressed' on landings players thought were fine
+    const nzAero = fb.y / (m * grav);
     const ias = V * Math.sqrt(atm.rho / 1.225), iasKt = ias * 1.943844;
     // structure: ultimate load factor, or far past Vne (flutter)
-    if (!this.crashOff && (nz > C172.NZ_ULT || nz < C172.NZ_NEG_ULT || iasKt > C172.VNE * 1.2)) { this.crash(iasKt > C172.VNE * 1.2 ? 'airframe failed past Vne' : `airframe overstressed (${nz.toFixed(1)} g)`, 'overstress'); return; }
+    if (!this.crashOff && (nzAero > C172.NZ_ULT || nzAero < C172.NZ_NEG_ULT || iasKt > C172.VNE * 1.2)) { this.crash(iasKt > C172.VNE * 1.2 ? 'airframe failed past Vne' : `airframe overstressed (${nzAero.toFixed(1)} g)`, 'overstress'); return; }
     const buffet = 0.6 * smooth(stallAlpha(this.flaps) - 0.05, stallAlpha(this.flaps) + 0.03, alpha) + (onGround ? Math.min(1, gs / 30) * 0.25 : 0) + Math.max(0, iasKt - C172.VNO) / 60 * 0.2;
     const Pde = CM_DE * DE_UP;
-    this.out = { V, M, qbar, alpha, beta, rho: atm.rho, a: atm.a, T: atm.T, thrust, nz, CL, CD, buffet, ff, ias, rpm: this.rpm, flaps: this.flaps,
+    this.out = { V, M, qbar, alpha, beta, rho: atm.rho, a: atm.a, T: atm.T, thrust, nz, nzAero, CL, CD, buffet, ff, ias, rpm: this.rpm, flaps: this.flaps,
       cg: 0.25, staticMargin: 0.15, inletStress: 0, stall, pitchPower: Pde * Math.max(qTail, 1) * S * C / I.z, rollPower: CL_DA * DA_MAX * qS * SPAN / I.x,
       yawPower: CN_DR * DR_MAX * Math.max(qTail, 1) * S * SPAN / I.y, dePerG: qS > 1 ? Math.min(1.5, 0.15 * m * grav / (qS * CM_DE * DE_UP / CMA * -CLA)) : 1.5 };
   }

@@ -5,6 +5,7 @@ import { SF50_CG, SF50_GEAR } from './sf50.js';
 import { SF50Displays } from './sf50displays.js';
 import { SilShadow } from './silshadow.js';
 import { TERRAIN_UNIFORMS } from './terrain-shader.js';
+import { GlassWater } from './glasswater.js';
 
 // The Vision Jet's 3D model (public/models/SF50.glb): +Z nose, +Y up, +X left wing, wheels on y = 0, origin at the model datum. Rotated a quarter turn
 // it is in the simulator's frame (+x nose, +y up, +z right wing) and drawn at fdm.pos - SF50_CG. Every moving part is a node whose extras carry
@@ -19,6 +20,9 @@ export const SF50_POSE = { ruddervator: 20, flapMax: 39, gearUpDeg: [110, 88, 88
 const GEAR_STATIC_SINK = 0.08; // strut compression at rest: the model stands on its wheels with the struts this much compressed
 const SPIN_FAN = 0.6; // fan rad/s per % N1: a visible turn, not the real 30,000 rpm
 const SIL_R = 7, SIL_D = 30;
+// Windshield tint seen from the seat. The glass and its black frit band end in a sawtooth short of the frame, which showed as jagged teeth
+// round the windshield; from inside the frit is hidden and the glass nearly clear, so the smooth frame is the edge. Outside keeps the dark tint.
+const WS_COCKPIT_OPACITY = 0.06;
 const EYE = new THREE.Vector3(1.66, 1.84, -0.37).sub(SF50_CG);
 const _q = new THREE.Quaternion(), _q2 = new THREE.Quaternion(), _v = new THREE.Vector3(), _c = new THREE.Vector3();
 const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
@@ -65,6 +69,15 @@ export class SF50Visual {
         roll: ex.roll_axis ? new THREE.Vector3(...ex.roll_axis).normalize() : null };
     }
     this.interior = N.Interior || null; this.glazing = N.Glazing || null;
+    this.frit = null; this.windshield = null;
+    if (this.glazing) this.glazing.traverse((o) => { if (!o.isMesh) return; if (/Frit/i.test(o.material.name)) this.frit = o; else if (/Windshield/i.test(o.material.name)) this.windshield = o; });
+    this.addGlareDeck();
+    // rain on the glass: the same drops as the SR-71's canopy, on the windshield and the side windows
+    if (this.glazing) {
+      this.glassWater = new GlassWater({ ridge: 2.16 });
+      const panes = []; this.glazing.traverse((o) => { if (o.isMesh && !/Frit/i.test(o.material.name)) panes.push(o); }); // collected first: attach() adds children
+      for (const o of panes) this.glassWater.attach(o, this.model);
+    }
     scene.traverse((o) => {
       if (!o.isMesh) return;
       const m = o.material;
@@ -75,6 +88,7 @@ export class SF50Visual {
       // texture filtering: the panel, seats and placards are seen at grazing angles from the seat, where trilinear alone smears them
       for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap']) if (m[k]) m[k].anisotropy = 8;
     });
+    this.wsOpacity = this.windshield ? this.windshield.material.opacity : 0;
     const inside = (o) => { for (let p = o; p; p = p.parent) if (p === this.interior) return true; return false; };
     const lamps = new Set(LIGHTS.map((n) => N[n]));
     scene.traverse((o) => {
@@ -100,6 +114,47 @@ export class SF50Visual {
     this.stats = { draws, tris: Math.round(tris), movers: Object.keys(this.movers).length };
     this.setEnv(this.scene.environment);
     return this;
+  }
+
+  // The GLB's glare shield stops about half a metre short of the windshield, and from the seat the gap looked down into the hollow nose (its
+  // inner skin). This deck runs from the shield's crest to the windshield's bottom edge across the whole windshield, both taken from the model
+  // itself, in the Interior's frame (glTF: +z forward, +y up, x across). It reuses the shield's material, so no new shader is compiled.
+  addGlareDeck() {
+    const ws = this.windshield, cab = this.interior; if (!ws || !cab) return;
+    let mat = null; cab.traverse((o) => { if (!mat && o.isMesh && /Alcantara_Charcoal/i.test(o.material.name)) mat = o.material; });
+    if (!mat) return;
+    this.model.updateMatrixWorld(true);
+    const inv = new THREE.Matrix4().copy(cab.matrixWorld).invert(), m = new THREE.Matrix4(), v = new THREE.Vector3();
+    const HALF = 0.8, STEP = 0.05, BINS = Math.round((2 * HALF) / STEP) + 1, bin = (x) => Math.round((x + HALF) / STEP);
+    const low = new Array(BINS).fill(null), crest = new Array(BINS).fill(null);
+    const scan = (mesh, fn) => { m.multiplyMatrices(inv, mesh.matrixWorld); const p = mesh.geometry.attributes.position; for (let i = 0; i < p.count; i++) fn(v.fromBufferAttribute(p, i).applyMatrix4(m)); };
+    // windshield bottom edge: its lowest point in each slice across
+    scan(ws, (p) => { const b = bin(p.x); if (b >= 0 && b < BINS && (!low[b] || p.y < low[b].y)) low[b] = p.clone(); });
+    // shield crest: the highest cabin surface just ahead of the displays (the windshield frame trim excluded)
+    cab.traverse((o) => {
+      if (!o.isMesh || /Frame_MatteBlack/i.test(o.material.name)) return;
+      scan(o, (p) => { if (p.z < 2.44 || p.z > 2.62 || p.y < 1.2 || p.y > 1.66) return; const b = bin(p.x); if (b >= 0 && b < BINS && (!crest[b] || p.y > crest[b].y)) crest[b] = p.clone(); });
+    });
+    const pos = [];
+    for (let b = 0; b < BINS; b++) {
+      const f = low[b], c = crest[b]; if (!f || !c) continue;
+      // the glass edge is ragged slice to slice: take the lowest of the neighbours and their mean depth, so the edge stays under the glass and smooth
+      const near = [low[b - 1], f, low[b + 1]].filter(Boolean), fy = Math.min(...near.map((p) => p.y)), fz = near.reduce((s, p) => s + p.z, 0) / near.length;
+      const x = -HALF + b * STEP;
+      // rear edge tucked just under the crest, front edge just under and behind the glass, hidden by the frame
+      pos.push(x, c.y - 0.004, c.z, x, fy - 0.004, fz - 0.006);
+    }
+    const rows = pos.length / 6; if (rows < 2) return;
+    const idx = [];
+    for (let r = 0; r + 1 < rows; r++) { const a = 2 * r, b = a + 1, c = a + 2, d = a + 3; idx.push(a, b, d, a, d, c); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(new Float32Array((pos.length / 3) * 2), 2));
+    g.setIndex(idx); g.computeVertexNormals();
+    // the shared material is single-sided: face the deck up
+    if (g.attributes.normal.getY(0) < 0) { for (let i = 0; i < idx.length; i += 3) [idx[i + 1], idx[i + 2]] = [idx[i + 2], idx[i + 1]]; g.setIndex(idx); g.computeVertexNormals(); }
+    const deck = new THREE.Mesh(g, mat); deck.name = 'GlareDeck';
+    cab.add(deck); this.glareDeck = deck;
   }
 
   // three.js only honours envMapIntensity when material.envMap is set (with just scene.environment every material reflects the sky at full strength)
@@ -290,9 +345,15 @@ export class SF50Visual {
     if (m) { this.fanAng = (this.fanAng + (fdm.crashed ? 0 : (fdm.engines[0].n1 || 0) * SPIN_FAN) * dt) % (2 * Math.PI); m.o.quaternion.copy(m.rest).multiply(_q.setFromAxisAngle(m.axis, this.fanAng)); }
     // the cabin is ~200k triangles: drawn in the cockpit view and when the camera is close enough to look in through the glazing
     if (this.interior) this.interior.visible = view === 'cockpit' || camDist < 9;
+    if (this.frit) this.frit.visible = view !== 'cockpit';
+    if (this.windshield) this.windshield.material.opacity = view === 'cockpit' ? WS_COCKPIT_OPACITY : this.wsOpacity;
     this.setCabinShadows(view === 'cockpit');
     this.poseLights(fdm, env, camDist, agl);
     this.updateDisplays(dt, view, feed);
+    if (this.glassWater) {
+      const sun = (this._sunM ||= new THREE.Vector3()).copy(env.sunDir || _v.set(0, 1, 0)).applyQuaternion(_q2.copy(this.root.quaternion).invert());
+      this.glassWater.update(dt, { rain: this.rainEff || 0, V: (fdm.out && fdm.out.V) || 0, sun, daylight: env.daylight ?? 1, near: view === 'cockpit' || camDist < 30 });
+    }
     this.sil.place(fdm, camWorld, env, groundY, agl);
   }
 

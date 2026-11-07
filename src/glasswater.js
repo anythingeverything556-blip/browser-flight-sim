@@ -30,7 +30,7 @@ uniform float uWet, uTime, uSpeed, uForce, uRate, uRain, uMode, uLightI;
 uniform vec2 uDir, uLightP, uRes;
 uniform highp sampler2D tDepth;
 ${DEPTH_GLSL}
-uniform float uSoft;
+uniform float uSoft, uRidge; // uRidge: height (model y, m) of the top of the glass; the pattern's down-slope axis starts there
 varying vec3 vP; varying float vZ;
 
 vec3 h3(vec2 p) { vec3 q = fract(vec3(p.xyx) * vec3(0.1031, 0.1030, 0.0973)); q += dot(q, q.yxz + 33.33); return fract((q.xxy + q.yzz) * q.zyx); }
@@ -108,7 +108,7 @@ void slider(vec2 q, float cs, float aspect, float seed, float density, float rat
 }
 
 void main() {
-  vec2 p = vec2(vP.x, abs(vP.z) * 1.15 + max(0.0, 3.40 - vP.y));
+  vec2 p = vec2(vP.x, abs(vP.z) * 1.15 + max(0.0, uRidge - vP.y));
   vec2 perp = vec2(-uDir.y, uDir.x);
   vec2 q = vec2(dot(p, perp), dot(p, uDir));
   gL = vec2(dot(uLightP, perp), dot(uLightP, uDir));
@@ -142,12 +142,13 @@ void main() {
 }`;
 
 export class GlassWater {
-  constructor() {
+  // ridge: model-space height (m) of the top of the glass (the SR-71 canopy 3.40, the Vision Jet windshield 2.16, the Skyhawk's 1.90)
+  constructor({ ridge = 3.40 } = {}) {
     this.wet = 0; this.time = 0; this.dir = new THREE.Vector2(0, 1); this.active = false; this.mode = 0; this.meshes = [];
     this.uniforms = {
       uWet: { value: 0 }, uTime: { value: 0 }, uSpeed: { value: 0 }, uForce: { value: 0.2 }, uRate: { value: 0.05 }, uRain: { value: 0 },
       uMode: { value: 0 }, uDepthK: { value: new THREE.Vector2(1, 0) }, uLightI: { value: 1 }, uDir: { value: this.dir }, uLightP: { value: new THREE.Vector2(0.3, 0.4) },
-      uRes: { value: new THREE.Vector2(1, 1) }, tDepth: { value: null }, uSoft: { value: 1 },
+      uRes: { value: new THREE.Vector2(1, 1) }, tDepth: { value: null }, uSoft: { value: 1 }, uRidge: { value: ridge },
     };
     this.light = new THREE.Vector3(1, 1, 1);
     this.rt = new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, magFilter: THREE.NearestFilter, minFilter: THREE.NearestFilter });

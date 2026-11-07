@@ -4,7 +4,20 @@ const msg = (text) => {
   const el = document.getElementById('loadmsg');
   if (el) { el.textContent = text; el.classList.add('err'); }
   document.querySelectorAll('#start-btn, #home-go').forEach((b) => { b.disabled = true; });
+  const ls = document.getElementById('loadscreen'); if (ls) ls.hidden = true; // a queued start must not cover the error
 };
+
+// Start flight answers the first click even while the simulator is still loading: the loading screen opens at once and main.js replays the
+// click when it is ready (window.__simReady). The buttons used to stay disabled for the first 10-30 s, so early clicks did nothing.
+window.__startQueued = null;
+document.addEventListener('click', (e) => {
+  if (window.__simReady) return;
+  const b = e.target instanceof Element && e.target.closest('#start-btn, #home-go');
+  if (!b || b.disabled) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  window.__startQueued = b.id;
+  const ls = document.getElementById('loadscreen'); if (ls) { ls.hidden = false; ls.classList.remove('out'); }
+}, true);
 
 // The check opens the game's own context on the game's canvas, with the attributes three.js asks for (main.js: canvas MSAA only on Low), so the
 // renderer's getContext gets this same context back. A throwaway probe context here cost ~1 s of a SwiftShader boot and meant a second GPU context.

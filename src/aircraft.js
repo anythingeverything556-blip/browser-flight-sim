@@ -637,16 +637,25 @@ export class AircraftVisual {
       this.engines.push({ grp, disc, outer, mid, core, diamonds, halo, teb, smoke, light });
     }
     // drag chute: canopy + risers, streamed behind the tail cone
-    this.chute = new THREE.Group();
-    const canopy = new THREE.Mesh(new THREE.SphereGeometry(4.2, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2),
-      new THREE.MeshStandardMaterial({ color: 0xe8692a, roughness: 0.8, side: THREE.DoubleSide }));
-    canopy.rotation.z = Math.PI / 2; canopy.scale.set(0.55, 1, 1); canopy.position.x = -24;
-    const lines = [];
-    for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; lines.push(0, 0, 0, -24, Math.cos(a) * 4.2, Math.sin(a) * 4.2); }
-    const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
-    this.chute.add(canopy, new THREE.LineSegments(lg, new THREE.LineBasicMaterial({ color: 0xdddddd })));
-    this.chute.position.copy(CHUTE_POINT); this.chute.visible = false;
+    const mkChute = (fade) => {
+      const g = new THREE.Group(), cm = new THREE.MeshStandardMaterial({ color: 0xe8692a, roughness: 0.8, side: THREE.DoubleSide }), lm = new THREE.LineBasicMaterial({ color: 0xdddddd });
+      if (fade) cm.transparent = lm.transparent = true;
+      const canopy = new THREE.Mesh(new THREE.SphereGeometry(4.2, 28, 10, 0, Math.PI * 2, 0, Math.PI / 2), cm);
+      canopy.rotation.z = Math.PI / 2; canopy.scale.set(0.55, 1, 1); canopy.position.x = -24;
+      const lines = [];
+      for (let i = 0; i < 16; i++) { const a = i / 16 * Math.PI * 2; lines.push(0, 0, 0, -24, Math.cos(a) * 4.2, Math.sin(a) * 4.2); }
+      const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(lines, 3));
+      g.add(canopy, new THREE.LineSegments(lg, lm)); g.visible = false;
+      return { g, cm, lm };
+    };
+    this.chute = mkChute(false).g;
+    this.chute.position.copy(CHUTE_POINT);
     this.root.add(this.chute);
+    // torn-off / jettisoned canopy: lives in the scene (not on the root), flies on in world space, drops behind and fades
+    const torn = mkChute(true);
+    this.tornChute = torn.g; this.tornMats = [torn.cm, torn.lm]; this.scene.add(torn.g);
+    this.torn = { age: -1, pos: new THREE.Vector3(), vel: new THREE.Vector3(), sx: 1, sy: 1, sz: 1, wx: 0, wy: 0, wz: 0, shred: false };
+    this.chuteState = 'stowed';
     // anti-collision beacon and nav lights
     const dot = (color, size) => {
       const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: radialTexture([[0, 'rgba(255,255,255,1)'], [0.25, color], [1, 'rgba(0,0,0,0)']]), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
@@ -684,6 +693,40 @@ export class AircraftVisual {
   event(e) {
     if (e.type === 'ab-light') this.flash[e.engine] = 1;
     if (e.type === 'unstart') this.smoke[e.engine] = 1;
+  }
+
+  // drag chute: the attached canopy while deployed; on failure or jettison it is released as a detached canopy that falls away
+  updateChute(dt, fdm, camWorld) {
+    const st = fdm.chute, c = this.chute, T = this.torn, tg = this.tornChute;
+    if (st !== this.chuteState) {
+      if (this.chuteState === 'deployed' && (st === 'failed' || st === 'jettisoned')) {
+        c.updateWorldMatrix(true, false);
+        T.pos.setFromMatrixPosition(c.matrixWorld).add(camWorld); T.vel.copy(fdm.vel); T.age = 0;
+        T.shred = st === 'failed';
+        T.sx = c.scale.x; T.sy = c.scale.y; T.sz = c.scale.z;
+        c.getWorldQuaternion(tg.quaternion);
+        T.wx = (Math.random() - 0.5) * 6; T.wy = (Math.random() - 0.5) * 8; T.wz = (Math.random() - 0.5) * 6;
+        for (const m of this.tornMats) m.opacity = 1;
+        tg.visible = true;
+      } else if (st === 'stowed') { T.age = -1; tg.visible = false; }
+      this.chuteState = st;
+    }
+    c.visible = st === 'deployed';
+    if (c.visible) {
+      const k = fdm.chuteOpen, V = fdm.out.V || 0, over = V * Math.sqrt((fdm.out.rho || 1.225) / 1.225) > 110, f = over ? 1 + 0.22 * Math.sin(this.time * 47) * Math.sin(this.time * 31 + 1) : 1;
+      c.scale.set((0.3 + 0.7 * k) * f, k * (over ? 0.8 + 0.2 * f : 1), k * f);
+      c.rotation.x = Math.sin(this.time * 3) * 0.05 + (over ? Math.sin(this.time * 41) * 0.12 : 0);
+    }
+    if (T.age >= 0) {
+      T.age += dt;
+      if (T.age > 5.5 || T.pos.distanceToSquared(fdm.pos) > 640000) { T.age = -1; tg.visible = false; return; }
+      T.vel.multiplyScalar(Math.exp(-1.6 * dt)); T.vel.y -= 6 * dt; T.pos.addScaledVector(T.vel, dt);
+      tg.position.copy(T.pos).sub(camWorld);
+      tg.rotateX(T.wx * dt); tg.rotateY(T.wy * dt); tg.rotateZ(T.wz * dt);
+      const a = T.age, f = T.shred ? 1 + 0.3 * Math.sin(a * 23) * Math.sin(a * 13 + 2) : 1, sh = T.shred ? Math.max(0.35, 1 - 0.25 * a) : 1;
+      tg.scale.set(T.sx * sh * f, T.sy * sh * (T.shred ? 1.3 - 0.3 * f : 1), T.sz * sh * f);
+      const o = Math.min(1, (5.5 - a) / 1.5); for (const m of this.tornMats) m.opacity = o;
+    }
   }
 
   update(dt, fdm, camWorld, view, env, groundY, panelState) {
@@ -772,12 +815,7 @@ export class AircraftVisual {
       fx.smoke.scale.setScalar(4 + 14 * (1 - this.smoke[i])); fx.smoke.position.x = -4 - 20 * (1 - this.smoke[i]);
     });
 
-    this.chute.visible = fdm.chute === 'deployed';
-    if (this.chute.visible) {
-      const k = fdm.chuteOpen;
-      this.chute.scale.set(0.3 + 0.7 * k, k, k);
-      this.chute.rotation.x = Math.sin(this.time * 3) * 0.05;
-    }
+    this.updateChute(dt, fdm, camWorld);
     const n = env.night;
     this.beacon.visible = !fdm.crashed && n > 0.05 && (this.time % (1 / 1.2)) < 0.12;
     this.beacon.material.opacity = 0.9 * n;

@@ -61,7 +61,7 @@ void main() {
 }`;
 
 export class RainField {
-  constructor(count = 12000) {
+  constructor(count = 30000) {
     const g = new THREE.InstancedBufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute([-0.5, 0, 0, 0.5, 0, 0, 0.5, 1, 0, -0.5, 1, 0], 3));
     g.setIndex([0, 1, 2, 0, 2, 3]);
@@ -69,11 +69,11 @@ export class RainField {
     for (let i = 0; i < seed.length; i++) seed[i] = Math.random();
     g.setAttribute('iSeed', new THREE.InstancedBufferAttribute(seed, 4));
     g.instanceCount = count;
-    this.box = 80; this.off = new THREE.Vector3();
+    this.box = 60; this.off = new THREE.Vector3();
     this.uniforms = {
       uOff: { value: this.off }, uVel: { value: new THREE.Vector3(0, -8.5, 0) }, uRes: { value: new THREE.Vector2(1, 1) },
       uBox: { value: this.box }, uLen: { value: 0.06 }, uMaxLen: { value: 5 }, uNearCut: { value: 1.2 }, uInten: { value: 0 },
-      uFar: { value: 60 }, uDropW: { value: 0.012 }, uTint: { value: new THREE.Color(0.8, 0.86, 0.94) },
+      uFar: { value: 45 }, uDropW: { value: 0.012 }, uTint: { value: new THREE.Color(0.8, 0.86, 0.94) },
       uSoft: { value: 0 }, uDepthK: { value: new THREE.Vector2(1, 0) }, tDepth: { value: null },
     };
     this.mesh = new THREE.Mesh(g, new THREE.ShaderMaterial({
