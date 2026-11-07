@@ -177,6 +177,16 @@ check('crash: the Skyhawk breaks up (the crash code splits by position along the
   w.start(v, fdm, 'impact'); const n = w.pieces.length, o = w.info.outcome; w.clear(v);
   assert.ok(n >= 2, `${n} pieces`); assert.ok(v.root.visible, 'airframe shown again after clear'); return `${n} pieces (${o}, ${w.severity})`;
 });
+check('rain on the glass: drops on the windshield and windows; the glass wets in rain, seen from the seat, and dries after', () => {
+  const g = v.glassWater; assert.ok(g, 'no glass water'); assert.ok(g.meshes.length >= 2, `${g.meshes.length} panes`);
+  const names = g.meshes.map((m) => m.parent.material.name); assert.ok(names.includes('Glass_Tint'), `windshield missing: ${names}`);
+  assert.equal(g.uniforms.uRidge.value, 1.9);
+  v.rainEff = 0.65; for (let i = 0; i < 600; i++) v.update(1 / 60, fdm, new THREE.Vector3(), 'cockpit', env, 0);
+  const wet = g.wet; assert.ok(wet > 0.5, `wet ${wet}`); assert.ok(g.active, 'not active in the cockpit');
+  v.rainEff = 0; for (let i = 0; i < 6000; i++) v.update(1 / 60, fdm, new THREE.Vector3(), 'cockpit', env, 0);
+  assert.ok(g.wet < wet * 0.5, `still wet ${g.wet}`);
+  return `${g.meshes.length} panes (${[...new Set(names)].join(', ')}), wet ${wet.toFixed(2)} after 10 s of rain, ${g.wet.toFixed(2)} 100 s after`;
+});
 await vite.close();
 if (fails) { console.log(`${fails} failed`); process.exit(1); }
 console.log('c172-visual-test ok');

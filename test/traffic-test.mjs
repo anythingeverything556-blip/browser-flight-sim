@@ -31,7 +31,7 @@ try {
   let response = await onRequestGet({ request: new Request('https://sim.test/api/traffic?lat=91&lon=-200&dist=500') });
   assert.equal(response.status, 200);
   assert.equal(requestSeen.url.hostname, 'api.adsb.lol');
-  assert.equal(requestSeen.url.pathname, '/v2/point/90.00/-180.00/100');
+  assert.equal(requestSeen.url.pathname, '/v2/point/90.00/-180.00/250'); // the map asks for areas up to 250 NM
   assert.match(requestSeen.options.headers['user-agent'], /blackbird-sr71-sim/);
   assert.equal(requestSeen.options.cf.cacheTtl, 15);
   assert.match(response.headers.get('cache-control'), /max-age=15/);

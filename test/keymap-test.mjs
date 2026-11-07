@@ -48,9 +48,9 @@ const count = (c, ...ids) => { const n = {}; for (const id of ids) { n[id] = 0; 
   check('Shift alone only for held controls', !assignKey(t, 'gear', 'Shift').ok && assignKey(t, 'brakes', 'Shift').ok);
 }
 { // overrides save only what changed and survive a round trip
-  const t = resolveKeys(null); assignKey(t, 'map', 'KeyN');
+  const t = resolveKeys(null); assignKey(t, 'map', 'Digit1'); // a key no action uses (N is the moving map since the cockpit map)
   const o = keyOverrides(t);
-  check('only changed actions are saved', Object.keys(o).join() === 'map' && o.map.join() === 'KeyM,KeyN');
+  check('only changed actions are saved', Object.keys(o).join() === 'map' && o.map.join() === 'KeyM,Digit1');
   check('round trip', JSON.stringify(resolveKeys(JSON.parse(JSON.stringify(o)))) === JSON.stringify(t));
   check('a broken save falls back to the defaults', JSON.stringify(resolveKeys({ gear: 'nope', map: [3, 'KeyM'] }).gear) === JSON.stringify(DEFAULT_KEYS.gear) && resolveKeys({ map: [3, 'KeyM'] }).map.join() === 'KeyM');
 }

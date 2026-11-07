@@ -13,14 +13,14 @@ const { esc } = await import('../src/esc.js');
 let fails = 0;
 const check = (name, ok, extra = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  ${name} ${extra}`); if (!ok) fails++; };
 
-// crash option off: a 7 m/s arrival is soaked up once, the jet keeps its speed and never stops dead or bounces
+// crash option off: a 9 m/s arrival (past the 7 m/s gear limit since the landing-forgiveness change) is soaked up once, the jet keeps its speed and never stops dead or bounces
 {
   const f = new FlightModel(), g = () => 0, wind = new THREE.Vector3();
-  f.reset(new THREE.Vector3(0, 10, 0), 90, 90, false); f.gearDown = true; f.gearPos = 1; f.vel.y = -7; f.crashOff = true;
+  f.reset(new THREE.Vector3(0, 10, 0), 90, 90, false); f.gearDown = true; f.gearPos = 1; f.vel.y = -9; f.crashOff = true;
   let absorbed = 0, crashed = 0, minGs = 1e9;
   for (let i = 0; i < 2400; i++) { f.step(1 / 240, g, wind); if (f.events.includes('crash-absorbed')) absorbed++; if (f.crashed) crashed++; f.events.length = 0; if (i > 240) minGs = Math.min(minGs, f.vel.length()); }
   check('crash off: impact absorbed, no crash, no dead stop', crashed === 0 && absorbed >= 1 && absorbed < 10 && minGs > 60, `absorbed ${absorbed}, min speed ${minGs.toFixed(1)} m/s`);
-  const f2 = new FlightModel(); f2.reset(new THREE.Vector3(0, 10, 0), 90, 90, false); f2.gearDown = true; f2.gearPos = 1; f2.vel.y = -7;
+  const f2 = new FlightModel(); f2.reset(new THREE.Vector3(0, 10, 0), 90, 90, false); f2.gearDown = true; f2.gearPos = 1; f2.vel.y = -9;
   for (let i = 0; i < 2400 && !f2.crashed; i++) f2.step(1 / 240, g, wind);
   check('crash on: the same arrival still crashes', !!f2.crashed, String(f2.crashed));
 }

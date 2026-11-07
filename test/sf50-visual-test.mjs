@@ -125,6 +125,44 @@ check('interior: drawn in the cockpit view and when the camera is close, hidden 
   v.update(1 / 60, fdm, new THREE.Vector3(60, 5, 0), 'cockpit', day, 0); assert.equal(v.interior.visible, true);
   upd(); return 'cabin only when it can be seen';
 });
+check('cockpit: the glare shield reaches the windshield, so looking down past it shows the deck, not the hollow nose', () => {
+  v.update(1 / 60, fdm, new THREE.Vector3(60, 5, 0), 'cockpit', day, 0);
+  const deck = v.glareDeck; assert.ok(deck, 'no glare deck'); assert.ok(deck.parent === v.interior, 'deck is not part of the cabin');
+  v.root.updateMatrixWorld(true);
+  const eye = v.root.localToWorld(new THREE.Vector3(1.66, 1.84, -0.37).sub(SF50_CG)), rc = new THREE.Raycaster(), targets = [v.nodes.Interior, v.nodes.Exterior];
+  let deckHits = 0, n = 0;
+  for (const z of [-0.6, -0.4, -0.2, 0, 0.2, 0.4, 0.6]) for (const x of [2.9, 3.1]) {
+    const p = v.root.localToWorld(new THREE.Vector3(x, 1.5, z).sub(SF50_CG));
+    rc.set(eye, p.clone().sub(eye).normalize()); rc.far = eye.distanceTo(p) + 0.5;
+    const hit = rc.intersectObjects(targets, true)[0]; n++;
+    assert.ok(hit, `nothing under the line of sight at x ${x} z ${z}`);
+    assert.ok(!/Composite_Inner/i.test(hit.object.material.name), `the line of sight at x ${x} z ${z} reaches the nose's inner skin`);
+    if (hit.object === deck) deckHits++;
+  }
+  // and it stays inside the airframe: no deck corner lies beyond the exterior skin as seen from the seat
+  const dp = deck.geometry.attributes.position, w = new THREE.Vector3(); let outside = 0;
+  for (let i = 0; i < dp.count; i++) {
+    w.fromBufferAttribute(dp, i); deck.localToWorld(w);
+    rc.set(eye, w.clone().sub(eye).normalize()); rc.far = eye.distanceTo(w) - 0.003;
+    if (rc.intersectObject(v.nodes.Exterior, true).length) outside++;
+  }
+  assert.equal(outside, 0, `${outside} deck vertices lie beyond the exterior skin`);
+  return `${deckHits}/${n} sight lines past the shield end on the deck, all ${dp.count} deck vertices inside the skin`;
+});
+check('cockpit: the jagged windshield frit edge is hidden and the glass nearly clear from the seat; outside keeps the dark tint', () => {
+  v.update(1 / 60, fdm, new THREE.Vector3(60, 5, 0), 'cockpit', day, 0);
+  assert.equal(v.frit.visible, false); const inside = v.windshield.material.opacity; assert.ok(inside < 0.1, `opacity ${inside}`);
+  v.update(1 / 60, fdm, new THREE.Vector3(60, 5, 0), 'chase', day, 0);
+  assert.equal(v.frit.visible, true); const outside = v.windshield.material.opacity; assert.ok(outside > 0.25, `opacity ${outside}`);
+  upd(); return `windshield opacity ${inside} inside, ${outside} outside`;
+});
+check('rain on the glass: drops on the windshield and side windows (not the frit); the glass wets in rain, seen from the seat', () => {
+  const g = v.glassWater; assert.ok(g, 'no glass water'); assert.ok(g.meshes.length >= 2, `${g.meshes.length} panes`);
+  const names = g.meshes.map((m) => m.parent.material.name); assert.ok(names.some((n) => /Windshield/.test(n)), `windshield missing: ${names}`); assert.ok(!names.some((n) => /Frit/.test(n)), 'frit has drops');
+  v.rainEff = 0.65; fdm.out.V = 60; for (let i = 0; i < 600; i++) v.update(1 / 60, fdm, new THREE.Vector3(60, 5, 0), 'cockpit', day, 0);
+  const wet = g.wet; assert.ok(wet > 0.4, `wet ${wet}`); assert.ok(g.active, 'not active in the cockpit');
+  v.rainEff = 0; fdm.out.V = 0; upd(); return `${g.meshes.length} panes, wet ${wet.toFixed(2)} after 10 s of rain at 60 m/s`;
+});
 check('shadows: the exterior casts, the cabin and glazing do not; the ground shadow is a silhouette of the airframe, not a world-cascade caster', () => {
   let ext = 0, inter = 0, glass = 0;
   v.nodes.Exterior.traverse((o) => { if (o.isMesh && o.castShadow) ext++; });
