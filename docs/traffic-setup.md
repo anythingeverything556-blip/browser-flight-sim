@@ -1,6 +1,6 @@
 # Live traffic setup
 
-The app requests `GET /api/traffic?lat=…&lon=…&dist=54`. The Pages Function defaults to the fixed ADS-B endpoint at `https://api.adsb.lol`; it is not a general-purpose URL proxy. Queries require numeric coordinates, coordinates are clamped to valid ranges, and radius is clamped to 1–100 nautical miles. Browser polling caches successful responses for 15–120 seconds and backs off failed polls exponentially to 120 seconds. Retries cover HTTP 403, 429, 5xx (including 522), and network timeouts; unavailable traffic is reported once per session.
+The 3D traffic requests `GET /api/traffic?lat=…&lon=…&dist=54`; the flight map asks for the area it shows (`dist` up to 250) and for the worldwide lists `GET /api/traffic?list=mil|emergency|ladd|pia` (emergency merges squawks 7700, 7600 and 7500; lists fall back to adsb.fi and are cached 30 s). The Pages Function defaults to the fixed ADS-B endpoint at `https://api.adsb.lol`; it is not a general-purpose URL proxy. Queries require numeric coordinates, coordinates are clamped to valid ranges, and radius is clamped to 1–250 nautical miles (areas over 100 NM share 1° cells, smaller ones 0.25°). Records are slimmed to the fields the simulator reads. Browser polling caches successful responses for 15–120 seconds and backs off failed polls exponentially to 120 seconds. Retries cover HTTP 403, 429, 5xx (including 522), and network timeouts; unavailable traffic is reported once per session.
 
 ## Deploy with the default source
 
