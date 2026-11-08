@@ -13,11 +13,37 @@ Vision Jet and SF50 are trademarks of Cirrus Design Corporation, which has no
 connection with this project.
 
 ## Map data (loaded live in the browser)
-- Satellite imagery: Esri World Imagery, and national orthophoto services for
-  France (IGN), Bavaria, Rhineland-Palatinate, Flanders, Czechia, South Tyrol,
-  New South Wales, Switzerland (swisstopo SWISSIMAGE, open government data),
-  the Netherlands (PDOK, CC BY 4.0), Austria (basemap.at, CC BY 4.0) and Japan
-  (Geospatial Information Authority of Japan seamless photo).
+- Satellite imagery: Esri World Imagery (Esri, Maxar, Earthstar Geographics and
+  the GIS User Community) and Esri World Imagery Wayback at selected airports.
+  Official orthophoto services, credited as their licences require:
+  - Europe: IGN France (Licence Ouverte); © IGN; Métropole de Lyon; Rennes
+    Métropole; © Administration du cadastre et de la topographie (ACT),
+    geoportail.lu; UrbIS © CIRB; © Digitaal Vlaanderen; Source : Service
+    public de Wallonie (SPW); PDOK Netherlands (CC BY 4.0); © Geobasis NRW;
+    Stadt Köln; Regionalverband Ruhr; Senatsverwaltung für Stadtentwicklung,
+    Bauen und Wohnen Berlin / TrueDOP 2024; Freie und Hansestadt Hamburg, LGV;
+    © GeoBasis-DE/LVermGeo SH/CC BY 4.0; Geobasisdaten © HVBG; © LVGL
+    Saarland, dl-de/by-2-0; LGL-BW (2026) Datenlizenz Deutschland –
+    Namensnennung – Version 2.0, www.lgl-bw.de; Bayerische
+    Vermessungsverwaltung (CC BY 4.0); GeoBasis-DE / LVermGeoRP
+    (dl-de/by-2.0); swisstopo (SWISSIMAGE, open government data); Données
+    SITG; Quelle: Geodaten Kanton Basel-Stadt; basemap.at Austria (CC BY 4.0);
+    Datenquelle: Stadt Wien – data.wien.gv.at; Datenquelle: Land Vorarlberg –
+    data.vorarlberg.gv.at; Provincia autonoma di Bolzano; Comune di Bologna;
+    ČÚZK Czechia (CC BY 4.0); Źródło: GUGiK (geoportal.gov.pl); Maa- ja
+    Ruumiamet; Göteborgs Stad; PNOA cedido por © Instituto Geográfico
+    Nacional; Origen de los datos: Ayuntamiento de Madrid; Institut
+    Cartogràfic i Geològic de Catalunya (ICGC); Direção-Geral do Território.
+  - North America: KyFromAbove; Government of the District of Columbia, OCTO;
+    PEMA, via PASDA; CT ECO; © Gouvernement du Québec – MRNF; © King's Printer
+    for Ontario, 2024.
+  - South America: SDP / SIGLA S.A.S. / IDECA – UAECD; IDEuy – AGESIC,
+    Licencia de Datos Abiertos – Uruguay.
+  - Asia-Pacific: Geospatial Information Authority of Japan; NSW Spatial
+    Services (CC BY 4.0); CCBY – Australian Capital Territory and Aerometrex;
+    CC BY 3.0 AU © State of Tasmania; © State of Queensland (CC BY 4.0); ©
+    Planet Labs Netherlands B.V. reproduced under licence from Planet and
+    Geoplex, all rights reserved.
 - Terrain elevation: AWS Terrain Tiles.
 - 3D buildings: Overture Maps Foundation (includes OpenStreetMap data, (c)
   OpenStreetMap contributors, ODbL, plus Google and Microsoft building data).

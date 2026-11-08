@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { isa, gravityAt, R_EARTH, OMEGA_EARTH } from './atmosphere.js';
+import { landingLimits } from './difficulty.js';
 import { FlightModel, lerpTable, smooth, clamp, UP, newEngine, tyre, MU_PEAK, TYRE_B, TYRE_C, KAPPA_PK, V_REG } from './flight.js';
 
 // Cessna 172SP Skyhawk. Sources: C172SP Pilot's Operating Handbook (weights, speeds, performance tables), Roskam "Airplane Flight Dynamics"
@@ -40,7 +41,6 @@ const PFACTOR = 0.075; // m: P-factor and slipstream yaw moment per newton of th
 // rigging (the wings' incidence and aileron droop set at the factory): a rolling-moment coefficient that balances the engine torque in cruise
 // (75 % power, ~105 KIAS), so hands off it flies straight; at climb power and low speed the torque still wins and it rolls left, as a real one
 const CL_RIG = 0.0008;
-const TAIL_SCRAPE_VS = 2.5; // was 1.5: landing forgiveness // m/s: a tail touch with the CG sinking slower than this scrapes
 const TB_C172 = 520; // N m per main wheel at full pedal
 
 // lift / drag / pitch by flap angle (deg): incremental CL, CD and Cm, and CLmax
@@ -76,6 +76,7 @@ export class C172Model extends FlightModel {
   constructor() {
     super();
     this.type = 'c172';
+    this.land = landingLimits('c172', 'medium'); // touchdown limits, set by the flying mode
     this.fuel = C172.FUEL_MAX; this.cgx = C172_CG.x;
     this.flaps = 0; this.flapCmd = 0; // actual degrees, commanded notch 0..3
     this.rpm = 0; this.omega = 0; this.magnetos = true;
@@ -246,10 +247,10 @@ export class C172Model extends FlightModel {
       onGround = true;
       const vp = _vp.crossVectors(wWorld, rr).add(this.vel);
       if (!was && vp.y < -0.3) this.events.push({ type: 'touch', vs: -vp.y, wheel: i });
-      // was 4.0 / 2.5 m/s: landing forgiveness, the spring-steel gear takes a firm arrival
-      if (!was && vp.y < -5.5) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+      // touchdown limits follow the flying mode (this.land, see difficulty.js)
+      if (!was && vp.y < -this.land.sinkMax) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
       if (pen > 0.35) {
-        if (vp.y < -3.5) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+        if (vp.y < -this.land.sinkBottom) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
         this.pos.y += pen - 0.1; pen = 0.1;
       }
       const Fn = Math.max(0, g.k * pen - g.c * vp.y);
@@ -317,7 +318,7 @@ export class C172Model extends FlightModel {
         if (onGround && gs < 6 && Math.abs(this.vel.y) < 1) { this.pos.y += gy - py + 0.03; continue; }
         // over-rotation on the runway: the tail tie-down ring scrapes (minor damage in the real aircraft), not a crash; an aircraft that drops
         // onto its tail (sinking flare) still crashes
-        if (name === 'tail' && gs < 45 && this.vel.y > -TAIL_SCRAPE_VS) {
+        if (name === 'tail' && gs < 45 && this.vel.y > -this.land.scrapeVs) {
           this.pos.y += gy - py + 0.03; if (this.w.z > 0) this.w.z *= 0.2;
           if (!this.scrapeT) this.events.push({ type: 'scrape', part: 'tail' });
           this.scrapeT = 1; continue;

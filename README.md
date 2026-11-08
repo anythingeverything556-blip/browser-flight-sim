@@ -32,6 +32,7 @@ The default camera is free orbit: it starts behind the jet, drag to swing round,
 
 ## Features
 
+- **Flying modes:** Easy, Medium and Realistic, on the start sheet and in Settings. Easy turns every assist on and adds stall, g, pitch and bank protection, forgiving landings, unlimited fuel and no inlet unstarts. Medium is the standard sim. Realistic turns the assists off and uses the real gear's touchdown limits: you trim, use the rudder and flare yourself, and fuel runs out. Picking a mode sets the assist options, which you can still change one by one.
 - **Real world:** Esri World Imagery (up to zoom 20 where available) draped over AWS terrain tiles in a
   crack-free, balanced quadtree with cleaned elevation data (no spikes, sea held at sea level), sun-lit
   relief shading, Earth curvature, haze, and a sky that darkens towards space at altitude. Tiles are
@@ -102,12 +103,77 @@ The default camera is free orbit: it starts behind the jet, drag to swing round,
 - **Crash physics:** a hard impact breaks the airframe up (wings and fuselage become separate tumbling, sliding rigid
   bodies) with a fuel fireball, burning wreckage and a smoke column; a gear-up or collapsed-gear arrival slides to a stop
   in one piece; an in-flight overstress breaks it up in the air. The crash report appears once the wreck has come to rest.
-- **Imagery:** Esri World Imagery plus sharper official orthophotos where they exist (France, Bavaria,
-  Rhineland-Palatinate, Flanders, Czechia, South Tyrol, NSW), colour-matched to Esri. Tiles load nearest first and are
+- **Imagery:** Esri World Imagery plus sharper official orthophotos where they exist (51 national, state and city
+  services in Europe, North America, Colombia, Uruguay and Australia, 5-25 cm, up to zoom 21; see *Imagery sources*), and
+  Esri World Imagery Wayback releases at airports where an archived capture is finer than today's layer, colour-matched to Esri. Tiles load nearest first and are
   then sharpened to double resolution (512 px) when the connection is free. Graphics presets Low / Normal / High / Ultra,
   adaptive resolution and optional camera shake in Settings.
 - **Sound:** synthesised J58 roar and whine per engine, afterburner rumble and crackle, light-off,
   unstart bang, wind, tyre rumble, gear motor, warning tones, doppler, Mach-cone silence and boom.
+
+## Imagery sources
+
+`src/imagery-sources.js` picks the first source whose area and zoom range contain a terrain tile; city sources come before
+the state or national layer they sit in. A tile a source fails on (HTTP error, CORS), has no data for (404) or leaves blank
+(transparent, white, black or one flat colour) is taken from the next source covering it, then from Esri. Elsewhere the
+imagery is Esri World Imagery (© Esri, Maxar, Earthstar Geographics and the GIS User Community); at zoom 15-20, inside the
+areas listed in `public/data/wayback.json`, an Esri World Imagery Wayback release is used instead (Esri World Imagery
+Wayback, same credit). Tiles are 256 px; the finest zoom is reached by the 512 px upgrade of zoom-20 tiles (graphics
+Normal and up).
+
+| Source | Area | Zoom | Attribution |
+|---|---|---|---|
+| `lu` | Luxembourg | 13-21 | © Administration du cadastre et de la topographie (ACT), geoportail.lu |
+| `thr` | Paris, Marseille, Le Havre | 13-21 | © IGN |
+| `lyon23` | Lyon | 15-21 | Métropole de Lyon |
+| `rennes21` | Rennes | 15-20 | Rennes Métropole |
+| `ge24` | Geneva canton | 15-21 | Données SITG |
+| `bs23` | Basel-Stadt | 15-20 | Quelle: Geodaten Kanton Basel-Stadt |
+| `ign` | France | 13-19 | IGN France (Licence Ouverte) |
+| `koeln` | Cologne | 15-21 | Stadt Köln |
+| `rvr` | Ruhr | 15-21 | Regionalverband Ruhr |
+| `nrw_dop` | North Rhine-Westphalia | 13-21 | © Geobasis NRW |
+| `berlin` | Berlin | 13-20 | Senatsverwaltung für Stadtentwicklung, Bauen und Wohnen Berlin / TrueDOP 2024 |
+| `hh` | Hamburg | 13-20 | Freie und Hansestadt Hamburg, LGV |
+| `sh` | Schleswig-Holstein | 13-20 | © GeoBasis-DE/LVermGeo SH/CC BY 4.0 |
+| `bw` | Baden-Württemberg | 13-20 | LGL-BW (2026) Datenlizenz Deutschland – Namensnennung – Version 2.0, www.lgl-bw.de |
+| `hessen` | Hesse | 13-20 | Geobasisdaten © HVBG |
+| `sl` | Saarland | 13-20 | © LVGL Saarland, dl-de/by-2-0 |
+| `wien_lb` | Vienna | 13-21 | Datenquelle: Stadt Wien – data.wien.gv.at |
+| `vogis10` | Vorarlberg | 13-21 | Datenquelle: Land Vorarlberg – data.vorarlberg.gv.at |
+| `by` | Bavaria | 13-20 | Bayerische Vermessungsverwaltung (CC BY 4.0) |
+| `rlp` | Rhineland-Palatinate | 13-20 | GeoBasis-DE / LVermGeoRP (dl-de/by-2.0) |
+| `be_bxl` | Brussels | 13-21 | UrbIS © CIRB |
+| `vl_omw` | Flanders | 13-20 | © Digitaal Vlaanderen |
+| `be_wal` | Wallonia | 13-20 | Source : Service public de Wallonie (SPW) |
+| `cz` | Czechia | 13-20 | ČÚZK Czechia (CC BY 4.0) |
+| `bz` | South Tyrol | 13-20 | Provincia autonoma di Bolzano |
+| `act3857` | Australian Capital Territory | 13-21 | CCBY – Australian Capital Territory and Aerometrex |
+| `nsw` | New South Wales | 13-21 | NSW Spatial Services (CC BY 4.0) |
+| `ch` | Switzerland | 13-20 | swisstopo (SWISSIMAGE, open government data) |
+| `nl` | Netherlands | 13-21 | PDOK Netherlands (CC BY 4.0) |
+| `at` | Austria | 13-19 | basemap.at Austria (CC BY 4.0) |
+| `jp` | Japan | 13-18 | Geospatial Information Authority of Japan |
+| `madrid_ayto` | Madrid city | 15-20 | Origen de los datos: Ayuntamiento de Madrid |
+| `icgc_orto` | Catalonia | 13-20 | Institut Cartogràfic i Geològic de Catalunya (ICGC) |
+| `es` | Spain | 13-20 | PNOA cedido por © Instituto Geográfico Nacional |
+| `pt_2025` | mainland Portugal | 13-20 | Direção-Geral do Território |
+| `plwHighResolution` | Poland (z20-21) | 20-21 | Źródło: GUGiK (geoportal.gov.pl) |
+| `pl` | Poland | 13-19 | Źródło: GUGiK (geoportal.gov.pl) |
+| `ee` | Estonia | 13-18 | Maa- ja Ruumiamet |
+| `gbg21` | Gothenburg | 15-20 | Göteborgs Stad |
+| `bologna26` | Bologna | 15-21 | Comune di Bologna |
+| `ky3` | Kentucky | 13-20 | KyFromAbove |
+| `ky2` | Kentucky (Phase 3 gaps) | 13-20 | KyFromAbove |
+| `dc25` | Washington DC | 13-21 | Government of the District of Columbia, OCTO |
+| `pa2123` | Pennsylvania | 13-20 | PEMA, via PASDA |
+| `ct23` | Connecticut | 13-20 | CT ECO |
+| `bog25` | Bogotá | 14-21 | SDP / SIGLA S.A.S. / IDECA – UAECD |
+| `ont2327` | southern Ontario (not Toronto, Ottawa) | 13-20 | © King's Printer for Ontario, 2024 |
+| `qcwmts` | southern Québec | 13-21 | © Gouvernement du Québec – MRNF |
+| `uyurb` | Uruguay towns | 15-21 | IDEuy – AGESIC, Licencia de Datos Abiertos – Uruguay |
+| `tas_AerialPhoto2024` | Tasmania (2024 captures) | 15-20 | CC BY 3.0 AU © State of Tasmania |
+| `qld21` | Queensland urban footprints | 17-20 | © State of Queensland (CC BY 4.0); © Planet Labs Netherlands B.V. reproduced under licence from Planet and Geoplex, all rights reserved |
 
 ## Controls
 
@@ -158,6 +224,7 @@ node test/fdm-test.mjs   # take-off roll, rotation, climb, zero timestep: finite
 node test/autopilot-test.mjs  # closed loop on the real flight model: speed changes, stall / min-speed / overspeed protection, recovery
 node test/workstats-test.mjs  # dirty-flag logic: HUD redraw rate, panel change gate
 node test/landing-forgiveness-test.mjs  # firm touchdowns land in all three aircraft; a real slam still crashes
+node test/difficulty-test.mjs  # flying modes: presets, touchdown limits per mode, Easy envelope protection in all three aircraft
 ```
 
 The original archive referred to further flight-model test scripts (`test/trim-test.mjs`, `test/handling-test.mjs`, ...) and a
@@ -217,7 +284,7 @@ smooth lines on either side; on 1,032 real mountain tiles this removed every res
   · `src/panel.js` cockpit instruments · `src/occlusion.js` hidden-surface mask for the cockpit view · `src/camera.js`, `src/controls.js`, `src/hud.js`, `src/autopilot.js`,
   `src/map.js`, `src/audio.js`, `src/geo.js`, `src/main.js` · `src/boot.js` checks for WebGL 2 and starts the app.
 
-Scenery © Esri, Maxar, Earthstar Geographics · Terrain © Mapzen / AWS Terrain Tiles · Airports © OurAirports (public domain) · Runway geometry © OpenStreetMap contributors (ODbL) · Buildings © Overture Maps Foundation (ODbL; includes OpenStreetMap, Google Open Buildings CC BY 4.0, Microsoft Building Footprints ODbL), fallback OpenMapTiles via OpenFreeMap · Charts © FAA.
+Scenery © Esri, Maxar, Earthstar Geographics (and Esri World Imagery Wayback), plus the official orthophoto services listed under *Imagery sources* · Terrain © Mapzen / AWS Terrain Tiles · Airports © OurAirports (public domain) · Runway geometry © OpenStreetMap contributors (ODbL) · Buildings © Overture Maps Foundation (ODbL; includes OpenStreetMap, Google Open Buildings CC BY 4.0, Microsoft Building Footprints ODbL), fallback OpenMapTiles via OpenFreeMap · Charts © FAA.
 
 ## License
 
