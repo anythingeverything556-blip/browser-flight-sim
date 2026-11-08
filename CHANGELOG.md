@@ -12,8 +12,13 @@ The simulator now flies the SR-71, the Cessna 172 and the Vision Jet, so *Blackb
 - LICENSE: copyright holder is now anythingeverything556-blip and collaborators, and a new section 4 allows
   screenshots, gameplay videos, streams, reviews and tutorials (monetised included) with a link back. Redistributing
   or re-hosting the software is still not allowed. Sections after it were renumbered; `public/LICENSE.txt` matches.
-- Unchanged on purpose: the Cloudflare Pages project and URL (`sr71-blackbird`), the traffic relay and Wayback-scan
-  user agents, and their tests.
+- New main address **https://earthwing.pages.dev** (Pages project `earthwing`). The old address,
+  https://sr71-blackbird.pages.dev, stays live with the same build. `npm run deploy` now deploys to both, and
+  `tools/set-traffic-relay.sh` sets its variables on both. The page's canonical URL, link-preview tags and README links
+  point to the new address.
+- Added `AGENTS.md`, a warning for agents and maintainers: the owner zip is the source of truth, the public GitHub repo
+  is a hand-updated mirror, and every deploy must update both sites. `HANDOFF.md` links to it.
+- Unchanged on purpose: the traffic relay and Wayback-scan user agents, and their tests.
 
 ## Unreleased (sharper imagery: 35 official city and state aerials, deeper zoom, Esri Wayback)
 Owner request: integrate the licence-cleared sources from the imagery research.

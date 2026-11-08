@@ -1,5 +1,9 @@
 # Handoff — what is left
 
+> **⚠️ Two copies, two live sites.** The owner zip is the source of truth; the public GitHub repo is a hand-updated
+> mirror that can lag behind. Every deploy must update **both** https://earthwing.pages.dev and
+> https://sr71-blackbird.pages.dev (`npm run deploy` does both). Read `AGENTS.md` before changing anything.
+
 State on 8 November 2026. This release contains the fixes listed under the top
 `Unreleased` entry of `CHANGELOG.md`. The items below are **not** finished.
 Work in this order.
@@ -141,5 +145,5 @@ to that archive's prompt and notes:
 npm ci
 npm test            # full suite, about 2–3 minutes
 npm run build
-CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=... npm run deploy   # Pages project sr71-blackbird
+CLOUDFLARE_ACCOUNT_ID=... CLOUDFLARE_API_TOKEN=... npm run deploy   # both Pages projects: earthwing and sr71-blackbird
 ```

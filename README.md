@@ -7,11 +7,13 @@
 Fly an SR-71 Blackbird at Mach 3, a Cessna 172 or a Cirrus Vision Jet from 8,200+ real airports,<br>
 over satellite imagery and terrain at full scale. No install, no account.
 
-### [▶ Play Earthwing in your browser](https://sr71-blackbird.pages.dev)
+### [▶ Play Earthwing in your browser](https://earthwing.pages.dev)
 
 [Aircraft](#aircraft) · [Missions](#missions-and-training) · [Features](#features) · [Controls](#controls) · [Run it locally](#run-it-locally) · [Changelog](CHANGELOG.md)
 
-<img src="public/social-preview.png" alt="Earthwing start screen: choose the SR-71A Blackbird, Cessna 172SP Skyhawk or Cirrus Vision Jet, then a departure airport" width="900">
+<a href="https://earthwing.pages.dev"><img src="docs/earthwing.gif" alt="The SR-71 at Mach 3 and 79,000 ft over the Grand Canyon in Earthwing, with afterburners lit and the curve of the Earth below" width="900"></a>
+
+<sub>Captured in the browser version: SR-71 at Mach 3, 79,000 ft over the Grand Canyon.</sub>
 
 </div>
 
@@ -37,6 +39,8 @@ see the world.
 
 Pick the aircraft on the start screen, or open the simulator with `?aircraft=sr71`, `?aircraft=c172` or `?aircraft=sf50`.
 The Vision Jet model is unofficial and not affiliated with Cirrus (see `NOTICE.md`).
+
+<img src="public/social-preview.png" alt="Earthwing start screen: choose the SR-71A Blackbird, Cessna 172SP Skyhawk or Cirrus Vision Jet, then a departure airport" width="900">
 
 ## Missions and training
 
@@ -330,7 +334,8 @@ Scenery © Esri, Maxar, Earthstar Geographics (and Esri World Imagery Wayback), 
 ## Videos, streams and screenshots
 
 Gameplay videos, live streams, reviews, tutorials and screenshots are welcome, including on monetised channels.
-Please name **Earthwing** and link to the [official copy](https://sr71-blackbird.pages.dev) or this repository.
+Please name **Earthwing** and link to the [official copy](https://earthwing.pages.dev) or this repository.
+(The old address, `sr71-blackbird.pages.dev`, serves the same game.)
 Don't re-upload or host the simulator itself. Section 4 of `LICENSE` has the exact terms.
 
 Found a bug or have an idea? [Open an issue](https://github.com/anythingeverything556-blip/browser-flight-sim/issues).
