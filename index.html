@@ -4,7 +4,17 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#070a0e" />
-  <title>Blackbird — SR-71 Flight Simulator</title>
+  <title>Earthwing — Free Browser Flight Simulator</title>
+  <meta name="description" content="Earthwing is a free flight simulator that runs in your browser. Fly an SR-71 Blackbird, a Cessna 172 or a Cirrus Vision Jet from 8,200+ real airports over satellite imagery and terrain. No install, no account." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Earthwing" />
+  <meta property="og:title" content="Earthwing — Free Browser Flight Simulator" />
+  <meta property="og:description" content="Fly an SR-71 at Mach 3, a Cessna 172 or a Vision Jet from 8,200+ real airports over satellite imagery and terrain. No install, no account." />
+  <meta property="og:url" content="https://sr71-blackbird.pages.dev/" />
+  <meta property="og:image" content="https://sr71-blackbird.pages.dev/social-preview.png" />
+  <meta property="og:image:width" content="1280" />
+  <meta property="og:image:height" content="640" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23070a0e'/%3E%3Cpath d='M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z' fill='%236cc4e4'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/src/style.css" />
   <link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin />
@@ -25,7 +35,7 @@
   <canvas id="hud" aria-hidden="true"></canvas>
 
   <nav id="rail" aria-label="Simulator controls">
-    <div class="brand" title="Blackbird SR-71" aria-hidden="true">
+    <div class="brand" title="Earthwing" aria-hidden="true">
       <svg viewBox="0 0 40 40"><path d="M20 3 L21.4 13 L23 13.6 L24 11 L25.6 11 L26 22 L36 30 L36 32 L26 30 L24 33 L21.8 33 L21 37 L19 37 L18.2 33 L16 33 L14 30 L4 32 L4 30 L14 22 L14.4 11 L16 11 L17 13.6 L18.6 13 Z" /></svg>
     </div>
     <button type="button" data-sheet="flight" title="Flight setup" aria-label="Flight setup"><svg viewBox="0 0 24 24"><path d="M2 16l20-6-20-6 3 6-3 6zm3-6h9"/></svg><span>Flight</span></button>
@@ -41,9 +51,9 @@
     <button type="button" id="b-sound" title="Sound (O)" aria-keyshortcuts="O"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg><span>Sound</span></button>
   </nav>
 
-  <div id="hero" aria-label="Blackbird flight simulator">
+  <div id="hero" aria-label="Earthwing flight simulator">
     <div class="h-kicker"><svg class="h-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z"/></svg>Flight simulator in your browser</div>
-    <h1>Blackbird</h1>
+    <h1>Earthwing</h1>
     <p>Fly the SR-71, a Cessna 172 or the Vision Jet from 8,200+ real airports, over satellite imagery and terrain at full scale.</p>
     <div class="hero-loader">
       <div class="hero-loader-head"><span>Starting up</span><span id="loadmsg" aria-live="polite">Loading aircraft…</span></div>
@@ -263,7 +273,7 @@
 
   <section class="sheet wide" id="sheet-help" aria-labelledby="help-heading">
     <header>
-      <div class="heading"><h2 id="help-heading">Flying the Blackbird</h2><button type="button" class="ghost" id="guide-replay">Replay first-flight guide</button></div>
+      <div class="heading"><h2 id="help-heading">Flying the SR-71</h2><button type="button" class="ghost" id="guide-replay">Replay first-flight guide</button></div>
       <button type="button" class="x" data-close aria-label="Close help"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
     <div class="body cols">
@@ -325,7 +335,7 @@
   <aside id="mission" hidden aria-live="off"><div class="m-title"></div><div class="m-body"></div></aside>
   <div id="loadscreen" role="status" aria-live="polite" aria-label="Loading the flight" hidden>
     <div class="ls-card">
-      <div class="ls-brand"><span class="h-kicker">Blackbird</span></div>
+      <div class="ls-brand"><span class="h-kicker">Earthwing</span></div>
       <h2 id="ls-title">Preparing your flight</h2>
       <p id="ls-sub">Loading terrain and imagery…</p>
       <ul class="ls-steps">
@@ -382,7 +392,7 @@
       <header><h2 id="terms-title">Terms &amp; credits</h2><button type="button" class="x" id="terms-close" aria-label="Close terms and credits"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button></header>
       <div class="terms-body">
         <h3>Terms of use</h3>
-        <p>Blackbird is an unofficial, non-commercial flight simulator provided as is, without warranty. It is not affiliated with or endorsed by Lockheed Martin or any government. Do not use it for real-world navigation or flight planning: charts, airports, runways and terrain are approximations. Third-party data stays under its owners&rsquo; licences, listed below.</p>
+        <p>Earthwing is an unofficial, non-commercial flight simulator provided as is, without warranty. It is not affiliated with or endorsed by Lockheed Martin or any government. Do not use it for real-world navigation or flight planning: charts, airports, runways and terrain are approximations. Third-party data stays under its owners&rsquo; licences, listed below.</p>
         <h3>Imagery</h3>
         <p>Imagery &copy; Esri, Maxar, Earthstar Geographics and the GIS User Community. Esri World Imagery Wayback (archived World Imagery releases) at selected airports where an older capture is finer. Higher-resolution official orthophotos where available, each under its owner&rsquo;s licence:</p>
         <p>Europe: IGN France (Licence Ouverte); © IGN; Métropole de Lyon; Rennes Métropole; © Administration du cadastre et de la topographie (ACT), geoportail.lu; UrbIS © CIRB; © Digitaal Vlaanderen; Source : Service public de Wallonie (SPW); PDOK Netherlands (CC BY 4.0); © Geobasis NRW; Stadt Köln; Regionalverband Ruhr; Senatsverwaltung für Stadtentwicklung, Bauen und Wohnen Berlin / TrueDOP 2024; Freie und Hansestadt Hamburg, LGV; © GeoBasis-DE/LVermGeo SH/CC BY 4.0; Geobasisdaten © HVBG; © LVGL Saarland, dl-de/by-2-0; LGL-BW (2026) Datenlizenz Deutschland – Namensnennung – Version 2.0, www.lgl-bw.de; Bayerische Vermessungsverwaltung (CC BY 4.0); GeoBasis-DE / LVermGeoRP (dl-de/by-2.0); swisstopo (SWISSIMAGE, open government data); Données SITG; Quelle: Geodaten Kanton Basel-Stadt; basemap.at Austria (CC BY 4.0); Datenquelle: Stadt Wien – data.wien.gv.at; Datenquelle: Land Vorarlberg – data.vorarlberg.gv.at; Provincia autonoma di Bolzano; Comune di Bologna; ČÚZK Czechia (CC BY 4.0); Źródło: GUGiK (geoportal.gov.pl); Maa- ja Ruumiamet; Göteborgs Stad; PNOA cedido por © Instituto Geográfico Nacional; Origen de los datos: Ayuntamiento de Madrid; Institut Cartogràfic i Geològic de Catalunya (ICGC); Direção-Geral do Território.</p>

@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased (new name: Earthwing)
+The simulator now flies the SR-71, the Cessna 172 and the Vision Jet, so *Blackbird* became **Earthwing**.
+- Start screen, loading screen, page titles and Terms now say Earthwing; per-aircraft page titles are set directly
+  (the old title rewrite looked for "SR-71" in the page title, which the new title no longer contains). Aircraft names,
+  the SR-71 callsign and the SR-71 help text are unchanged.
+- Added a page description and Open Graph / Twitter card tags with a 1280 × 640 preview image (`public/social-preview.png`).
+- Package renamed `sr71-sim` → `earthwing`.
+- README rewritten around all three aircraft, with a play link and screenshot up front; the detailed feature list,
+  imagery sources, tests, diagnostics and source notes are kept.
+- LICENSE: copyright holder is now anythingeverything556-blip and collaborators, and a new section 4 allows
+  screenshots, gameplay videos, streams, reviews and tutorials (monetised included) with a link back. Redistributing
+  or re-hosting the software is still not allowed. Sections after it were renumbered; `public/LICENSE.txt` matches.
+- Unchanged on purpose: the Cloudflare Pages project and URL (`sr71-blackbird`), the traffic relay and Wayback-scan
+  user agents, and their tests.
+
 ## Unreleased (sharper imagery: 35 official city and state aerials, deeper zoom, Esri Wayback)
 Owner request: integrate the licence-cleared sources from the imagery research.
 - **New sources** (`src/imagery-sources.js`, each with its credit, in Terms & credits, NOTICE and the README table), zoom range in brackets. France: IGN THR Paris / Marseille / Le Havre 5 cm (13-21), Lyon 2023 5 cm (15-21), Rennes 2021 (15-20). Switzerland: Geneva SITG 2024 5 cm (15-21), Basel-Stadt true ortho 2023 (15-20). Germany: Cologne 2024 10 cm (15-21), Ruhr DOP10 (15-21), NRW DOP 10 cm (13-21), Berlin TrueDOP 2024 from the official gdi.berlin.de WMS (13-20), Hamburg 2024, Schleswig-Holstein, Baden-Württemberg, Hesse, Saarland 20 cm (13-20). Austria: Vienna 5 cm (13-21), Vorarlberg 10 cm (13-21). Belgium: Brussels UrbIS 2024 (13-21), Wallonia (13-20), and Flanders now the OMW WMTS (13-20) instead of the summer WMS. Italy: Bologna 2026 (15-21). Spain / Portugal: Madrid city 10 cm (15-20), Catalonia ICGC (13-20), Portugal DGT 2025 (13-20). Poland: the HighResolution WMS for z20-21. Sweden: Gothenburg 2021 8 cm (15-20). USA: Kentucky KyFromAbove Phase 3 7.5 cm with Phase 2 behind it (13-20), Washington DC 2025 7.5 cm (13-21), Pennsylvania PEMA 2021-23 (13-20), Connecticut 2023 7.5 cm (13-20). Canada: Québec (13-21, not in Ontario or at Québec City airport), southern Ontario 16 cm (13-20, not Toronto or Ottawa, where Esri is finer). Colombia: Bogotá 2025 5 cm (14-21). Uruguay: town orthophotos (15-21, boxes from a coverage scan). Australia: ACT 7.5 cm (13-21, before the NSW box), Tasmania 2024 layer only (15-20), Queensland 10 cm urban footprints only (17-20).

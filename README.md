@@ -1,36 +1,67 @@
-# SR-71 Blackbird Flight Simulator
+<div align="center">
 
-A browser flight simulator in the style of GeoFS, built around the SR-71A model from Blender.
-Everything is at 1:1 scale in metres: the aircraft is exported straight from Blender
-(32.77 m long including the nose probe, 16.83 m span, 5.64 m tall), and the world uses
-real satellite imagery, real terrain elevation and real runway coordinates from OpenStreetMap.
+# Earthwing
 
-## Run it
+**A real-world flight simulator that runs in your browser.**
 
-Requires [Node.js](https://nodejs.org) 20.19 or newer (Vite 7).
+Fly an SR-71 Blackbird at Mach 3, a Cessna 172 or a Cirrus Vision Jet from 8,200+ real airports,<br>
+over satellite imagery and terrain at full scale. No install, no account.
 
-```bash
-npm install
-npm run dev      # opens on http://localhost:5173
-```
+### [▶ Play Earthwing in your browser](https://sr71-blackbird.pages.dev)
 
-On Windows you can double-click `start.bat` instead.
-For a static build: `npm run build`, then serve the `dist/` folder with any web server
-(it must be served over http, not opened as a file).
+[Aircraft](#aircraft) · [Missions](#missions-and-training) · [Features](#features) · [Controls](#controls) · [Run it locally](#run-it-locally) · [Changelog](CHANGELOG.md)
 
-## Tutorial, landing school and missions
+<img src="public/social-preview.png" alt="Earthwing start screen: choose the SR-71A Blackbird, Cessna 172SP Skyhawk or Cirrus Vision Jet, then a departure airport" width="900">
 
-Pick one under **Mission** on the start sheet.
+</div>
 
-- **Tutorial**: you fly, it coaches. Eleven steps (camera, afterburner, take-off roll, rotate, gear up, climb, throttle, autopilot, altitude, heading, take control). Each step waits for you to do it and gives live hints, such as "too steep" or "right of the centre line". **Skip step** and **Hide coach** are on the card.
-- **Landing 1**: starts on a 10 NM final. The autopilot flies the ILS down to 150 ft, then you flare and land. Landing 2 starts on a 5 NM final and you hand-fly the ILS. Both show live glideslope, centre line, speed and sink rate, coach the flare and rollout, and score the landing out of 100 (sink rate 40, touchdown speed 20, centre line 20, touchdown point 20), with tips on what to fix.
-- **High & Fast**: climb above 70,000 ft and hold Mach 3.0 or more for 20 s.
-- **Recon run**: fly over five orange beacons in order. Closer passes score up to 100 each. The targets are also loaded as autopilot waypoints, so NAV can fly the route.
-- **Watch demo**: the jet flies a take-off, climb and autopilot sequence by itself, then hands over.
+Earthwing began as an SR-71 simulator called *Blackbird*. It now flies three very different aircraft
+over the whole planet, so it has a new name; the Blackbird is still here, and still the fastest way to
+see the world.
 
-The default camera is free orbit: it starts behind the jet, drag to swing round, scroll to zoom. V cycles the other views.
+- **The real world, everywhere.** Satellite imagery, real terrain, 8,200+ airports and 10,600+ runways,
+  3D buildings, trees, water, weather and time of day.
+- **Three aircraft, three ways to fly.** Hand-fly a Cessna on a short final, or set the autopilot for
+  Mach 3.2 at 85,000 ft and watch the curvature of the Earth.
+- **A real flight model.** Six degrees of freedom at 240 Hz, per-aircraft engines and systems, fuel,
+  turbulence, wind shear and crash physics.
+- **Nothing to install.** Open the link in a desktop browser with WebGL 2 and press *Start flight*.
+
+## Aircraft
+
+| Aircraft | Performance | What it's like to fly |
+| --- | --- | --- |
+| **Lockheed SR-71A Blackbird** | Mach 3.2 cruise, 85,000 ft, 2 × J58 | Afterburners, inlet unstarts, drag chute and air-to-air refuelling. Full autopilot with SPD and MACH holds; every mission and the tutorial are built around it. |
+| **Cessna 172SP Skyhawk** | 122 KTAS, 180 hp, 4 seats | A trainer you fly by hand: live six-pack instruments, flaps, trim and nose-wheel steering. No autopilot fitted. |
+| **Cirrus Vision Jet SF50 G3** | 311 KTAS, FL310, FJ33-5A | Glass PFD and MFD, NAV/APPR autopilot with autoland, go-around and a *Safe Return* landing at the nearest suitable airport. |
+
+Pick the aircraft on the start screen, or open the simulator with `?aircraft=sr71`, `?aircraft=c172` or `?aircraft=sf50`.
+The Vision Jet model is unofficial and not affiliated with Cirrus (see `NOTICE.md`).
+
+## Missions and training
+
+Choose one under **Mission** on the start sheet (missions are flown in the SR-71; the Skyhawk and Vision Jet fly free flights).
+
+- **Tutorial:** you fly, it coaches, in eleven steps from the take-off roll to the autopilot.
+- **Landing 1 and 2:** ILS approaches from a 10 NM or 5 NM final, scored on sink rate, speed, centreline and touchdown point.
+- **High & Fast:** climb above 70,000 ft and hold Mach 3.0 or more for 20 seconds.
+- **Recon run:** fly over five beacons in order; they are also loaded as autopilot waypoints.
+- **Watch demo:** the jet takes off, climbs and engages the autopilot by itself, then hands over.
+
+Every aircraft has **Easy**, **Medium** and **Realistic** flying modes with adjustable assists.
 
 ## Features
+
+- Global satellite imagery with official high-resolution aerials in many cities, on real elevation data with Earth curvature and haze.
+- 8,200+ airports and 10,600+ runways, including military fields, with runway lighting and working PAPI.
+- 3D buildings, trees, water, clouds, rain, day and night, and selectable weather.
+- Navigation map with route planning, ILS tuning, airport data and live ADS-B traffic.
+- Live cockpit instruments, multiple camera views, synthesised engine sound, voice warnings and altitude call-outs.
+- Refuelling, time warp up to 16×, teleport and slew tools, and a performance overlay for troubleshooting.
+
+<details>
+<summary><b>Full feature list</b></summary>
+
 
 - **Flying modes:** Easy, Medium and Realistic, on the start sheet and in Settings. Easy turns every assist on and adds stall, g, pitch and bank protection, forgiving landings, unlimited fuel and no inlet unstarts. Medium is the standard sim. Realistic turns the assists off and uses the real gear's touchdown limits: you trim, use the rudder and flare yourself, and fuel runs out. Picking a mode sets the assist options, which you can still change one by one.
 - **Real world:** Esri World Imagery (up to zoom 20 where available) draped over AWS terrain tiles in a
@@ -111,7 +142,54 @@ The default camera is free orbit: it starts behind the jet, drag to swing round,
 - **Sound:** synthesised J58 roar and whine per engine, afterburner rumble and crackle, light-off,
   unstart bang, wind, tyre rumble, gear motor, warning tones, doppler, Mach-cone silence and boom.
 
+
+</details>
+
+## Controls
+
+| Key | Action | Key | Action |
+| --- | --- | --- | --- |
+| ↑ / ↓ | Pitch down / up | E / Q, + / −, PgUp / PgDn, [ / ] | Throttle (top 25 % = afterburner) |
+| ← / → or A / D | Roll (A / D steer the nose wheel on the ground) | 0 / 9 | Idle / full afterburner |
+| Z / X (or , / .) | Rudder and nose-wheel steering | G | Landing gear |
+| Home / End | Pitch trim | B or Space | Wheel brakes |
+| Shift+B | Parking brake | C | Drag chute |
+| K | Autopilot | V / Shift+V | Next / previous camera |
+| M | Map | P | Pause |
+| R | Reset | Y | Slew mode |
+| H / I | HUD overlay / instrument strip | O | Sound |
+| U | Recover: the autopilot unloads, levels the wings, adds power and levels off (stall, spin, unusual attitude) | F3 / Shift+F3 / F4 | Performance overlay / copy diagnostics / 1:1 pixel test |
+| \\ | Tune the nearest ILS ahead (autopilot stays off) | L | Refuel (fuel truck on the ground; tanker in the air, SR-71) |
+| \` | Time warp 1x / 2x / 4x / 8x / 16x (above 1,000 ft) | N | Cockpit moving map (heading-up / north-up, 5-320 NM) |
+
+**Typical takeoff:** press 9 for full afterburner, pull back gently (↓) at about 210 kt,
+raise the gear (G) once you're climbing, then use the Autopilot panel to set Mach 3.2 and 80,000 ft.
+**Landing:** approach at about 175 kt, touch down below 160 kt, deploy the chute (C) and brake.
+Press `\` on the way in to tune the runway's ILS without engaging the autopilot; the radio-altitude call-outs
+("One hundred" ... "Ten", "Retard") count you down to the runway.
+
+
+The Skyhawk and Vision Jet use the same keys, plus **F** / **Shift+F** for flaps (and **;** / **'** for trim in the Skyhawk).
+The in-sim **Help** sheet shows the procedures for whichever aircraft you are flying.
+
+## Run it locally
+
+Requires [Node.js](https://nodejs.org) 20.19 or newer (Vite 7).
+
+```bash
+npm install
+npm run dev      # opens on http://localhost:5173
+```
+
+On Windows you can double-click `start.bat` instead.
+For a static build: `npm run build`, then serve the `dist/` folder with any web server
+(it must be served over http, not opened as a file).
+
+
 ## Imagery sources
+
+<details>
+<summary>Where the imagery comes from</summary>
 
 `src/imagery-sources.js` picks the first source whose area and zoom range contain a terrain tile; city sources come before
 the state or national layer they sit in. A tile a source fails on (HTTP error, CORS), has no data for (404) or leaves blank
@@ -175,45 +253,8 @@ Normal and up).
 | `tas_AerialPhoto2024` | Tasmania (2024 captures) | 15-20 | CC BY 3.0 AU © State of Tasmania |
 | `qld21` | Queensland urban footprints | 17-20 | © State of Queensland (CC BY 4.0); © Planet Labs Netherlands B.V. reproduced under licence from Planet and Geoplex, all rights reserved |
 
-## Controls
 
-| Key | Action | Key | Action |
-| --- | --- | --- | --- |
-| ↑ / ↓ | Pitch down / up | E / Q, + / −, PgUp / PgDn, [ / ] | Throttle (top 25 % = afterburner) |
-| ← / → or A / D | Roll (A / D steer the nose wheel on the ground) | 0 / 9 | Idle / full afterburner |
-| Z / X (or , / .) | Rudder and nose-wheel steering | G | Landing gear |
-| Home / End | Pitch trim | B or Space | Wheel brakes |
-| Shift+B | Parking brake | C | Drag chute |
-| K | Autopilot | V / Shift+V | Next / previous camera |
-| M | Map | P | Pause |
-| R | Reset | Y | Slew mode |
-| H / I | HUD overlay / instrument strip | O | Sound |
-| U | Recover: the autopilot unloads, levels the wings, adds power and levels off (stall, spin, unusual attitude) | F3 / Shift+F3 / F4 | Performance overlay / copy diagnostics / 1:1 pixel test |
-| \\ | Tune the nearest ILS ahead (autopilot stays off) | L | Refuel (fuel truck on the ground; tanker in the air, SR-71) |
-| \` | Time warp 1x / 2x / 4x / 8x / 16x (above 1,000 ft) | N | Cockpit moving map (heading-up / north-up, 5-320 NM) |
-
-**Typical takeoff:** press 9 for full afterburner, pull back gently (↓) at about 210 kt,
-raise the gear (G) once you're climbing, then use the Autopilot panel to set Mach 3.2 and 80,000 ft.
-**Landing:** approach at about 175 kt, touch down below 160 kt, deploy the chute (C) and brake.
-Press `\` on the way in to tune the runway's ILS without engaging the autopilot; the radio-altitude call-outs
-("One hundred" ... "Ten", "Retard") count you down to the runway.
-
-## What's new
-
-- **Easier landings in every aircraft.** The gear now takes a firm arrival: the hard-landing limit is 7 m/s sink (about
-  1,380 ft/min) on the Blackbird (was 5.5), 5.5 m/s on the Skyhawk (was 4) and 6 m/s on the Vision Jet (was 4.5).
-  The touchdown jolt no longer counts as "airframe overstressed" (only flight loads do), and a tail, nozzle or wingtip
-  touching while the wheels are on the runway scrapes (with a warning) instead of crashing.
-- **Altitude call-outs** 100 to 10 ft and "Retard", generated by `tools/make-callouts.py`.
-- **ILS without the autopilot** (`\` or Autopilot → Tune ILS ahead).
-- **Refuelling** (`L`): fuel truck on the ground, tanker for the SR-71 below 30,000 ft and Mach 0.9.
-- **Time warp** (`` ` ``) up to 16x, back to 1x near the ground.
-- **Cockpit moving map** (`N`) and a fixed map sheet: runway lines readable, airport names no longer squashed,
-  the live-traffic options fold away on small screens.
-- **Teleport dialog:** altitude, heading, speed, climb angle, gear and an autopilot hold.
-- **Skyhawk auto-trim**, and a drag chute opened above its limit visibly opens before it tears away.
-
-See `CHANGELOG.md` for details.
+</details>
 
 ## Tests
 
@@ -286,7 +327,16 @@ smooth lines on either side; on 1,032 real mountain tiles this removed every res
 
 Scenery © Esri, Maxar, Earthstar Geographics (and Esri World Imagery Wayback), plus the official orthophoto services listed under *Imagery sources* · Terrain © Mapzen / AWS Terrain Tiles · Airports © OurAirports (public domain) · Runway geometry © OpenStreetMap contributors (ODbL) · Buildings © Overture Maps Foundation (ODbL; includes OpenStreetMap, Google Open Buildings CC BY 4.0, Microsoft Building Footprints ODbL), fallback OpenMapTiles via OpenFreeMap · Charts © FAA.
 
+## Videos, streams and screenshots
+
+Gameplay videos, live streams, reviews, tutorials and screenshots are welcome, including on monetised channels.
+Please name **Earthwing** and link to the [official copy](https://sr71-blackbird.pages.dev) or this repository.
+Don't re-upload or host the simulator itself. Section 4 of `LICENSE` has the exact terms.
+
+Found a bug or have an idea? [Open an issue](https://github.com/anythingeverything556-blip/browser-flight-sim/issues).
+If you enjoy flying, a star helps other people find the project.
+
 ## License
 
-Personal-use only, source-available. No profit, no publishing, no credit-taking, revocable at any time.
-See `LICENSE` and `NOTICE.md`. This is not an open-source licence.
+Personal-use only, source-available. Gameplay videos, streams and screenshots are allowed (see section 4);
+redistributing or re-hosting the software is not. See `LICENSE` and `NOTICE.md`. This is not an open-source licence.

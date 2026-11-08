@@ -490,7 +490,7 @@ acWide.addEventListener('change', placeAircraftPicker); placeAircraftPicker();
       'Rotate at <b>55 KIAS</b> with a light pull and climb at <b>74 KIAS</b>.', 'No autopilot is fitted: trim with <b>;</b> and <b>\'</b> and fly by hand; <b>F</b> and <b>Shift+F</b> step the flaps.',
       'Plan the arrival on the <b>Map</b> (route, arrival runway, distance and ETE).', 'Fly final at about <b>65 KIAS</b> with flaps down, close the throttle (<b>Q</b>) over the threshold and flare.'].map((t) => `<li>${t}</li>`).join('');
     $('help-cockpit').textContent = 'The six-pack and tachometer are live: airspeed, attitude, altimeter, turn coordinator, heading and vertical speed, redrawn from the flight model.';
-    document.title = document.title.replace(/SR-71[^|–-]*/, 'Cessna 172SP Skyhawk ');
+    document.title = 'Earthwing — Cessna 172SP Skyhawk';
   }
   if (IS_SF50) {
     // the Vision Jet flies free flights from the runway, a final or FL250; the missions and tutorial are written for the Blackbird
@@ -502,7 +502,7 @@ acWide.addEventListener('change', placeAircraftPicker); placeAircraftPicker();
       'Keep below 250 KIAS: 210 with the gear down, 190 with 50 % flaps, 150 with full flaps.', 'In <b>Autopilot</b> use <b>Climb to cruise</b> (FL280, FLCH); <b>J</b> is a go-around and <b>Shift+U</b> Safe Return lands at the nearest suitable airport.',
       'Plan the arrival on the <b>Map</b>, pick the arrival runway, then use <b>NAV</b> and <b>APPR</b> (or the autoland).', 'Fly final with full flaps at about <b>90 KIAS</b> (VREF 89), touch down and brake.'].map((t) => `<li>${t}</li>`).join('');
     $('help-cockpit').textContent = 'The two large Perspective Touch+ style displays are live: the PFD (attitude, speed and altitude tapes, HSI, flight director) and the MFD (engine N1, ITT, fuel flow, fuel, gear, flaps, pressurisation, navigation and alerts).';
-    document.title = document.title.replace(/SR-71[^|–-]*/, 'Cirrus Vision Jet SF50 ');
+    document.title = 'Earthwing — Cirrus Vision Jet SF50';
   }
 }
 $('intro-tod').addEventListener('input', () => { env.hour = +$('intro-tod').value; syncEnvUi(); });
