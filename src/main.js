@@ -7,6 +7,7 @@ import { Tutorial } from './tutorial.js';
 import { RainField } from './rain3d.js';
 import { MISSIONS, createMission, missionSpawnMode, missionFits, missionSurvivesTeleport } from './missions.js';
 import { Terrain, TERRAIN_UNIFORMS } from './terrain.js';
+import { loadWayback } from './imagery-sources.js';
 import { Buildings } from './buildings.js';
 import { Trees } from './trees.js';
 import { Turbulence, windSpeedAt } from './turbulence.js';
@@ -15,14 +16,14 @@ import { Navigation } from './nav.js';
 import { Environment } from './sky.js';
 import { Clouds } from './clouds.js';
 import { FlightModel, SPEC } from './flight.js';
-import { C172Model, C172, C172_CG, FLAP_DEG } from './c172.js';
+import { C172Model, C172, C172_CG, FLAP_DEG, stallAlpha as c172StallAlpha } from './c172.js';
 import { C172Visual } from './c172visual.js';
-import { SF50Model, SF50, SF50_CG, FLAP_DEG as SF50_FLAP_DEG, TRIM_AUTH as SF50_TRIM_AUTH } from './sf50.js';
+import { SF50Model, SF50, SF50_CG, FLAP_DEG as SF50_FLAP_DEG, TRIM_AUTH as SF50_TRIM_AUTH, stallAlpha as sf50StallAlpha } from './sf50.js';
 import { SF50Visual, SF50_EYE } from './sf50visual.js';
 import { makeSF50Feed, sf50Warn } from './sf50feed.js';
 import { SF50_AP, SF50Autoland, planSafeReturn, apTrimServo } from './sf50ap.js';
-import { c172HandsOffCommand } from './handsoff.js';
-import { c172Stick, SF50_STICK } from './c172stick.js';
+import { gaControlFrame, resetHandsOff as clearHandsOff } from './handsoff.js';
+import { c172PitchAuthority, C172_STICK, SF50_STICK } from './c172stick.js';
 import { AIRCRAFT_TYPES, aircraftChoice } from './aircrafts.js';
 import { setCallsign } from './atc.js';
 import { airData } from './airdata.js';
@@ -33,6 +34,7 @@ import { AircraftVisual } from './aircraft.js';
 import { configureCameraAircraft, CameraRig, VIEWS, VIEW_NAMES } from './camera.js';
 import { Controls } from './controls.js';
 import { Autopilot, attitude, flareSink, landingAidOn, vrefEas } from './autopilot.js';
+import { MODE_INFO, PRESETS, modeOf, presetChanged, landingLimits, envelopeProtect, resetProtect, PROT_A_ON, PROT_A_MAX } from './difficulty.js';
 import { stat, ChangeGate } from './workstats.js';
 import { HUD } from './hud.js';
 import { Audio } from './audio.js';
@@ -176,6 +178,9 @@ if (settings.autoTrim === undefined) settings.autoTrim = true;
 if (!settings.gfxV7) { settings.gfxV7 = true; settings.dynres = true; LS.set('settings', settings); }
 if (!settings.gfxV5) { settings.gfxV5 = true; LS.set('settings', settings); }
 const saveSettings = () => LS.set('settings', settings);
+// flying mode (difficulty.js): saves from before modes existed are Medium and keep their own assist choices
+settings.mode = modeOf(settings.mode);
+fdm.land = landingLimits(AIRCRAFT, settings.mode);
 audio.setVoice(settings.voiceWarn !== false, settings.voiceStyle, BASE);
 if (settings.callouts === undefined) settings.callouts = true;
 audio.setCallouts(settings.callouts);
@@ -186,7 +191,8 @@ const WARPS = [1, 2, 4, 8, 16], warp = { i: 0 }; // time warp (see setWarp)
 const warpX = () => WARPS[warp.i];
 const turb = new Turbulence();
 // Skyhawk hands-off assist state (src/handsoff.js); dropped at every spawn so a held heading never carries into the next flight
-const handsOff = {}, stick172 = { de: 0, da: 0 }; const resetHandsOff = () => { for (const k of Object.keys(handsOff)) delete handsOff[k]; stick172.de = stick172.da = 0; };
+const gaCtl = { stick: { de: 0, da: 0 }, h: {} }; const resetHandsOff = () => clearHandsOff(gaCtl.h);
+const resetGaControls = () => { resetHandsOff(); gaCtl.stick.de = gaCtl.stick.da = 0; }; // at spawn only: the stick keeps its position while flying
 let home = LS.get('home', null); if (!home || typeof home.ident !== 'string') home = { ident: 'KBAB', rwy: 0, end: 1 }; // a saved JSON null crashed boot
 const dep = { apt: null, rwy: 0, end: 0, mode: 'runway' };
 
@@ -228,7 +234,7 @@ function spawn(s, meta) {
   if (meta) fdm.fuel = IS_C172 ? C172.FUEL_MAX : IS_SF50 ? SF50.FUEL_MAX : settings.fullTanks ? SPEC.FUEL_MAX : START_FUEL; // airport starts and restarts refuel; teleports keep the current load
   state.lastSpawn = { s, meta, fuel: fdm.fuel };
   moveOrigin(s.lat, s.lon);
-  turb.reset(); resetHandsOff(); fdm.latDeg = s.lat;
+  turb.reset(); resetGaControls(); fdm.latDeg = s.lat;
   terrain.refreshNear(s.lat, s.lon, 50);
   fdm.reset(new THREE.Vector3(0, s.alt + (s.ground ? CG_H : 0), 0), s.hdg, s.speed, s.ground, s.gamma || 0);
   fdm.onGround = !!s.ground; // reset() leaves the old flag until the next physics step, which would block an autopilot engage at spawn
@@ -974,12 +980,19 @@ function landingAid(dt) {
 // Skyhawk hands-off assist: with the roll keys let go the ailerons level the wings, with the rudder keys let go the rudder keeps the ball
 // centred in the air and the nose wheel holds the heading on the ground. Without it the engine's torque and P-factor roll and yaw the
 // aircraft left at climb power (as in a real one, which the pilot holds with right rudder and aileron) and it drifts off in a slow turn.
-// Each axis eases in over half a second after it is let go, and is the pilot's again the moment a key moves it.
-function c172HandsOff(dt) {
-  if (settings.handsOff === false || fdm.crashed || state.slew || state.paused) { resetHandsOff(); return; }
-  const c = c172HandsOffCommand(fdm, controls.axes, handsOff, dt);
-  if (c.da !== null) fdm.ctrl.da = c.da;
-  if (c.dr !== null) fdm.ctrl.dr = c.dr;
+// Each axis eases in over half a second after it is let go, and is the pilot's again the moment a key moves it. See gaControlFrame.
+// Easy mode envelope protection: stall, g, pitch and bank limits on the pilot's commands (difficulty.js)
+const envProt = {};
+function envelopeGuard(dt) {
+  if (settings.mode !== 'easy' || fdm.crashed || state.slew || state.paused) { resetProtect(envProt); return; }
+  const out = fdm.out, M = out.M || 0, flaps = fdm.flaps || 0;
+  // C172 / SF50: the wing's stall angle for the flap setting; SR-71: the 15° stall-warning angle
+  const aStall = IS_C172 ? c172StallAlpha(flaps) : IS_SF50 ? sf50StallAlpha(flaps, M) : 0.26;
+  const nzMax = IS_C172 ? C172.NZ_LIMIT : IS_SF50 ? (flaps > 1 ? SF50.NZ_FLAP_LIMIT : SF50.NZ_LIMIT) : 3.5;
+  const nzMin = IS_C172 ? -1.52 : IS_SF50 ? (flaps > 1 ? 0 : SF50.NZ_NEG_LIMIT) : -1.5;
+  const att = attitude(fdm.quat), auth = IS_GA ? c172PitchAuthority((IS_SF50 ? casMs() : ias()) * KT, IS_SF50 ? SF50_STICK : C172_STICK) : stickGearing(1, out.qbar || 0, M, 0);
+  envelopeProtect(fdm.ctrl, { alpha: out.alpha || 0, aOn: aStall - PROT_A_ON, aMax: aStall - PROT_A_MAX, nz: out.nz || 1, nzMax, nzMin,
+    pitch: att.pitch, bank: att.bank, auth, onGround: fdm.onGround, dt }, envProt);
 }
 function flightAssist(dt) {
   const a = assist, ax = controls.axes;
@@ -1316,6 +1329,26 @@ bindCheck('opt-fuel', 'fuel', (v) => { fdm.unlimitedFuel = v; });
 bindCheck('opt-fulltanks', 'fullTanks');
 bindCheck('opt-mouse', 'mouse', (v) => { controls.mouseStick = v; });
 bindCheck('opt-hud', 'hud', (v) => { hud.visible = v; });
+// Flying mode: picking one writes its preset to the Options checkboxes (their change handlers do the rest) and sets the touchdown limits
+const PRESET_IDS = { assist: 'opt-assist', handsOff: 'opt-handsoff', rotAssist: 'opt-rotassist', autoTrim: 'opt-autotrim', landAid: 'opt-landaid', unstarts: 'opt-unstart', fuel: 'opt-fuel', crash: 'opt-crash' };
+function showMode() {
+  const m = settings.mode, info = MODE_INFO[m];
+  modeSegs.forEach((f) => f(m));
+  $('intro-mode-blurb').textContent = info.blurb;
+  $('fly-mode-note').textContent = presetChanged(m, settings) ? `${info.blurb} Some options below were changed from the ${info.label} preset.` : info.blurb;
+}
+function setMode(v) {
+  settings.mode = modeOf(v);
+  for (const [k, on] of Object.entries(PRESETS[settings.mode])) {
+    const el = $(PRESET_IDS[k]);
+    if (el.checked !== on) { el.checked = on; el.dispatchEvent(new Event('change')); }
+  }
+  fdm.land = landingLimits(AIRCRAFT, settings.mode); resetProtect(envProt);
+  saveSettings(); showMode();
+}
+const modeSegs = [seg('intro-mode', setMode), seg('fly-mode', setMode)];
+Object.values(PRESET_IDS).forEach((id) => $(id).addEventListener('change', showMode));
+showMode();
 $('vol').value = settings.volume; $('vol-l').textContent = Math.round(settings.volume * 100) + '%';
 $('vol').addEventListener('input', () => { settings.volume = +$('vol').value; audio.volume = settings.volume; $('vol-l').textContent = Math.round(settings.volume * 100) + '%'; saveSettings(); });
 $('relief').value = settings.relief; $('relief-l').textContent = Math.round(settings.relief * 100) + '%';
@@ -1551,14 +1584,15 @@ function simulate(dt) {
   if (!ap.on && !tourFlying) {
     const shape = (v) => Math.sign(v) * Math.pow(Math.abs(v), 1.4);
     const q = fdm.out.qbar || 0, M = fdm.out.M || 0;
-    if (IS_GA) { c172Stick(stick172, controls.axes, (IS_SF50 ? casMs() : ias()) * KT, dt, IS_SF50 ? SF50_STICK : undefined); fdm.ctrl.de = stick172.de; fdm.ctrl.da = stick172.da; fdm.ctrl.dr = controls.axes.yaw; c172HandsOff(dt); }
+    if (IS_GA) gaControlFrame(fdm, controls.axes, gaCtl, { kias: (IS_SF50 ? casMs() : ias()) * KT, dt, cfg: IS_SF50 ? SF50_STICK : undefined, assist: settings.handsOff !== false, frozen: !!fdm.crashed || state.slew || state.paused });
     else { fdm.ctrl.de = stickGearing(shape(controls.axes.pitch), q, M, fdm.onGround ? 1 : Math.max(0, Math.min(1, (40 - (fdm.pos.y - state.lastGround - CG_H)) / 25))); fdm.ctrl.da = rollGearing(shape(controls.axes.roll), q, M); fdm.ctrl.dr = controls.axes.yaw; }
     if (!IS_GA) {
       fdm.ctrl.de = rotAssist.apply({ fdm, axis: controls.axes.pitch, de: fdm.ctrl.de, ias: ias(), agl: fdm.pos.y - state.lastGround - CG_H, enabled: settings.rotAssist !== false && !takeoff.on, dt });
       flightAssist(dt); landingAid(dt);
       takeoffFrame(dt);
     }
-  } else { assist.release(); landAid.on && landAid.disengage(); }
+    envelopeGuard(dt);
+  } else { assist.release(); landAid.on && landAid.disengage(); resetProtect(envProt); }
   if (!ap.on || !(ap.modes.spd || ap.modes.mach)) fdm.throttle = controls.throttle;
   // auto-trim: with the stick idle (and no autopilot / assist flying it) the trim follows the pitch rate to zero
   if (!ap.on && !assist.on && !takeoff.on && !landAid.on) fdm.trim = autoTrimStep(autoTrim, { enabled: settings.autoTrim !== false && !controls.trimUp && !controls.trimDown, trim: fdm.trim, q: fdm.w.z, power: IS_SF50 ? fdm.out.pitchPower * SF50_TRIM_AUTH : IS_C172 ? fdm.out.pitchPower * 0.6 : fdm.out.pitchPower, alpha: fdm.out.alpha || 0, stick: controls.axes.pitch, V: fdm.out.V || 0, onGround: fdm.onGround, dt }, IS_SF50 ? SF50_AUTO_TRIM : IS_C172 ? AT_C172 : undefined);
@@ -2043,6 +2077,7 @@ function prewarmCrash() { startWarm(); }
     $('loadbar').style.width = (p * 100) + '%'; if (msg) $('loadmsg').textContent = msg;
     if (window.__startQueued) { $('ls-fill').style.width = (p * 30) + '%'; $('ls-pct').textContent = Math.round(p * 30) + '%'; if (msg) $('ls-sub').textContent = msg; }
   };
+  loadWayback(`${BASE}data/wayback.json`); // finer archived Esri releases at some airports; optional
   try {
     await Promise.all([
       visual.load(`${BASE}models/${AC.model}`, (p) => bar(p * 0.6, 'Loading aircraft…')),

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { isa, gravityAt, R_EARTH, OMEGA_EARTH } from './atmosphere.js';
+import { landingLimits } from './difficulty.js';
 
 // SR-71A: wing area 170 m^2 (1,800 ft^2), span 16.94 m, empty ~30.6 t, fuel 36.3 t, 2 x J58 (111 kN dry / 145 kN A/B static each).
 // Sources: SR-71A Flight Manual (SAS, CG / aerodynamic-centre notes), NASA TP-2002-210718 / TM-104330 (stability & performance estimates),
@@ -26,9 +27,9 @@ export const GEAR = [
   { name: 'right', p: B(-4.90, -STATIC_SINK, 2.54), k: 1.7e6, c: 2.8e5, steer: false, brake: true, R: 0.52, J: 22 },
 ];
 // Airframe points that must never touch the ground.
-// landing forgiveness (everyone found landings too hard): the gear takes up to 7 m/s at first touch (was 5.5) and 4.5 with the strut bottomed (was 3);
-// a nozzle, tail cone or wingtip touching at landing speed with the jet sinking under 2.5 m/s scrapes instead of crashing
-const LAND_SINK_MAX = 7, LAND_SINK_BOTTOM = 4.5, SCRAPE_VS = 2.5, SCRAPE_PARTS = /nozzle|tail cone|wingtip|aft belly/;
+// a nozzle, tail cone or wingtip touching at landing speed with the jet sinking slowly scrapes instead of crashing.
+// The touchdown limits (this.land) follow the flying mode, see difficulty.js; the default is Medium.
+const SCRAPE_PARTS = /nozzle|tail cone|wingtip|aft belly/;
 export const HARD = [
   ['nose probe', B(17.6, 2.25, 0)], ['tail cone', B(-15.3, 2.7, 0)],
   ['left wingtip', B(-11.5, 2.05, -8.42)], ['right wingtip', B(-11.5, 2.05, 8.42)],
@@ -146,6 +147,7 @@ export class FlightModel {
     this.sasOn = true;
     this.surf = { de: 0, da: 0, dr: 0 };   // actual surface positions (lagged, rate limited actuators), pilot + SAS
     this.realism = { unstarts: true };
+    this.land = landingLimits('sr71', 'medium');
     this.out = { V: 0, M: 0, qbar: 0, alpha: 0, beta: 0, rho: 1.225, a: 340, T: 288, nz: 1, buffet: 0 };
     this.onGround = false; this.crashed = null; this.crashOff = false; // crashOff: the Crash option is off, impacts are absorbed (see absorb)
     this.contacts = [0, 0, 0]; this.compress = [0, 0, 0];
@@ -429,9 +431,9 @@ export class FlightModel {
       onGround = true;
       const vp = _vp.crossVectors(wWorld, r).add(this.vel);
       if (!was && vp.y < -0.3) this.events.push({ type: 'touch', vs: -vp.y, wheel: i });
-      if (!was && vp.y < -LAND_SINK_MAX) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+      if (!was && vp.y < -this.land.sinkMax) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
       if (pen > 0.75) {
-        if (vp.y < -LAND_SINK_BOTTOM) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+        if (vp.y < -this.land.sinkBottom) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
         // ground rose under a slowly sinking wheel: finer elevation data arrived, not an impact
         this.pos.y += pen - 0.12; pen = 0.12;
       }
@@ -504,7 +506,7 @@ export class FlightModel {
       if (py < gy - 0.05) {
         // parked or taxiing slowly when the terrain refines: lift clear instead of declaring a crash
         if (onGround && gs < 15 && Math.abs(this.vel.y) < 2) { this.pos.y += gy - py + 0.05; continue; }
-        if (SCRAPE_PARTS.test(name) && gs < 140 && this.vel.y > -(onGround ? LAND_SINK_MAX : SCRAPE_VS)) { // wheels down: the gear took the arrival, the tail only scrapes
+        if (SCRAPE_PARTS.test(name) && gs < 140 && this.vel.y > -(onGround ? this.land.sinkMax : this.land.scrapeVs)) { // wheels down: the gear took the arrival, the tail only scrapes
           this.pos.y += gy - py + 0.03; if (this.w.z > 0) this.w.z *= 0.2; this.w.x *= 0.5;
           if (!this.scrapeT) this.events.push({ type: 'scrape', part: name });
           this.scrapeT = 1; continue;

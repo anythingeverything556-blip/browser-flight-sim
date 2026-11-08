@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { R_EARTH, D2R, lon2tx, lat2ty, tx2lon, ty2lat } from './geo.js';
 import { handle as loadInMain } from './terrain-worker.js';
 import { sharedTerrainMaterial, gateTerrainUniforms, TERRAIN_UNIFORMS } from './terrain-shader.js';
-import { sourceFor, esriUrl as IMG_URL, ESRI_MAX } from './imagery-sources.js';
+import { sourceFor, sourcesFor, esriUrl as IMG_URL, ESRI_MAX, waybackUrl } from './imagery-sources.js';
 export { terrariumToHeights } from './terrain-dem.js';
 
 // Real-world scenery: Esri World Imagery (with an OpenFreeMap water mask rendered as physically based sea) draped over AWS terrarium elevation, in a camera-centred quadtree.
@@ -119,7 +119,7 @@ class Tile {
     this.wantedAt = 0; this.score = 0; this.frame = -1; this.d = 0; this.inView = true; this.hMid = null; this.flags = -1; this.drawFrame = -1; this.splitFrame = -9; this.reshape = false; this.refit = false; this.usedFallback = false; this.geoVersion = -1; this.cosB = 1;
     this.up = null; this.kids = null; this.nb = [null, null, null, null, null, null, null, null, null]; this.sel = 0; this.selI = 0; this.pres = 0; this.leafFrame = -9; this.leafPrev = -9; this.ns = false; this.nsAt = -1;
     this.fade = 1; this.fadeDir = 0; this.fadeT0 = 0; this.ghostT0 = 0; this.ghostOf = null; this.wx = 0; this.wz = 0;
-    this.src = undefined; this.imgSrc = null; this.imgCost = 0; this.low = null; this.hi = undefined; this.hiJob = 0; this.hiSrc = null; this.hiRetry = 0; this._r = null;
+    this.src = undefined; this.srcs = undefined; this.imgSrc = null; this.imgCost = 0; this.low = null; this.hi = undefined; this.hiJob = 0; this.hiSrc = null; this.hiRetry = 0; this._r = null;
     this.pos = null; this.nor = null; this.H = null; this.lat = null; this.lon = null; this.raw = null; this.rawC = null; this.Hc = null; this.hw2 = 0; this.skirt = 0;
     this.lat1 = ty2lat(y, z); this.lat0 = ty2lat(y + 1, z); this.lon0 = tx2lon(x, z); this.lon1 = tx2lon(x + 1, z);
     this.clat = ty2lat(y + 0.5, z); this.clon = tx2lon(x + 0.5, z);
@@ -338,13 +338,20 @@ export class Terrain {
     });
   }
   source(t) { if (t.src === undefined) t.src = sourceFor(t.z, t.clon, t.clat); return t.src; }
+  // the source and up to one more covering this tile, tried in turn before Esri (borders between overlapping areas, partial coverage)
+  chain(t) { if (t.srcs === undefined) t.srcs = this.source(t) ? sourcesFor(t.z, t.clon, t.clat).slice(0, 2) : []; return t.srcs; }
   imgSlotsFree(t) { const s = this.source(t); return s ? (this.srcActive[s.id] || 0) < s.slots : this.stats.imgActive < IMG_SLOTS; }
   releaseImg(t) {
     if (t.imgSrc) this.srcActive[t.imgSrc.id] -= t.imgCost; else this.stats.imgActive -= t.imgCost;
     t.imgCost = 0;
   }
   // request entry for the worker. b: the source paints outside its coverage (the worker checks for blank areas), g: colour curve
-  imgReq(src, z, x, y) { return src ? { u: src.url(z, x, y), b: 1, g: src.id } : { u: IMG_URL(z, x, y) }; }
+  // f: Esri World Imagery Wayback where wayback.json names a finer archived release, falling back to the current tile
+  imgReq(src, z, x, y) {
+    if (src) return { u: src.url(z, x, y), b: 1, g: src.id };
+    const w = waybackUrl(z, x, y);
+    return w ? { u: w, b: 1, f: { u: IMG_URL(z, x, y) } } : { u: IMG_URL(z, x, y) };
+  }
   srcMaxZ(t) { const s = this.source(t); return s ? s.max : ESRI_MAX; }
   // colour-balance cells per tile side: a few hundred metres each (see finish() in terrain-worker.js)
   balCells(t) { const c = t.size / 400; return c >= 8 ? 8 : c >= 4 ? 4 : c >= 2 ? 2 : 1; }
@@ -377,7 +384,7 @@ export class Terrain {
   }
   startImage(t) {
     const src = this.source(t), z = t.z, x = t.x, y = t.y;
-    const lo = src ? [this.imgReq(src, z, x, y), { u: IMG_URL(z, x, y) }] : [this.imgReq(null, z, x, y)];
+    const lo = src ? [...this.chain(t).map((s) => this.imgReq(s, z, x, y)), { u: IMG_URL(z, x, y) }] : [this.imgReq(null, z, x, y)];
     const ref = this.balRef(t, false), cells = ref ? ref.n : this.balCells(t);
     t.img = 'loading'; t.imgSrc = src; t.imgCost = 1;
     if (src) this.srcActive[src.id] = (this.srcActive[src.id] || 0) + 1; else this.stats.imgActive++;

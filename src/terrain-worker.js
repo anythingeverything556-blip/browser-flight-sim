@@ -1,6 +1,6 @@
 import { PbfReader } from 'pbf';
 import { VectorTile } from '@mapbox/vector-tile';
-import { SOURCES } from './imagery-sources.js';
+import { SOURCES, isBlank } from './imagery-sources.js';
 import { terrariumToHeights } from './terrain-dem.js';
 
 const xb = 2521,
@@ -101,26 +101,10 @@ async function Eb(s, t, e) {
 }
 const Hh = new Map(),
   a0 = 2e4,
-  Gh = new OffscreenCanvas(64, 64).getContext('2d', { willReadFrequently: !0 }),
-  Bp = new Uint8Array(4096);
+  Gh = new OffscreenCanvas(64, 64).getContext('2d', { willReadFrequently: !0 });
 function Rb(s) {
   (Gh.clearRect(0, 0, 64, 64), Gh.drawImage(s, 0, 0, 64, 64));
-  const t = Gh.getImageData(0, 0, 64, 64).data;
-  for (let n = 0, i = 0; n < t.length; n += 4, i++)
-    Bp[i] = t[n + 3] < 200 || (t[n] >= 254 && t[n + 1] >= 254 && t[n + 2] >= 254) ? 1 : 0;
-  let e = 0;
-  for (let n = 1; n < 63; n++)
-    for (let i = 1; i < 63; i++) {
-      let r = 1;
-      for (let a = -1; a <= 1 && r; a++)
-        for (let l = -1; l <= 1; l++)
-          if (!Bp[(n + a) * 64 + i + l]) {
-            r = 0;
-            break;
-          }
-      e += r;
-    }
-  return e > 3844 * 0.01;
+  return isBlank(Gh.getImageData(0, 0, 64, 64).data);
 }
 const Vh = {};
 function Cb(s) {
@@ -219,19 +203,33 @@ function Pb(s, t, e, n) {
     }
   }
 }
+// b: a regional source (its 404 / blank means outside its coverage, not "nothing finer here"); f: the entry to use instead
+// when this one fails, is missing or blank (Wayback -> current Esri)
 async function zp({ u: s, b: t }, e) {
   const n = await fetch(s, { mode: 'cors', signal: e });
-  if (n.status === 404 || n.status === 410 || n.status === 204) return { missing: !0 };
+  if (n.status === 404 || n.status === 410 || n.status === 204) return t ? { missing: !0, blank: !0 } : { missing: !0 };
   if (!n.ok) throw new Error('img ' + n.status);
   const i = await n.arrayBuffer();
   if (wb(i)) return { missing: !0 };
-  const r = await createImageBitmap(new Blob([i], { type: n.headers.get('content-type') || 'image/jpeg' }));
+  // some ArcGIS caches (ACT) send JPEG bytes as application/octet-stream
+  const c = n.headers.get('content-type'),
+    r = await createImageBitmap(new Blob([i], { type: c && c.startsWith('image/') ? c : 'image/jpeg' }));
   return t && Rb(r) ? (r.close(), { missing: !0, blank: !0 }) : { bmp: r };
+}
+function Zf(s, t) {
+  return s.f
+    ? zp(s, t)
+        .catch((e) => {
+          if (t.aborted) throw e;
+          return {};
+        })
+        .then((e) => (e.bmp ? e : zp(s.f, t)))
+    : zp(s, t);
 }
 async function Lb(s, t, e) {
   let n = !1;
   if (s.hi) {
-    const i = await Promise.all(s.hi.map((a) => zp(a, t).catch((l) => ({ err: l })))),
+    const i = await Promise.all(s.hi.map((a) => Zf(a, t).catch((l) => ({ err: l })))),
       r = i.find((a) => a.err);
     if (r) throw (i.forEach((a) => a.bmp && a.bmp.close()), r.err);
     if (i.every((a) => a.bmp)) {
@@ -247,8 +245,16 @@ async function Lb(s, t, e) {
     }
     (i.forEach((a) => a.bmp && a.bmp.close()), (n = i.some((a) => a.blank)));
   }
-  for (const i of s.lo) {
-    const r = await zp(i, t);
+  // a failed (5xx, CORS) or blank source tile falls through to the next entry; only the last entry's error is reported
+  for (let k = 0; k < s.lo.length; k++) {
+    const i = s.lo[k];
+    let r;
+    try {
+      r = await Zf(i, t);
+    } catch (a) {
+      if (t.aborted || k === s.lo.length - 1) throw a;
+      continue;
+    }
     if (r.bmp) {
       const a = kp(r.bmp.width, [{ bmp: r.bmp, x: 0, y: 0, s: r.bmp.width }], i.g, s.ref, s.cells);
       e({ id: s.id, bmp: a.bmp, low: a.low, capped: !!s.hi && !n }, [a.bmp]);

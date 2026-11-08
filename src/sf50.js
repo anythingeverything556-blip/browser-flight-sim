@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { isa, gravityAt, R_EARTH, OMEGA_EARTH } from './atmosphere.js';
+import { landingLimits } from './difficulty.js';
 import { FlightModel, lerpTable, smooth, clamp, UP, newEngine, tyre, MU_PEAK, TYRE_B, TYRE_C, KAPPA_PK, V_REG } from './flight.js';
 
 // Cirrus Vision Jet SF50 (G3, 2026): one Williams FJ33-5A on the aft fuselage, V-tail (no horizontal stabiliser), retractable tricycle gear.
@@ -56,7 +57,6 @@ const GEAR_TIME = 6;                            // s for a full retraction or ex
 const STEER_LO = 20, STEER_HI = 2, STEER_FADE = 14; // nose-wheel angle at full pedal (deg): standing still, and from STEER_FADE m/s
 const CASTOR_MIN = 0.25, CASTOR_V0 = 8, CASTOR_V1 = 25;
 const TB_SF50 = 308; // N m per main wheel at full pedal (est.; fitted so max braking from VREF gives the published 1,622 ft landing ground roll)
-const TAIL_SCRAPE_VS = 2.5; // was 1.5: landing forgiveness
 
 // ---- aerodynamics (est.) ----
 // lift / drag / pitch by flap angle (deg): incremental CL, CD and Cm, and CLmax (Fowler flaps)
@@ -116,6 +116,7 @@ export class SF50Model extends FlightModel {
   constructor() {
     super();
     this.type = 'sf50';
+    this.land = landingLimits('sf50', 'medium'); // touchdown limits, set by the flying mode
     this.fuel = SF50.FUEL_MAX; this.cgx = SF50_CG.x;
     this.flaps = 0; this.flapCmd = 0; // actual degrees (FLAP_DEG), commanded notch 0..2
     this.engineOn = true; this.rpm = 0; // rpm mirrors N1 (%)
@@ -342,10 +343,10 @@ export class SF50Model extends FlightModel {
       onGround = true;
       const vp = _vp.crossVectors(wWorld, rr).add(this.vel);
       if (!was && vp.y < -0.3) this.events.push({ type: 'touch', vs: -vp.y, wheel: i });
-      // was 4.5 / 3 m/s: landing forgiveness
-      if (!was && vp.y < -6) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+      // touchdown limits follow the flying mode (this.land, see difficulty.js)
+      if (!was && vp.y < -this.land.sinkMax) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
       if (pen > 0.35) {
-        if (vp.y < -4.5) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
+        if (vp.y < -this.land.sinkBottom) { if (!this.crashOff) { this.crash(`hard landing (${(-vp.y).toFixed(1)} m/s sink)`); return; } this.absorb(0); vp.y = Math.max(vp.y, -1); }
         this.pos.y += pen - 0.1; pen = 0.1;
       }
       const Fn = Math.max(0, g.k * pen - g.c * vp.y);
@@ -393,7 +394,7 @@ export class SF50Model extends FlightModel {
       if (py < gy - 0.03) {
         if (onGround && gs < 6 && Math.abs(this.vel.y) < 1) { this.pos.y += gy - py + 0.03; continue; }
         // over-rotation on the runway: the ventral strake scrapes (minor damage), not a crash; a sinking flare onto it still crashes
-        if (name === 'ventral strake' && gs < 60 && this.vel.y > -TAIL_SCRAPE_VS) {
+        if (name === 'ventral strake' && gs < 60 && this.vel.y > -this.land.scrapeVs) {
           this.pos.y += gy - py + 0.03; if (this.w.z > 0) this.w.z *= 0.2;
           if (!this.scrapeT) this.events.push({ type: 'scrape', part: 'tail' });
           this.scrapeT = 1; continue;

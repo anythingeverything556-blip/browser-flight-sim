@@ -1,8 +1,35 @@
 # Handoff — what is left
 
-State on 2 November 2026. This release contains the fixes listed under the top
+State on 8 November 2026. This release contains the fixes listed under the top
 `Unreleased` entry of `CHANGELOG.md`. The items below are **not** finished.
 Work in this order.
+
+## 00. Sharper imagery (shipped 8 November 2026)
+
+37 official city/state aerial sources, 9 deeper zoom caps, a source -> next source -> Esri fallback chain on errors and
+blank tiles, and Esri Wayback releases at 11 airports (`public/data/wayback.json`, rerun with `tools/wayback-scan.py`).
+In production as `abd4e712`. The first deploy, `01d07795`, went out with **no CSP** (the CSP line was 2,208 characters
+and Cloudflare drops `_headers` lines over 2,000); fixed in `abd4e712` with bare hosts, and `imagery-sources-test` now
+fails on any line over 2,000. Roll back to `b366fb73` (before this work).
+Checked: every endpoint by curl with the site Origin; one max-zoom tile per source through the terrain worker in headless
+Chrome; on the live site, 12 sources and a Wayback tile fetched under the enforced CSP with no violations.
+Still to do, on a real GPU: fly low over a few new areas (Paris Orly, Vienna, Louisville, Bogota, Canberra, Johannesburg)
+and look for colour seams against Esri (new sources have no colour curves) and the extra tile load at z21. Licences:
+only sources rated OK in the licence review ship; the UNCLEAR/NO ones (Philadelphia, Maricopa, King County, Medellin,
+Curitiba, Manaus, Tel Aviv, Georgia, Cyprus, Singapore, Hong Kong and others) are left out on purpose. A known console
+error from the cloud shader (`uBase`) was seen in the browser log; no cloud file changed in this work, not investigated.
+
+## 0. Flying modes (shipped 7 November 2026)
+
+Easy / Medium / Realistic, on the start sheet and in Settings; see the top
+`CHANGELOG.md` entry and `src/difficulty.js`. First deployed as `c4a850eb`
+(commit `7604cbc`). The hands-off fix (with the option off, the Skyhawk and
+Vision Jet stick was reset every frame) is in production as `b366fb73`
+(commit `79e5ef8`); roll back to `c4a850eb`, or `d8a727aa` from before modes.
+Tested in Node (`test/difficulty-test.mjs`) and the mode switching in a browser.
+Still to do: on a real GPU, fly Easy and hold full back stick, full forward
+stick and full roll in each aircraft; the protection should hold short of the
+stall, about 30° nose up / 25° nose down and about 67° of bank.
 
 ## 1. Vision Jet model: performance and accuracy (not shipped)
 

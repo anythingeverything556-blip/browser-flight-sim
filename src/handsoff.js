@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { c172Stick } from './c172stick.js';
 
 // Skyhawk hands-off assist (main.js applies it when the setting is on): the aileron and rudder commands for the axes the pilot has let go.
 // f: the flight model (quat, w body rates, out.V / out.beta, onGround); ax: stick axes; h: state kept between frames.
@@ -53,4 +54,19 @@ export function c172HandsOffCommand(f, ax, h, dt) {
     out.dr = h.yaw * clamp(h.gnd * ground + (1 - h.gnd) * air, 0.5);
   } else { h.yaw = 0; h.yawI = 0; h.gndI = 0; }
   return out;
+}
+
+export function resetHandsOff(h) { for (const k of Object.keys(h)) delete h[k]; }
+
+// One frame of the Skyhawk / Vision Jet controls (main.js): the pilot's shaped and slewed stick, then the hands-off assist on the let-go axes.
+// st: { stick: { de, da }, h: {} } kept across frames; o: { kias, dt, cfg (stick feel), assist (option on), frozen (crashed, slewing, paused) }.
+// With the assist off or frozen only its own state resets: the stick keeps its slewed position (resetting it every frame held the pilot to
+// one frame's slew, about 4 % elevator and 7 % aileron, so the aircraft hardly answered the controls with the option off).
+export function gaControlFrame(fdm, axes, st, o) {
+  c172Stick(st.stick, axes, o.kias, o.dt, o.cfg);
+  fdm.ctrl.de = st.stick.de; fdm.ctrl.da = st.stick.da; fdm.ctrl.dr = axes.yaw;
+  if (!o.assist || o.frozen) { resetHandsOff(st.h); return; }
+  const c = c172HandsOffCommand(fdm, axes, st.h, o.dt);
+  if (c.da !== null) fdm.ctrl.da = c.da;
+  if (c.dr !== null) fdm.ctrl.dr = c.dr;
 }
