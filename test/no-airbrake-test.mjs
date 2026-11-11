@@ -47,12 +47,23 @@ t('keys F and N do nothing (no air brake / reverse actions bound)', () => {
   assert.ok(!f || (/flaps/.test(f[1]) && !/airbrake|reverse/.test(f[1])), `KeyF mapped to ${f && f[1]}`);
 });
 
-t('HUD, help, guide, tutorial and missions no longer offer them', () => {
+// The Il-76 (added later) does have spoilers and thrust reversers: its own key rows, help text and docs are allowed in the shared files, but only on lines
+// that name the Il-76, and the SR-71's guide, tutorial and missions stay clean.
+const BANNED = /air ?brake|reverse thrust|reverser|SPD BRK/i, IL76 = /il-?76/i;
+const strayLines = (f) => src(f).split('\n').filter((l) => BANNED.test(l) && !IL76.test(l));
+t('HUD, help, guide, tutorial and missions no longer offer them to the SR-71', () => {
   const html = src('index.html');
   assert.ok(!/id="p-spd"|id="p-rev"|SPD BRK/.test(html), 'HUD pills still in index.html');
-  assert.ok(!/<td>F<\/td>|<td>N<\/td>|reverse thrust|air brake/i.test(html), 'help rows still in index.html');
-  for (const f of ['src/main.js', 'src/guide.js', 'src/tutorial.js', 'src/missions.js', 'README.md'])
-    assert.ok(!/air ?brake|reverse thrust|reverser|SPD BRK/i.test(src(f)), `${f} still mentions them`);
+  assert.ok(!/<td>F<\/td>|<td>N<\/td>/.test(html), 'help rows still in index.html');
+  assert.deepEqual(strayLines('index.html'), [], 'index.html mentions them outside Il-76 text');
+  for (const f of ['src/guide.js', 'src/tutorial.js', 'src/missions.js']) assert.ok(!BANNED.test(src(f)), `${f} still mentions them`);
+  for (const f of ['src/main.js', 'README.md']) assert.deepEqual(strayLines(f), [], `${f} mentions them outside Il-76 text`);
+});
+
+t('the Il-76 keys exist but are bound to digits, never to F or N, and main.js refuses them in every other aircraft', () => {
+  const cs = src('src/controls.js');
+  for (const a of ['spoilers', 'reverse', 'cargo', 'paratroop']) assert.ok(new RegExp(`id: '${a}'[^\\n]*keys: \\['Digit[2-5]'\\]`).test(cs), `${a} on a digit`);
+  assert.ok(/IS_IL76 \? il76c\[fn\]\(\) : toast\('This is an Il-76 control', true\)/.test(src('src/main.js')), 'other aircraft are refused');
 });
 
 t('aircraft visual has no air brake panels or reverser doors', () => {

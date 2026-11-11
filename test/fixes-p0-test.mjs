@@ -51,8 +51,8 @@ const check = (name, ok, extra = '') => { console.log(`${ok ? 'PASS' : 'FAIL'}  
   const ev = (type, code, mods = {}) => (listeners[type] || []).forEach((fn) => fn({ code, key: code, target: {}, ctrlKey: false, metaKey: false, altKey: false, shiftKey: false, ...mods, preventDefault() {} }));
   const run = (c, s) => { for (let t = 0; t < s; t += 1 / 60) c.update(1 / 60); };
   const iso = () => { for (const k of Object.keys(listeners)) listeners[k].length = 0; const c = new Controls(); c.enabled = true; return c; };
-  let c = iso(); ev('keydown', 'KeyB'); ev('keydown', 'ShiftLeft', { shiftKey: true }); run(c, 2);
-  check('B held + Shift pushes the throttle', c.throttle > 0.6 && c.brake === 1, `throttle ${c.throttle.toFixed(2)}`);
+  let c = iso(); ev('keydown', 'KeyB'); ev('keydown', 'KeyE'); run(c, 2); // the throttle moved from Shift to E: Shift alone got in the way of the Shift chords
+  check('B held + E pushes the throttle', c.throttle > 0.6 && c.brake === 1, `throttle ${c.throttle.toFixed(2)}`);
   c = iso(); c.throttle = 0.5; ev('keydown', 'ControlLeft', { ctrlKey: true }); run(c, 1);
   check('Ctrl does not move the throttle', c.throttle === 0.5);
   c = iso(); c.throttle = 0.5; ev('keydown', 'KeyQ'); run(c, 1);

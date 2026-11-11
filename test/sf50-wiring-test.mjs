@@ -17,7 +17,7 @@ const kias = (f) => f.out.ias * KT;
 // ---- aircraft choice and the setup card
 {
   const ids = Object.keys(AIRCRAFT_TYPES);
-  check('three aircraft; sf50 has a name, model, blurb and three stats', ids.join() === 'sr71,c172,sf50' && AIRCRAFT_TYPES.sf50.model === 'SF50.glb' && /Vision Jet/.test(AIRCRAFT_TYPES.sf50.name) && AIRCRAFT_TYPES.sf50.stats.length === 3 && AIRCRAFT_TYPES.sf50.short === 'SF50');
+  check('four aircraft (the Il-76 added last); sf50 has a name, model, blurb and three stats', ids.join() === 'sr71,c172,sf50,il76' && AIRCRAFT_TYPES.sf50.model === 'SF50.glb' && /Vision Jet/.test(AIRCRAFT_TYPES.sf50.name) && AIRCRAFT_TYPES.sf50.stats.length === 3 && AIRCRAFT_TYPES.sf50.short === 'SF50');
   check('?aircraft=sf50 and the saved setting choose it; anything else falls back to the SR-71', aircraftChoice({}, '?aircraft=sf50') === 'sf50' && aircraftChoice({ aircraft: 'sf50' }, '') === 'sf50' && aircraftChoice({ aircraft: 'sf50' }, '?aircraft=c172') === 'c172' && aircraftChoice({ aircraft: 'x' }, '?aircraft=SF50') === 'sf50' && aircraftChoice({}, '?aircraft=b52') === 'sr71');
   const html = fs.readFileSync(new URL('../index.html', import.meta.url), 'utf8');
   check('every aircraft has a setup card', ids.every((id) => html.includes(`class="ac-card" data-v="${id}"`)));

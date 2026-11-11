@@ -44,5 +44,13 @@ check('levelling off (no descent) holds the next call; a crash silences it', () 
   assert.equal(c.step({ aglFt: 95, vsFpm: -500, onGround: false, throttle: 0.4 }, 0.1), 'h100');
   assert.equal(c.step({ aglFt: 85, vsFpm: -500, onGround: false, throttle: 0.4, crashed: 'x' }, 2), null);
 });
+check('a gentle flare: "Five" comes once, after Retard, with the thrust at idle and the wheels 5 ft up; never with the thrust still up', () => {
+  const r = fly({ vs: -200, throttle: (h) => (h > 8 ? 0.3 : 0), len: () => 0.45 }), keys = r.map((x) => x[1]);
+  assert.equal(keys.filter((k) => k === 'h5').length, 1, keys.join(',')); assert.ok(keys.indexOf('h5') > keys.indexOf('retard'), keys.join(','));
+  const at = r.find((x) => x[1] === 'h5')[0]; assert.ok(at <= 5.5 && at > 0, `said at ${at} ft`);
+  assert.ok(!fly({ vs: -200, throttle: () => 0.3 }).some((x) => x[1] === 'h5'), 'thrust up: Retard repeats, no Five');
+});
+{ const fs = await import('node:fs'); const { CALLOUT_KEYS } = await import('../src/callouts.js');
+  check('every call-out clip is in public/audio/voice/callouts/', () => { for (const k of CALLOUT_KEYS) assert.ok(fs.statSync(new URL(`../public/audio/voice/callouts/${k}.mp3`, import.meta.url)).size > 1500, k); assert.ok(CALLOUT_KEYS.includes('h5')); }); }
 if (fails) { console.log(`${fails} failed`); process.exit(1); }
 console.log('altitude call-outs OK');

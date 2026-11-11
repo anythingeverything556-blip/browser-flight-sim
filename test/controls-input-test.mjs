@@ -22,11 +22,10 @@ const pad = (axes, pressed = [], over = {}) => ({ index: 0, connected: true, map
   let c = iso(), pb = 0; c.on('parkingBrake', () => pb++); ev('keydown', 'ShiftLeft', { shiftKey: true }); ev('keydown', 'KeyB', { shiftKey: true }); run(c, 1);
   check('Shift then B at once: parking brake, throttle stays', pb === 1 && c.throttle === 0 && c.brake === 1, `pb ${pb} thr ${c.throttle}`);
   ev('keyup', 'KeyB'); ev('keyup', 'ShiftLeft'); run(c, 0.1); ev('keydown', 'ShiftLeft', { shiftKey: true }); run(c, 0.5);
-  check('Shift pushes the throttle again after the chord is released', c.throttle > 0.1, c.throttle.toFixed(2));
-  c = iso(); pb = 0; c.on('parkingBrake', () => pb++); ev('keydown', 'ShiftLeft', { shiftKey: true }); run(c, 1); ev('keydown', 'KeyB', { shiftKey: true }); run(c, 1);
-  check('Shift held 1 s then B: brakes, no parking brake, throttle keeps rising', pb === 0 && c.brake === 1 && c.throttle > 0.5, `pb ${pb} thr ${c.throttle.toFixed(2)}`);
-  c = iso(); pb = 0; c.on('parkingBrake', () => pb++); ev('keydown', 'KeyB'); ev('keydown', 'ShiftLeft', { shiftKey: true }); run(c, 2);
-  check('guide step 1 (hold B, push with Shift): brakes held, throttle > 70 %, no parking brake', pb === 0 && c.brake === 1 && c.throttle > 0.7, c.throttle.toFixed(2));
+  check('Shift alone no longer moves the throttle (it is only the modifier of the Shift chords)', c.throttle === 0, c.throttle.toFixed(2));
+  c = iso(); ev('keydown', 'KeyE'); run(c, 1); check('E pushes the throttle', c.throttle > 0.3, c.throttle.toFixed(2));
+  c = iso(); pb = 0; c.on('parkingBrake', () => pb++); ev('keydown', 'KeyB'); ev('keydown', 'KeyE'); run(c, 2.5);
+  check('guide step 1 (hold B, push with E): brakes held, throttle > 70 %, no parking brake', pb === 0 && c.brake === 1 && c.throttle > 0.7, c.throttle.toFixed(2));
 }
 
 // Ctrl and Meta are no game keys: the chord goes whole to the browser, nothing is swallowed, nothing sticks
