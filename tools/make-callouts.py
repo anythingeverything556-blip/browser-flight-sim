@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the radio-altitude call-outs in public/audio/voice/callouts/<key>.mp3 (Airbus style: 100 ... 10 ft, then "Retard").
+"""Generate the radio-altitude call-outs in public/audio/voice/callouts/<key>.mp3 (Airbus style: 100 ... 10 ft, then "Retard" and "Five").
 
 Same voice and cockpit filter as the GPWS warnings (Kokoro-82M 'am_michael', Apache-2.0); setup as in tools/make-voices.py.
   /tmp/tts-venv/bin/python tools/make-callouts.py
@@ -11,7 +11,7 @@ spec = importlib.util.spec_from_file_location('mv', Path(__file__).with_name('ma
 mv = importlib.util.module_from_spec(spec); spec.loader.exec_module(mv)
 
 LINES = {'h100': 'One hundred.', 'h90': 'Ninety.', 'h80': 'Eighty.', 'h70': 'Seventy.', 'h60': 'Sixty.', 'h50': 'Fifty.', 'h40': 'Forty.',
-         'h30': 'Thirty.', 'h20': 'Twenty.', 'h10': 'Ten.', 'retard': 'Retard. Retard.'}
+         'h30': 'Thirty.', 'h20': 'Twenty.', 'h10': 'Ten.', 'retard': 'Retard. Retard.', 'h5': 'Five.'}
 
 def main():
     raw, sr = mv.kokoro_lines('am_michael', LINES, speed=1.18)   # a quick cadence: at 600 ft/min the numbers come ~1 s apart
