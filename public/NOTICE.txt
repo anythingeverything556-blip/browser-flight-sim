@@ -12,6 +12,13 @@ authors with help from an AI assistant. It is an unofficial model: Cirrus,
 Vision Jet and SF50 are trademarks of Cirrus Design Corporation, which has no
 connection with this project.
 
+`public/models/IL76_v6.glb` (Ilyushin Il-76MD-90A) was modelled in Blender by the
+project authors with help from an AI assistant, from published dimensions and
+reference photographs; no third-party 3D model, texture or sound recording is
+included. It is an unofficial model: Ilyushin, Il-76 and United Aircraft
+Corporation names and marks belong to their owners, which have no connection
+with this project. The aircraft's sounds are synthesised in the browser.
+
 ## Map data (loaded live in the browser)
 - Satellite imagery: Esri World Imagery (Esri, Maxar, Earthstar Geographics and
   the GIS User Community) and Esri World Imagery Wayback at selected airports.

@@ -5,11 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#070a0e" />
   <title>Earthwing — Free Browser Flight Simulator</title>
-  <meta name="description" content="Earthwing is a free flight simulator that runs in your browser. Fly an SR-71 Blackbird, a Cessna 172 or a Cirrus Vision Jet from 8,200+ real airports over satellite imagery and terrain. No install, no account." />
+  <meta name="description" content="Earthwing is a free flight simulator that runs in your browser. Fly an SR-71 Blackbird, a Cessna 172, a Cirrus Vision Jet or an Ilyushin Il-76 from 8,200+ real airports over satellite imagery and terrain. No install, no account." />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="Earthwing" />
   <meta property="og:title" content="Earthwing — Free Browser Flight Simulator" />
-  <meta property="og:description" content="Fly an SR-71 at Mach 3, a Cessna 172 or a Vision Jet from 8,200+ real airports over satellite imagery and terrain. No install, no account." />
+  <meta property="og:description" content="Fly an SR-71 at Mach 3, a Cessna 172, a Vision Jet or an Il-76 transport from 8,200+ real airports over satellite imagery and terrain. No install, no account." />
   <link rel="canonical" href="https://earthwing.pages.dev/" />
   <meta property="og:url" content="https://earthwing.pages.dev/" />
   <meta property="og:image" content="https://earthwing.pages.dev/social-preview.png" />
@@ -55,7 +55,7 @@
   <div id="hero" aria-label="Earthwing flight simulator">
     <div class="h-kicker"><svg class="h-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z"/></svg>Flight simulator in your browser</div>
     <h1>Earthwing</h1>
-    <p>Fly the SR-71, a Cessna 172 or the Vision Jet from 8,200+ real airports, over satellite imagery and terrain at full scale.</p>
+    <p>Fly the SR-71, a Cessna 172, the Vision Jet or the Il-76 from 8,200+ real airports, over satellite imagery and terrain at full scale.</p>
     <div class="hero-loader">
       <div class="hero-loader-head"><span>Starting up</span><span id="loadmsg" aria-live="polite">Loading aircraft…</span></div>
       <div id="loadline"><div id="loadbar"></div></div>
@@ -78,6 +78,7 @@
         <button type="button" class="ac-card" data-v="sr71" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z"/></svg><span class="ac-name"><b>Lockheed SR-71A Blackbird</b><small>Strategic reconnaissance jet</small></span><span class="ac-specs"><span>Mach 3.2</span><span>85,000 ft</span><span>2 × J58</span></span></button>
         <button type="button" class="ac-card" data-v="c172" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M24 5h16v2H24zM30 8h4l1 4v6h25v8H35l-1.2 22H44v5H33.5L33 58h-2l-.5-5H20v-5h10.2L29 26H4v-8h25v-6Z"/></svg><span class="ac-name"><b>Cessna 172SP Skyhawk</b><small>Four-seat trainer</small></span><span class="ac-specs"><span>122 KTAS</span><span>180 hp</span><span>4 seats</span></span></button>
         <button type="button" class="ac-card" data-v="sf50" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 5c1.6 0 2.8 2.5 3.2 7l.4 12L58 31v3.5L36 34l-.4 10L44 53v3l-9-2.5-1 4.5h-4l-1-4.5-9 2.5v-3l8.4-9L28 34 6 34.5V31l22.4-7 .4-12c.4-4.5 1.6-7 3.2-7Z"/></svg><span class="ac-name"><b>Cirrus Vision Jet SF50 G3</b><small>Single-engine personal jet</small></span><span class="ac-specs"><span>311 KTAS</span><span>FL310</span><span>FJ33-5A</span></span></button>
+        <button type="button" class="ac-card" data-v="il76" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4c1.4 0 2.4 2 2.6 5l.4 17 24 14v4.5l-24-6-.3 11 6 5v3.2l-6.5-1.6-1 3.4h-2.4l-1-3.4-6.5 1.6v-3.2l6-5-.3-11-24 6v-4.5l24-14 .4-17c.2-3 1.2-5 2.6-5ZM21 27h3v7h-3zM13 31.5h3v7h-3zM40 27h3v7h-3zM48 31.5h3v7h-3z"/></svg><span class="ac-name"><b>Ilyushin Il-76MD-90A</b><small>Four-engine heavy transport</small></span><span class="ac-specs"><span>770 km/h</span><span>60 t payload</span><span>4 × PS-90A-76</span></span></button>
         </div>
         <div class="sub" id="ac-note"></div>
       </div></div>
@@ -284,8 +285,8 @@
           <tr><th colspan="2">Flight controls</th></tr>
           <tr><td>↑ ↓ · W S</td><td>Pitch (nose down / up)</td></tr><tr><td>← → · A D</td><td>Roll in the air · A D steer the nose wheel on the ground</td></tr>
           <tr><td>Z X</td><td>Rudder, nose-wheel steering (any time)</td></tr><tr><td>; '</td><td>Pitch trim (nose down / nose up)</td></tr>
-          <tr><td>Shift · Q</td><td>Throttle up · down (hold). Or drag the throttle lever on the right edge. Last quarter = afterburner</td></tr><tr><td>E Q · + − · PgUp PgDn · ] [</td><td>Throttle, alternative keys</td></tr><tr><td>9 · 0</td><td>Max afterburner · idle</td></tr>
-          <tr><td>G</td><td>Landing gear (Skyhawk: tail wheel up / down; Vision Jet: gear up refused on the ground)</td></tr><tr><td>B / Space</td><td>Brakes · Shift+B parking brake</td></tr>
+          <tr><td>E · Q</td><td>Throttle up · down (hold). Or drag the throttle lever on the right edge. Last quarter = afterburner</td></tr><tr><td>+ − · PgUp PgDn · ] [</td><td>Throttle, alternative keys</td></tr><tr><td>Shift+1 … Shift+4</td><td>Select one engine: the throttle keys then move its lever alone. Same key again = all engines · Shift+0 all engines, levers together</td></tr><tr><td>Num 4 · Num 6 · Num 5</td><td>Rudder setting 5 % left · 5 % right · centre (stays until changed)</td></tr><tr><td>6</td><td>Autobrake off / low / medium / max: brakes by itself after touchdown</td></tr><tr><td>9 · 0</td><td>Max afterburner · idle</td></tr>
+          <tr><td>G</td><td>Landing gear (Skyhawk: tail wheel up / down; Vision Jet and Il-76: gear up refused on the ground)</td></tr><tr><td>2 · 3</td><td>Il-76: spoilers and brake panels out / in · thrust reverse out / stowed (on the ground only; the thrust lever then sets the power)</td></tr><tr><td>4 · 5</td><td>Il-76: cargo hatch (clamshell doors, ramp, upper door) · paratroop doors, opened stopped on the ground</td></tr><tr><td>B / Space</td><td>Brakes · Shift+B parking brake</td></tr>
           <tr><td>C</td><td>Drag chute (deploy below 200 kt)</td></tr><tr><td>K</td><td>Autopilot (Vision Jet: GFC 700 with autothrottle)</td></tr><tr><td>Shift+K</td><td>Vision Jet autoland on the selected arrival (Map → airport → ILS): configures, flares, lands, brakes to a stop</td></tr><tr><td>Shift+U</td><td>Vision Jet Safe Return: emergency autoland at the nearest suitable airport</td></tr><tr><td>Shift+N</td><td>Vision Jet cabin door (stopped on the ground)</td></tr><tr><td>U</td><td>Recover: autopilot unloads, levels the wings, adds power and levels off (stall or unusual attitude)</td></tr><tr><td>? · F1</td><td>This help</td></tr>
           <tr><th colspan="2">Simulator</th></tr>
           <tr><td>V</td><td>Next view · Shift+V previous</td></tr><tr><td>M</td><td>Map</td></tr><tr><td>P</td><td>Pause</td></tr>
@@ -357,7 +358,7 @@
       <div class="tl-fill" id="tl-fill"></div><div class="tl-knob" id="tl-knob"></div>
     </div>
     <div class="tl-val" id="tl-val">IDLE</div>
-    <div class="tl-hint" id="tl-hint"><b>Throttle</b><br>Drag the lever, or hold <kbd>Shift</kbd> ▲ <kbd>Q</kbd> ▼</div>
+    <div class="tl-hint" id="tl-hint"><b>Throttle</b><br>Drag the lever, or hold <kbd>E</kbd> ▲ <kbd>Q</kbd> ▼</div>
   </div>
   <aside id="guide" role="dialog" aria-label="First flight controls guide" hidden>
     <div class="g-head"><span class="eyebrow" id="g-step">Step 1 of 6</span><button type="button" class="x" id="g-quit" aria-label="Quit the controls guide" title="Quit the guide"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button></div>

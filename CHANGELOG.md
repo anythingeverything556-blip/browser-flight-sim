@@ -1,5 +1,37 @@
 # Changelog
 
+## Unreleased (controls for every aircraft; Il-76 model and warnings)
+- **Throttle is no longer on Shift.** Shift alone got in the way of the Shift chords; use **E** / **Q** (or + −, PgUp PgDn, ] [). Saved key maps drop it.
+- **Rudder setting:** numpad **4** / **6** move a held rudder setting 5 % left / right, **5** centres it. The rudder keys (Z X , .) now ease in over about a second instead of going to full travel.
+- **Per-engine thrust levers:** **Shift+1 … Shift+4** select one engine and the throttle keys then move its lever alone; the same key again, or **Shift+0**, selects all. Works on the SR-71 (2) and the Il-76 (4); single-engine aircraft say so.
+- **Autobrake** on every aircraft: **6** cycles off / low (1.2 m/s²) / medium (2.0 m/s²) / max. It brakes after touchdown once the thrust lever is closed, lets go on a go-around and switches off when the brakes are pressed. A simulator aid: the real Il-76, SR-71 and Skyhawk have none.
+- **Call-out "Five"** after "Retard", once the thrust is at idle and the wheels are 5 ft up (same voice as the other call-outs).
+- **Il-76 warnings** no longer sound in normal flight. Causes: the approach and final starts spawned above the landing-flap limit speed, the cruise start sat on the Mach limit, and the gear horn sounded on every climb-out. Starts are now inside the limits (final at 148 KIAS and landing weight), each warning must hold for a moment before it sounds, and the horn needs landing flaps or a low, slow, idle descent.
+- **Il-76 speeds:** maximum Mach 0.80 (850 km/h at 11,000 m), cruise 750–780 km/h, ceiling 12,200 m.
+- **Il-76 cockpit:** the nine screens are live (they were found by node name, which the game model does not have), and 17 analogue dials have moving needles (airspeed, altimeter, vertical speed, compass, fuel, flap angle, brake pressure, clocks). Other dials are still painted.
+- **Il-76 model** (`IL76_v6.glb`, 369k triangles, was 478k): new engine pylons that hang under the wing; flaps have a vane and rounded nose so no see-through slot opens, their track fairings travel with them, and hinge brackets join them to the wing; rudder, elevators and ailerons have rounded noses.
+- The hold and flight deck are drawn whenever a door, the ramp or the cargo hatch is open.
+
+## Unreleased (Ilyushin Il-76MD-90A)
+A fourth aircraft: the Il-76MD-90A four-engine transport (`?aircraft=il76`, or its card on the start screen).
+- **Flight model** (`src/il76.js`): four PS-90A-76 engines with per-engine thrust and engine-out yaw, slats and triple-slotted
+  flaps in five settings, spoilers and brake panels, Il-76 thrust reversers (ground only), five gear units, mass from 88.5 t empty
+  to 210 t. Every constant carries a confidence letter: published figure, flight-manual figure carried over from the
+  Il-76 family, secondary source, or estimate. Stall speeds, V-speeds, transit times and the aerodynamic coefficients are estimates.
+- **Flying modes:** Realistic uses the figures as found (outer-engine reverse only, no automatic spoilers). Medium and Easy
+  are deliberate guesses that add damping, stability, faster engines and flaps, stronger brakes and reverse, automatic
+  ground spoilers and wider speed and structure margins; Easy also keeps envelope protection.
+- **Model** (`public/models/IL76_v6.glb`, 2.5 MB): 108 separate movers read from the file's own hinge and slide data, so
+  control surfaces, slats, flaps, spoilers, the gear legs, bogies and bay doors, crew and paratroop doors, the cargo ramp,
+  clamshell and upper doors, fans, Il-76 reverser sleeves, yokes and throttle levers all animate. The gear travels into its bays
+  with the doors sequenced around it; nothing is hidden until it is stowed.
+- **Sound:** a four-engine turbofan profile tuned to the PS-90A's 33-blade fan (blade-pass tone from about 0.7 kHz at idle
+  to 2.4 kHz at take-off), plus touchdown, spoiler, flap, cargo-hatch and Il-76 reverser sounds. All synthesised: no open-licence
+  recording of this engine was found.
+- **Keys:** 2 spoilers and brake panels, 3 Il-76 thrust reverse, 4 cargo hatch, 5 paratroop doors, Shift+N crew doors.
+- **Tests:** `il76-fdm`, `il76-glb`, `il76-visual`, `il76-wiring` and `existing-aircraft` join the `npm test` chain (86 scripts).
+  `no-airbrake-test` now protects the SR-71 only and allows these words on lines that name the Il-76.
+
 ## Unreleased (new name: Earthwing)
 The simulator now flies the SR-71, the Cessna 172 and the Vision Jet, so *Blackbird* became **Earthwing**.
 - Start screen, loading screen, page titles and Terms now say Earthwing; per-aircraft page titles are set directly

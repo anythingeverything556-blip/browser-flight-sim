@@ -4,7 +4,7 @@
 
 **A real-world flight simulator that runs in your browser.**
 
-Fly an SR-71 Blackbird at Mach 3, a Cessna 172 or a Cirrus Vision Jet from 8,200+ real airports,<br>
+Fly an SR-71 Blackbird at Mach 3, a Cessna 172, a Cirrus Vision Jet or an Ilyushin Il-76 from 8,200+ real airports,<br>
 over satellite imagery and terrain at full scale. No install, no account.
 
 ### [▶ Play Earthwing in your browser](https://earthwing.pages.dev)
@@ -23,7 +23,7 @@ see the world.
 
 - **The real world, everywhere.** Satellite imagery, real terrain, 8,200+ airports and 10,600+ runways,
   3D buildings, trees, water, weather and time of day.
-- **Three aircraft, three ways to fly.** Hand-fly a Cessna on a short final, or set the autopilot for
+- **Four aircraft, four ways to fly.** Hand-fly a Cessna on a short final, or set the autopilot for
   Mach 3.2 at 85,000 ft and watch the curvature of the Earth.
 - **A real flight model.** Six degrees of freedom at 240 Hz, per-aircraft engines and systems, fuel,
   turbulence, wind shear and crash physics.
@@ -36,15 +36,17 @@ see the world.
 | **Lockheed SR-71A Blackbird** | Mach 3.2 cruise, 85,000 ft, 2 × J58 | Afterburners, inlet unstarts, drag chute and air-to-air refuelling. Full autopilot with SPD and MACH holds; every mission and the tutorial are built around it. |
 | **Cessna 172SP Skyhawk** | 122 KTAS, 180 hp, 4 seats | A trainer you fly by hand: live six-pack instruments, flaps, trim and nose-wheel steering. No autopilot fitted. |
 | **Cirrus Vision Jet SF50 G3** | 311 KTAS, FL310, FJ33-5A | Glass PFD and MFD, NAV/APPR autopilot with autoland, go-around and a *Safe Return* landing at the nearest suitable airport. |
+| **Ilyushin Il-76MD-90A** | 770 km/h cruise, 12,200 m ceiling, 210 t, 4 × PS-90A-76 | Il-76: a heavy four-engine transport with slats, triple-slotted flaps, spoilers, thrust reversers, 20 wheels that fold into the fuselage, and a cargo ramp, clamshell doors and paratroop doors that open. |
 
-Pick the aircraft on the start screen, or open the simulator with `?aircraft=sr71`, `?aircraft=c172` or `?aircraft=sf50`.
-The Vision Jet model is unofficial and not affiliated with Cirrus (see `NOTICE.md`).
+Pick the aircraft on the start screen, or open the simulator with `?aircraft=sr71`, `?aircraft=c172`, `?aircraft=sf50` or `?aircraft=il76`.
+The Vision Jet model is unofficial and not affiliated with Cirrus, and the Il-76 model is unofficial and not affiliated with Ilyushin or United Aircraft Corporation (see `NOTICE.md`).
+The Il-76's flight model uses published figures where they exist and labelled estimates elsewhere (see the comment block at the top of `src/il76.js`); it is not a certified reproduction.
 
 <img src="public/social-preview.png" alt="Earthwing start screen: choose the SR-71A Blackbird, Cessna 172SP Skyhawk or Cirrus Vision Jet, then a departure airport" width="900">
 
 ## Missions and training
 
-Choose one under **Mission** on the start sheet (missions are flown in the SR-71; the Skyhawk and Vision Jet fly free flights).
+Choose one under **Mission** on the start sheet (missions are flown in the SR-71; the Skyhawk, Vision Jet and Il-76 fly free flights).
 
 - **Tutorial:** you fly, it coaches, in eleven steps from the take-off roll to the autopilot.
 - **Landing 1 and 2:** ILS approaches from a 10 NM or 5 NM final, scored on sink rate, speed, centreline and touchdown point.
@@ -154,6 +156,8 @@ Every aircraft has **Easy**, **Medium** and **Realistic** flying modes with adju
 | Key | Action | Key | Action |
 | --- | --- | --- | --- |
 | ↑ / ↓ | Pitch down / up | E / Q, + / −, PgUp / PgDn, [ / ] | Throttle (top 25 % = afterburner) |
+| Num 4 / Num 6 / Num 5 | Rudder setting 5 % left / right / centre (stays until changed) | Shift+1 … Shift+4, Shift+0 | Select one engine for the throttle keys / all engines |
+| 6 | Autobrake off / low / medium / max | | |
 | ← / → or A / D | Roll (A / D steer the nose wheel on the ground) | 0 / 9 | Idle / full afterburner |
 | Z / X (or , / .) | Rudder and nose-wheel steering | G | Landing gear |
 | Home / End | Pitch trim | B or Space | Wheel brakes |
@@ -174,6 +178,7 @@ Press `\` on the way in to tune the runway's ILS without engaging the autopilot;
 
 
 The Skyhawk and Vision Jet use the same keys, plus **F** / **Shift+F** for flaps (and **;** / **'** for trim in the Skyhawk).
+The Il-76 adds **F** / **Shift+F** for its slat and flap settings, **2** for spoilers and brake panels, **3** for the Il-76 thrust reversers (on the ground), **4** for the cargo hatch, **5** for the paratroop doors and **Shift+N** for the crew doors.
 The in-sim **Help** sheet shows the procedures for whichever aircraft you are flying.
 
 ## Run it locally
@@ -268,8 +273,12 @@ node test/dem-test.mjs   # corrupt elevation rows/columns are repaired; clean te
 node test/fdm-test.mjs   # take-off roll, rotation, climb, zero timestep: finite state, no crash
 node test/autopilot-test.mjs  # closed loop on the real flight model: speed changes, stall / min-speed / overspeed protection, recovery
 node test/workstats-test.mjs  # dirty-flag logic: HUD redraw rate, panel change gate
-node test/landing-forgiveness-test.mjs  # firm touchdowns land in all three aircraft; a real slam still crashes
-node test/difficulty-test.mjs  # flying modes: presets, touchdown limits per mode, Easy envelope protection in all three aircraft
+node test/landing-forgiveness-test.mjs  # firm touchdowns land in the SR-71, Skyhawk and Vision Jet; a real slam still crashes
+node test/difficulty-test.mjs  # flying modes: presets, touchdown limits per mode, Easy envelope protection in every aircraft
+node test/il76-fdm-test.mjs     # Il-76 flight model against the published and estimated figures
+node test/il76-glb-test.mjs     # Il-76 model contract: frame, 20 wheels, every mover's axis, limit and direction
+node test/il76-visual-test.mjs  # Il-76 in the game: surfaces, gear sequence, doors, fans, lights
+node test/il76-wiring-test.mjs  # Il-76 registry, keys, modes, spawn, audio
 ```
 
 The original archive referred to further flight-model test scripts (`test/trim-test.mjs`, `test/handling-test.mjs`, ...) and a
