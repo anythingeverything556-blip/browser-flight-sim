@@ -238,7 +238,7 @@ export class FlightModel {
 
   updateEngines(dt, M, alpha, beta, atm) {
     const fuelOk = this.fuel > 0 || this.unlimitedFuel;
-    const cmd = throttleSplit(this.throttle);
+    const cmdAll = throttleSplit(this.throttle);
     const pBurn = atm.p * Math.pow(1 + 0.2 * M * M, 3.5) / 101325; // burner-inlet pressure ratio: sets spool rate and A/B light-off limits
     const spoolRate = clamp(0.55 + 0.45 * Math.sqrt(pBurn), 0.55, 1);
     // Inlet start margin: the shock must stay on the cowl lip. Boundaries shrink with Mach; spike lag behind the Mach schedule and
@@ -248,10 +248,11 @@ export class FlightModel {
     const sa = alpha > 0.03 ? (alpha - 0.03) / (aMax - 0.03) : (0.03 - alpha) / 0.10, sb = Math.abs(beta) / bMax;
     let worst = 0;
     this.engines.forEach((e, i) => {
+      const trim = (this.leverTrim && this.leverTrim[i]) || 0, cmd = trim ? throttleSplit(clamp(this.throttle + trim, 0, 1)) : cmdAll; // engine select: this engine's own lever
       const target = fuelOk ? cmd.dry : 0, d0 = e.dry;
       // J58 spools from idle to military in about 6 s (slower at low burner pressure) and runs down a little faster
       e.dry += clamp((target - e.dry) / 1.3, -0.25, 0.16 * spoolRate) * dt;
-      const wantAB = fuelOk && (cmd.ab > 0 || (e.abLit && this.throttle > 0.72)) && e.dry > 0.97 && e.unstart <= 0 && pBurn > (e.abLit ? 0.08 : 0.12);
+      const wantAB = fuelOk && (cmd.ab > 0 || (e.abLit && clamp(this.throttle + trim, 0, 1) > 0.72)) && e.dry > 0.97 && e.unstart <= 0 && pBurn > (e.abLit ? 0.08 : 0.12);
       if (wantAB && !e.abLit) {
         e.abTimer += dt;
         if (e.abTimer > 0.9) { e.abLit = true; e.ab = 0; this.events.push({ type: 'ab-light', engine: i }); } // TEB ignition

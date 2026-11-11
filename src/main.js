@@ -23,7 +23,13 @@ import { SF50Visual, SF50_EYE } from './sf50visual.js';
 import { makeSF50Feed, sf50Warn } from './sf50feed.js';
 import { SF50_AP, SF50Autoland, planSafeReturn, apTrimServo } from './sf50ap.js';
 import { gaControlFrame, resetHandsOff as clearHandsOff } from './handsoff.js';
-import { c172PitchAuthority, C172_STICK, SF50_STICK } from './c172stick.js';
+import { c172PitchAuthority, C172_STICK, SF50_STICK, IL76_STICK } from './c172stick.js';
+import { IL76Model, IL76, IL76_CG, NOTCHES as IL76_NOTCHES, NOTCH_TAKEOFF as IL76_NOTCH_TO, TRIM_AUTH as IL76_TRIM_AUTH, stallAlpha as il76StallAlpha } from './il76.js';
+import { IL76Visual, IL76_EYE } from './il76visual.js';
+import { il76Warn, il76Feed, il76WarnReset } from './il76feed.js';
+import { Autobrake, AUTOBRAKE } from './autobrake.js';
+import { IL76_AP } from './il76ap.js';
+import { makeIl76Controls } from './il76ctl.js';
 import { AIRCRAFT_TYPES, aircraftChoice } from './aircrafts.js';
 import { setCallsign } from './atc.js';
 import { airData } from './airdata.js';
@@ -58,7 +64,7 @@ import { CockpitOcclusion, OCC_UNIFORMS } from './occlusion.js';
 import { nextScale, nextPressure, floorFor, dynReady, lowerPreset, DYN } from './dynres.js';
 import { TakeoffAid, RotationAssist } from './autotakeoff.js';
 import { mountKeymap } from './keymap-ui.js';
-import { BuildingCollider, C172_COLLIDE_POINTS, C172_PAD, SF50_COLLIDE_POINTS, SF50_PAD } from './buildcollide.js';
+import { BuildingCollider, C172_COLLIDE_POINTS, C172_PAD, SF50_COLLIDE_POINTS, SF50_PAD, IL76_COLLIDE_POINTS, IL76_PAD } from './buildcollide.js';
 import { makeAutoTrim, autoTrimStep, AT as AUTO_TRIM, AT_C172 } from './autotrim.js';
 import { slewExit } from './slew.js';
 import { esc } from './esc.js';
@@ -114,18 +120,22 @@ const trees = new Trees(scene, geo, terrain, db);
 const env = new Environment(scene, renderer);
 const clouds = new Clouds(scene);
 // Aircraft (Settings / setup sheet): chosen at load, like the depth mode; switching saves the choice and reloads. ?aircraft=c172 overrides it.
-const AIRCRAFT = aircraftChoice(LS.get('settings', {}), location.search), IS_C172 = AIRCRAFT === 'c172', IS_SF50 = AIRCRAFT === 'sf50', IS_GA = IS_C172 || IS_SF50, AC = AIRCRAFT_TYPES[AIRCRAFT];
-const CG_H = IS_C172 ? C172_CG.y : IS_SF50 ? SF50_CG.y : 2.42; // CG height above the wheels' contact points (spawn height, AGL)
-const FUEL_MAX = IS_C172 ? C172.FUEL_MAX : IS_SF50 ? SF50.FUEL_MAX : SPEC.FUEL_MAX;
-const fdm = IS_C172 ? new C172Model() : IS_SF50 ? new SF50Model() : new FlightModel();
+const AIRCRAFT = aircraftChoice(LS.get('settings', {}), location.search), IS_C172 = AIRCRAFT === 'c172', IS_SF50 = AIRCRAFT === 'sf50', IS_IL76 = AIRCRAFT === 'il76', IS_GA = IS_C172 || IS_SF50, AC = AIRCRAFT_TYPES[AIRCRAFT]; // IS_GA: the light aircraft with one lever and hands-off flying; the Il-76 is neither the Blackbird nor a light aircraft
+const CG_H = IS_C172 ? C172_CG.y : IS_SF50 ? SF50_CG.y : IS_IL76 ? IL76_CG.y : 2.42; // CG height above the wheels' contact points (spawn height, AGL)
+const FUEL_MAX = IS_C172 ? C172.FUEL_MAX : IS_SF50 ? SF50.FUEL_MAX : IS_IL76 ? IL76.FUEL_MAX : SPEC.FUEL_MAX;
+const fdm = IS_C172 ? new C172Model() : IS_SF50 ? new SF50Model() : IS_IL76 ? new IL76Model() : new FlightModel();
 if (IS_C172) setCallsign('Skyhawk 172SP', 'Skyhawk one seven two sierra papa');
 if (IS_SF50) setCallsign('Vision Jet', 'Vision five zero');
-const TRIM_LIM = IS_SF50 ? 1 : 0.6, TRIM_RATE = IS_SF50 ? 0.2 : 0.12;
+if (IS_IL76) setCallsign('Ilyushin 76', 'Ilyushin seven six');
+const TRIM_LIM = IS_SF50 || IS_IL76 ? 1 : 0.6, TRIM_RATE = IS_SF50 ? 0.2 : IS_IL76 ? 0.1 : 0.12;
 // Vision Jet auto-trim: the whole wheel, and its stall guard set below the straight wing's ~12.5 deg stall angle
 const SF50_AUTO_TRIM = { ...AUTO_TRIM, limit: 1, alphaSoft: 0.15, alphaHard: 0.19 };
+// Il-76: the whole trim wheel, a slow follow-up, and a guard set below the clean wing's 13.5° stall angle
+const IL76_AUTO_TRIM = { ...AUTO_TRIM, limit: 1, alphaSoft: 0.17, alphaHard: 0.215, rate: 0.15, maxStep: 0.05 };
+const STICK_GA = IS_GA || IS_IL76; // the stick path of the Skyhawk and Vision Jet (shaped, slewed stick plus the hands-off assist) is the Il-76's too
 const aircraftSystems = new AircraftSystems();
 let systemsState;
-const visual = IS_C172 ? new C172Visual(scene) : IS_SF50 ? new SF50Visual(scene) : new AircraftVisual(scene);
+const visual = IS_C172 ? new C172Visual(scene) : IS_SF50 ? new SF50Visual(scene) : IS_IL76 ? new IL76Visual(scene) : new AircraftVisual(scene);
 const wreck = new Wreck(scene);
 const post = new PostFX(renderer);
 const vclouds = new VolumetricClouds(renderer);
@@ -142,18 +152,21 @@ const rig = new CameraRig(camera, canvas);
 if (IS_C172) { configureCameraAircraft({ eye: new THREE.Vector3(-1.15, 1.58, -0.29).sub(C172_CG), wing: new THREE.Vector3(-2.2, 1.45, -3.2).sub(C172_CG), look: 4, minDist: 7, chase: 13 }); rig.orbit.dist = 13; }
 // Vision Jet: the left-seat eye point (looking down at the PFD), a wing camera behind the left wing's trailing edge, chase and orbit at a light jet's distance
 if (IS_SF50) { configureCameraAircraft({ eye: SF50_EYE, wing: new THREE.Vector3(-0.6, 1.5, -3.6).sub(SF50_CG), look: 4, minDist: 8, chase: 15 }); rig.orbit.dist = 15; }
+// Il-76: the captain's eye (left seat, over the yoke), a wing camera behind the left wing's inboard trailing edge, chase and orbit for a 50 m aircraft
+if (IS_IL76) { configureCameraAircraft({ eye: IL76_EYE, wing: new THREE.Vector3(-10, 5.6, -12).sub(IL76_CG), look: 14, minDist: 30, chase: 62 }); rig.orbit.dist = 70; }
 const controls = new Controls();
 controls.enabled = false; // until a flight is started from the setup screen
-const ap = new Autopilot(IS_SF50 ? SF50_AP : undefined), autoland = new SF50Autoland();
+const ap = new Autopilot(IS_SF50 ? SF50_AP : IS_IL76 ? IL76_AP : undefined), autoland = new SF50Autoland();
 // the autopilot's airspeed: equivalent for the Blackbird (its limits are KEAS), calibrated for the Vision Jet (VMO and the PFD are KCAS)
-const apIas = () => (IS_SF50 ? casMs() : ias());
-const buildingHit = IS_C172 ? new BuildingCollider(C172_COLLIDE_POINTS, C172_PAD) : IS_SF50 ? new BuildingCollider(SF50_COLLIDE_POINTS, SF50_PAD) : new BuildingCollider();
+const apIas = () => (IS_SF50 || IS_IL76 ? casMs() : ias());
+const buildingHit = IS_C172 ? new BuildingCollider(C172_COLLIDE_POINTS, C172_PAD) : IS_SF50 ? new BuildingCollider(SF50_COLLIDE_POINTS, SF50_PAD) : IS_IL76 ? new BuildingCollider(IL76_COLLIDE_POINTS, IL76_PAD) : new BuildingCollider();
 const takeoff = new TakeoffAid(), rotAssist = new RotationAssist(), autoTrim = makeAutoTrim();
 const nav = new Navigation();
 const hud = new HUD($('hud'));
 const syncStripH = () => { const e = $('strip'); if (e) document.documentElement.style.setProperty('--strip-h', Math.round(e.getBoundingClientRect().height) + 'px'); }; // the guide sits above the strip (style.css)
 if (window.ResizeObserver && $('strip')) new ResizeObserver(syncStripH).observe($('strip'));
 const audio = new Audio();
+if (IS_IL76) audio.configure({ engines: 4 }); // four engine voices, panned by their position, and the Il-76's systems layers
 hud.visible = false; // the real SR-71 has no HUD
 
 const firstRun = !(LS.get('settings', null) || {}).gfx; // before the migrations below save anything
@@ -180,7 +193,7 @@ if (!settings.gfxV5) { settings.gfxV5 = true; LS.set('settings', settings); }
 const saveSettings = () => LS.set('settings', settings);
 // flying mode (difficulty.js): saves from before modes existed are Medium and keep their own assist choices
 settings.mode = modeOf(settings.mode);
-fdm.land = landingLimits(AIRCRAFT, settings.mode);
+fdm.land = landingLimits(AIRCRAFT, settings.mode); if (IS_IL76) fdm.setMode(settings.mode); // the Il-76's flying mode also sets its handling, engines and brakes (IL76_MODES)
 audio.setVoice(settings.voiceWarn !== false, settings.voiceStyle, BASE);
 if (settings.callouts === undefined) settings.callouts = true;
 audio.setCallouts(settings.callouts);
@@ -209,6 +222,8 @@ function groundAt(x, z) {
 }
 function aircraftLatLon() { return geo.toLatLon(fdm.pos.x, fdm.pos.z); }
 const casMs = () => airData(fdm.out).cas;
+// the Il-76's gear lever, flaps and slats, spoilers, thrust reverse, doors and the cargo-hatch interlock (src/il76ctl.js)
+const il76c = IS_IL76 ? makeIl76Controls({ fdm, visual, audio, toast, casKt: () => casMs() * KT }) : null;
 function ias() { return (fdm.out.V || 0) * Math.sqrt((fdm.out.rho || 1.225) / 1.225); }
 const fmtAlt = (m) => settings.metric ? `${Math.round(m).toLocaleString()} m` : `${Math.round(m * FT).toLocaleString()} ft`;
 const fmtLen = (m) => settings.metric ? `${(m / 1000).toFixed(2)} km` : `${Math.round(m * FT).toLocaleString()} ft`;
@@ -231,7 +246,7 @@ function spawn(s, meta) {
     // the wreck camera backs off to 420 m in orbit view: the next flight starts where the player had the orbit before the crash
     if (state.orbitBeforeCrash) { if (rig.view === 'orbit') Object.assign(rig.orbit, state.orbitBeforeCrash); state.orbitBeforeCrash = null; }
   }
-  if (meta) fdm.fuel = IS_C172 ? C172.FUEL_MAX : IS_SF50 ? SF50.FUEL_MAX : settings.fullTanks ? SPEC.FUEL_MAX : START_FUEL; // airport starts and restarts refuel; teleports keep the current load
+  if (meta) fdm.fuel = IS_C172 ? C172.FUEL_MAX : IS_SF50 ? SF50.FUEL_MAX : IS_IL76 ? (settings.fullTanks ? IL76.FUEL_MAX : !s.ground && s.speed < 90 ? IL76.MLW - IL76.EMPTY - IL76.PAYLOAD : IL76.FUEL_START) : settings.fullTanks ? SPEC.FUEL_MAX : START_FUEL; // airport starts and restarts refuel; teleports keep the current load
   state.lastSpawn = { s, meta, fuel: fdm.fuel };
   moveOrigin(s.lat, s.lon);
   turb.reset(); resetGaControls(); fdm.latDeg = s.lat;
@@ -240,7 +255,9 @@ function spawn(s, meta) {
   fdm.onGround = !!s.ground; // reset() leaves the old flag until the next physics step, which would block an autopilot engage at spawn
   fdm.realism.unstarts = settings.unstarts;
   if (IS_SF50 && s.ground) { fdm.setFlaps(1); fdm.flaps = SF50_FLAP_DEG[1]; fdm.setTakeoffTrim(); } // runway starts: 50 % flaps, trim in the take-off band
+  if (IS_IL76) { fdm.setMode(settings.mode); if (s.ground) { fdm.setFlaps(IL76_NOTCH_TO); fdm.flaps = IL76_NOTCHES[IL76_NOTCH_TO].flap; fdm.slats = IL76_NOTCHES[IL76_NOTCH_TO].slat; fdm.setTakeoffTrim(); } } // runway starts: take-off slats and flaps, trim in the take-off band
   controls.throttle = fdm.throttle;
+  controls.rudderSet = 0; controls.engSel = 0; controls.engTrim.fill(0); autobrake.reset(); state.abGs = undefined; if (IS_IL76) il76WarnReset(fdm); // a new flight starts with the rudder centred, the levers together and no stale warning
   // a ground spawn holds the parking brake (the jet crept forward at idle); the first push of the throttle releases it
   fdm.parkingBrake = !!s.ground; state.autoPark = fdm.parkingBrake; state.flightT = 0; aircraftSystems.reset();
   // nothing from the last flight flies the new one: auto take-off, landing aid and the autopilot's modes, targets and pilot-set boxes all start fresh
@@ -304,8 +321,10 @@ function spawnAt(apt, rwyIdx, end, mode) {
   // the Vision Jet: 110 KIAS on final (flaps 15 and gear down follow from the speed in SF50Model.reset), 180 KIAS at FL250 for the cruise start
   // (reset() takes the true airspeed)
   if (IS_SF50 && !sp.ground) { if (mode === 'cruise') { sp.alt = 25000 / FT; sp.speed = 180 / KT / Math.sqrt(isa(sp.alt).rho / 1.225); sp.gamma = 0; } else sp.speed = 110 / KT; }
+  // the Il-76: 160 KIAS on final (slats, flaps and gear follow from the speed in IL76Model.reset), M 0.72 at 10,000 m (FL330) for the cruise start
+  if (IS_IL76 && !sp.ground) { if (mode === 'cruise') { sp.alt = 10000; sp.speed = 0.72 * isa(sp.alt).a; sp.gamma = 0; } else sp.speed = 148 / KT; }
   spawn(sp, { rwy: r, end });
-  toast(`${apt.ident} runway ${r.ends[end].ident} — ${mode === 'runway' ? 'ready for take-off' : mode === 'approach' ? '10 NM final' : mode === 'final' ? '5 NM final' : IS_C172 ? '8,000 ft cruise' : IS_SF50 ? 'FL250 cruise' : 'Mach 3.2 cruise'}`);
+  toast(`${apt.ident} runway ${r.ends[end].ident} — ${mode === 'runway' ? 'ready for take-off' : mode === 'approach' ? '10 NM final' : mode === 'final' ? '5 NM final' : IS_C172 ? '8,000 ft cruise' : IS_SF50 ? 'FL250 cruise' : IS_IL76 ? 'FL330 cruise' : 'Mach 3.2 cruise'}`);
 }
 function restart() {
   if (!state.lastSpawn) return;
@@ -316,7 +335,7 @@ function restart() {
 // free orbit is the default view: it starts behind the jet, and dragging swings it round
 function freeOrbitBehind() {
   const s = state.lastSpawn && state.lastSpawn.s;
-  setView('orbit'); Object.assign(rig.orbit, { az: -((s ? s.hdg : 0) * Math.PI) / 180, el: 0.2, dist: IS_C172 ? 16 : IS_SF50 ? 19 : 60 });
+  setView('orbit'); Object.assign(rig.orbit, { az: -((s ? s.hdg : 0) * Math.PI) / 180, el: 0.2, dist: IS_C172 ? 16 : IS_SF50 ? 19 : IS_IL76 ? 70 : 60 });
 }
 function beginFlight() {
   if (settings.cmap !== false && !cmap.visible) cmap.toggle(true); // on by default once flying; N hides it
@@ -492,7 +511,7 @@ acWide.addEventListener('change', placeAircraftPicker); placeAircraftPicker();
     document.querySelectorAll('#mission-mode button').forEach((b) => { if (b.dataset.v !== 'free') b.hidden = true; });
     const h = $('help-heading'); if (h) h.textContent = 'Flying the Skyhawk';
     // the sortie and cockpit text in index.html is the Blackbird's (J58s, afterburners, chute): the Skyhawk gets its own
-    $('help-sortie').innerHTML = ['Full throttle (<b>Shift</b> or <b>E</b>; the first push releases the parking brake), keep the centreline with <b>A</b>/<b>D</b> (nose-wheel steering).',
+    $('help-sortie').innerHTML = ['Full throttle (<b>E</b>; the first push releases the parking brake), keep the centreline with <b>A</b>/<b>D</b> (nose-wheel steering).',
       'Rotate at <b>55 KIAS</b> with a light pull and climb at <b>74 KIAS</b>.', 'No autopilot is fitted: trim with <b>;</b> and <b>\'</b> and fly by hand; <b>F</b> and <b>Shift+F</b> step the flaps.',
       'Plan the arrival on the <b>Map</b> (route, arrival runway, distance and ETE).', 'Fly final at about <b>65 KIAS</b> with flaps down, close the throttle (<b>Q</b>) over the threshold and flare.'].map((t) => `<li>${t}</li>`).join('');
     $('help-cockpit').textContent = 'The six-pack and tachometer are live: airspeed, attitude, altimeter, turn coordinator, heading and vertical speed, redrawn from the flight model.';
@@ -503,12 +522,25 @@ acWide.addEventListener('change', placeAircraftPicker); placeAircraftPicker();
     const cruise = document.querySelector('#start-mode [data-v="cruise"]'); if (cruise) cruise.textContent = 'FL250 cruise';
     document.querySelectorAll('#mission-mode button').forEach((b) => { if (b.dataset.v !== 'free') b.hidden = true; });
     const h = $('help-heading'); if (h) h.textContent = 'Flying the Vision Jet';
-    $('help-sortie').innerHTML = ['Runway starts set 50 % flaps and take-off trim. Take-off thrust with <b>Shift</b> or <b>E</b> (the first push releases the parking brake).',
+    $('help-sortie').innerHTML = ['Runway starts set 50 % flaps and take-off trim. Take-off thrust with <b>E</b> (the first push releases the parking brake).',
       'Rotate at <b>90 KIAS</b> with a light pull, gear up (<b>G</b>) once climbing, climb at <b>120 KIAS</b>, then flaps up (<b>Shift+F</b>).',
       'Keep below 250 KIAS: 210 with the gear down, 190 with 50 % flaps, 150 with full flaps.', 'In <b>Autopilot</b> use <b>Climb to cruise</b> (FL280, FLCH); <b>J</b> is a go-around and <b>Shift+U</b> Safe Return lands at the nearest suitable airport.',
       'Plan the arrival on the <b>Map</b>, pick the arrival runway, then use <b>NAV</b> and <b>APPR</b> (or the autoland).', 'Fly final with full flaps at about <b>90 KIAS</b> (VREF 89), touch down and brake.'].map((t) => `<li>${t}</li>`).join('');
     $('help-cockpit').textContent = 'The two large Perspective Touch+ style displays are live: the PFD (attitude, speed and altitude tapes, HSI, flight director) and the MFD (engine N1, ITT, fuel flow, fuel, gear, flaps, pressurisation, navigation and alerts).';
     document.title = 'Earthwing — Cirrus Vision Jet SF50';
+  }
+  if (IS_IL76) {
+    // the Il-76 flies free flights from the runway, a final or FL330; the missions and tutorial are written for the Blackbird
+    const cruise = document.querySelector('#start-mode [data-v="cruise"]'); if (cruise) cruise.textContent = 'FL330 cruise';
+    document.querySelectorAll('#mission-mode button').forEach((b) => { if (b.dataset.v !== 'free') b.hidden = true; });
+    const h = $('help-heading'); if (h) h.textContent = 'Flying the Il-76';
+    $('help-sortie').innerHTML = ['Runway starts set the take-off slats and flaps (S14 F30) and trim. Take-off thrust with <b>E</b> (the first push releases the parking brake); the engines need about 8 s to spool up.',
+      'Rotate at <b>171 KIAS</b> (317 km/h at 210 t, less when lighter) to 8°, gear up (<b>G</b>) once climbing, climb at 450 km/h and take the slats and flaps up with <b>Shift+F</b> as you pass 215 KIAS (400 km/h).',
+      'Gear and flaps limits: 370 km/h with the gear out or the slats at 25°, 280 km/h with full flaps; 600 km/h and Mach 0.80 at most.',
+      'Cruise is Mach 0.72 (770 km/h) at 10,000 m. <b>K</b> engages the autopilot (basic modes: HDG, NAV, APPR, ALT, V/S, FLCH, speed); there is no autoland.',
+      'Land at about <b>VREF</b> (300 km/h at 210 t, 266 at 165 t) with <b>F</b> to full flaps: <b>2</b> spoilers, <b>3</b> thrust reverse (on the ground only), <b>B</b> brakes. On the ground <b>Shift+N</b> crew doors, <b>4</b> cargo hatch, <b>5</b> paratroop doors.'].map((t) => `<li>${t}</li>`).join('');
+    $('help-cockpit').textContent = 'The yokes, thrust levers, flap, spoiler and park-brake levers move with the controls; where the model has flight-deck screens they are live (attitude and speed, heading and navigation, engines and systems).';
+    document.title = 'Earthwing — Ilyushin Il-76MD-90A';
   }
 }
 $('intro-tod').addEventListener('input', () => { env.hour = +$('intro-tod').value; syncEnvUi(); });
@@ -606,6 +638,13 @@ if (IS_GA) {
   for (const el of [$('p-chute'), $('p-ab'), $('p-uns'), IS_C172 ? $('p-ap') : null, $('d-tr').parentElement, lever.track.querySelector('.tl-ab')]) if (el) el.style.display = 'none';
   const full = lever.track.querySelector('.tl-mil'); full.style.top = '0'; full.style.borderRadius = '15px'; full.querySelector('span').style.display = 'none';
 }
+// Il-76: four engines, no afterburner, chute or unstart: four N1 bars in the strip and no A/B zone on the lever
+if (IS_IL76) {
+  for (const el of [$('p-chute'), $('p-ab'), $('p-uns'), lever.track.querySelector('.tl-ab')]) if (el) el.style.display = 'none';
+  const full = lever.track.querySelector('.tl-mil'); full.style.top = '0'; full.style.borderRadius = '15px'; full.querySelector('span').style.display = 'none';
+  const bars = document.querySelector('#strip .thr .bars'); bars.classList.add('four');
+  for (const id of ['d-t3', 'd-t4']) bars.insertAdjacentHTML('beforeend', `<i><em id="${id}"></em></i>`);
+}
 // DOM writes only when something shown changes (it restyled the lever every frame); the throttle is quantised to 0.2 %
 const leverLast = { on: null, q: -1, blink: null }, thrSeg = document.querySelector('#strip .seg-d.thr');
 function updateLever() {
@@ -615,7 +654,7 @@ function updateLever() {
     leverLast.q = q; const t = q / 500;
     lever.knob.style.bottom = (t * 100) + '%'; lever.fill.style.height = `calc(${t * 100}% - ${t * 8}px)`;
     lever.track.setAttribute('aria-valuenow', Math.round(t * 100));
-    lever.val.textContent = t < 0.02 ? 'IDLE' : IS_GA ? `${Math.round(t * 100)}%` : t > 0.75 ? `A/B ${Math.round((t - 0.75) / 0.25 * 100)}%` : `${Math.round(t / 0.75 * 100)}% MIL`;
+    lever.val.textContent = t < 0.02 ? 'IDLE' : IS_GA || IS_IL76 ? `${Math.round(t * 100)}%` : t > 0.75 ? `A/B ${Math.round((t - 0.75) / 0.25 * 100)}%` : `${Math.round(t / 0.75 * 100)}% MIL`;
   }
   const blink = !controls.touched && !ap.on;
   if (blink !== leverLast.blink) { leverLast.blink = blink; lever.el.classList.toggle('untouched', blink); thrSeg && thrSeg.classList.toggle('untouched', blink); }
@@ -626,7 +665,10 @@ const SF50_TIPS = ['Shift (or E) and Q move the thrust lever: take-off thrust on
   'Keep below 250 KIAS: 210 with the gear down, 190 with 50 % flaps, 150 with full flaps.', 'V cycles the cameras, M opens the map, ? shows every control.'];
 const C172_TIPS = ['Shift (or E) and Q move the throttle.', 'F and Shift+F step the flaps.', 'V cycles the cameras, M opens the map, ? shows every control.',
   'The throttle lever on the right edge works with the mouse.'];
-const lsEl = $('loadscreen'), LS_TIPS = IS_SF50 ? SF50_TIPS : IS_C172 ? C172_TIPS : ['Shift (or E) and Q move the throttle. 9 lights both afterburners.', 'Above Mach 2.3 keep the sideslip small or an inlet can unstart.', 'The J58 engines need about six seconds to spool up.', 'V cycles the cameras, M opens the map, ? shows every control.', 'Pull the drag chute with C after touchdown, below 200 knots.', 'The throttle lever on the right edge works with the mouse.'];
+const IL76_TIPS = ['Shift (or E) and Q move the thrust lever for all four engines; they need about 8 s to spool up.', 'Runway starts set take-off slats and flaps and trim: rotate at about 171 KIAS at 210 t.',
+  'G raises the gear (refused on the ground); F and Shift+F step the slats and flaps; 2 spoilers, 3 thrust reverse on the ground, 4 cargo hatch.', 'The take-off run is long: 1,500 m at full weight.',
+  'V cycles the cameras, M opens the map, ? shows every control.'];
+const lsEl = $('loadscreen'), LS_TIPS = IS_IL76 ? IL76_TIPS : IS_SF50 ? SF50_TIPS : IS_C172 ? C172_TIPS : ['Shift (or E) and Q move the throttle. 9 lights both afterburners.', 'Above Mach 2.3 keep the sideslip small or an inlet can unstart.', 'The J58 engines need about six seconds to spool up.', 'V cycles the cameras, M opens the map, ? shows every control.', 'Pull the drag chute with C after touchdown, below 200 knots.', 'The throttle lever on the right edge works with the mouse.'];
 const loadUi = { shown: false, since: 0, done: false, tip: 0, fade: 0 };
 const lsStep = (n, st) => { const li = lsEl.querySelector(`[data-step="${n}"]`); if (li) li.className = st; };
 // Start flight shows the loading screen in the click itself: it used to wait 300 ms for the frame loop, which looked like the button had done
@@ -661,7 +703,7 @@ function updateLoadUi(now) {
 const guide = new Guide({ el: $('guide'), controls, ctx: () => ({ ...tutorialCtx(), bankDeg: attitude(fdm.quat).bank * 180 / Math.PI }) });
 function maybeStartGuide() {
   state.guideChecked = true;
-  if (IS_GA || Guide.seen() || guide.active || tutorial.active || tour.active || (missionKind && missionKind !== 'free' && missionKind !== 'none') || !fdm.onGround) return;
+  if (IS_GA || IS_IL76 || Guide.seen() || guide.active || tutorial.active || tour.active || (missionKind && missionKind !== 'free' && missionKind !== 'none') || !fdm.onGround) return;
   guide.start();
 }
 $('guide-replay').addEventListener('click', () => { openSheet(null); guide.start(); });
@@ -795,10 +837,12 @@ const mapPanel = new MapPanel($('map'), db, nav, {
 const cmap = new CockpitMap(document.body, db, { onPickAirport: (a) => { openSheet('airports'); showAirport(a); }, onClose: () => { settings.cmap = false; saveSettings(); } });
 controls.on('cockpitMap', () => { settings.cmap = cmap.toggle(); saveSettings(); });
 // ---------- teleport dialog: altitude, heading, speed, climb angle, gear and an autopilot hold, prefilled from the flight (or the type's cruise) ----------
-const TP_KIAS = IS_C172 ? [50, 160] : IS_SF50 ? [80, 300] : [150, 450]; // what each type can fly at the far end
+const autobrake = new Autobrake();
+const TP_KIAS = IS_C172 ? [50, 160] : IS_SF50 ? [80, 300] : IS_IL76 ? [110, 320] : [150, 450]; // what each type can fly at the far end
 const TP_PRESETS = IS_C172 ? [['Cruise', 8000, 105, 0, false], ['Pattern', 1500, 80, 0, false], ['Final', 1000, 70, -3, true]]
   : IS_SF50 ? [['Cruise FL250', 25000, 180, 0, false], ['Approach', 3000, 140, 0, true], ['Final', 1500, 100, -3, true]]
-    : [['Mach 3.2 cruise', 80000, 340, 0, false], ['Subsonic', 25000, 320, 0, false], ['Approach', 3000, 200, -3, true]];
+    : IS_IL76 ? [['FL330 cruise', 33000, 245, 0, false], ['Approach', 4000, 180, 0, true], ['Final', 1500, 148, -3, true]]
+      : [['Mach 3.2 cruise', 80000, 340, 0, false], ['Subsonic', 25000, 320, 0, false], ['Approach', 3000, 200, -3, true]];
 const tp = { lat: 0, lon: 0 };
 function openTeleport(lat, lon) {
   Object.assign(tp, { lat, lon });
@@ -833,7 +877,7 @@ $('tp-form').addEventListener('submit', (e) => {
 });
 // live ADS-B on the map: "Fly alongside" puts the jet 450 m behind and 120 m right of a real aircraft, at its altitude, track and speed
 // (clamped to what this type can fly)
-const ALONGSIDE_MS = IS_C172 ? [28, 64] : IS_SF50 ? [55, 160] : [130, 950];
+const ALONGSIDE_MS = IS_C172 ? [28, 64] : IS_SF50 ? [55, 160] : IS_IL76 ? [70, 240] : [130, 950];
 function flyAlongside(e) {
   if (!state.started || state.pending || e.alt == null) return;
   const back = destination(e.lat, e.lon, (e.trk + 180) % 360, 450), at = destination(back.lat, back.lon, (e.trk + 90) % 360, 120);
@@ -887,7 +931,7 @@ function readAp(floor) {
   const num = (k, lo) => { const v = apInputs[k].value === '' ? NaN : +apInputs[k].value; return Number.isFinite(v) && v >= lo ? v : null; };
   const v = { hdg: num('hdg', -1e6), alt: num('alt', 0), vs: num('vs', -1e6), spd: num('spd', 60), mach: num('mach', 0.3), vsl: num('vsl', 0) }, t = ap.target;
   if (v.hdg !== null) t.hdg = ((v.hdg % 360) + 360) % 360;
-  if (v.alt !== null) t.alt = Math.min(IS_SF50 ? 31000 / FT : 30000, v.alt / (settings.metric ? 1 : FT));
+  if (v.alt !== null) t.alt = Math.min(IS_SF50 ? 31000 / FT : IS_IL76 ? IL76.CEILING : 30000, v.alt / (settings.metric ? 1 : FT));
   if (v.vs !== null) t.vs = v.vs / 196.85;
   if (v.spd !== null) t.spd = v.spd / KT;
   if (v.mach !== null) t.mach = v.mach;
@@ -904,7 +948,7 @@ function writeApInputs(keys = AP_KEYS) {
     spd: Math.round(t.spd * KT), mach: (+t.mach).toFixed(2), vsl: Math.round(t.vsLimit * 196.85 / 100) * 100 };
   for (const k of keys) apInputs[k].value = v[k];
 }
-const AP0 = new Autopilot(IS_SF50 ? SF50_AP : undefined); // factory modes and targets
+const AP0 = new Autopilot(IS_SF50 ? SF50_AP : IS_IL76 ? IL76_AP : undefined); // factory modes and targets
 function resetApState() { ap.disengage(); Object.assign(ap.modes, AP0.modes); Object.assign(ap.target, AP0.target); apEdited.clear(); writeApInputs(); syncAp(); }
 Object.entries(apInputs).forEach(([k, el]) => {
   el.addEventListener('change', () => { apEdited.add(k); readAp(true); });
@@ -937,7 +981,7 @@ function syncApTargets(keys) {
   for (const k of keys) apInputs[k].value = val[k];
   readAp();
 }
-const APPROACH_KT = IS_SF50 ? 100 : 180; // below this the Blackbird is behind the power curve and cannot hold the glideslope (Vision Jet: about VREF + 10)
+const APPROACH_KT = IS_SF50 ? 100 : IS_IL76 ? 145 : 180; // below this the Blackbird is behind the power curve and cannot hold the glideslope (Vision Jet: about VREF + 10)
 function approachSpeedFloor() {
   if (!ap.modes.appr) return;
   if (+apInputs.spd.value < APPROACH_KT) { apInputs.spd.value = APPROACH_KT; readAp(); }
@@ -987,10 +1031,10 @@ function envelopeGuard(dt) {
   if (settings.mode !== 'easy' || fdm.crashed || state.slew || state.paused) { resetProtect(envProt); return; }
   const out = fdm.out, M = out.M || 0, flaps = fdm.flaps || 0;
   // C172 / SF50: the wing's stall angle for the flap setting; SR-71: the 15° stall-warning angle
-  const aStall = IS_C172 ? c172StallAlpha(flaps) : IS_SF50 ? sf50StallAlpha(flaps, M) : 0.26;
-  const nzMax = IS_C172 ? C172.NZ_LIMIT : IS_SF50 ? (flaps > 1 ? SF50.NZ_FLAP_LIMIT : SF50.NZ_LIMIT) : 3.5;
-  const nzMin = IS_C172 ? -1.52 : IS_SF50 ? (flaps > 1 ? 0 : SF50.NZ_NEG_LIMIT) : -1.5;
-  const att = attitude(fdm.quat), auth = IS_GA ? c172PitchAuthority((IS_SF50 ? casMs() : ias()) * KT, IS_SF50 ? SF50_STICK : C172_STICK) : stickGearing(1, out.qbar || 0, M, 0);
+  const aStall = IS_C172 ? c172StallAlpha(flaps) : IS_SF50 ? sf50StallAlpha(flaps, M) : IS_IL76 ? il76StallAlpha(flaps, fdm.slats || 0, M, fdm.mx.clmax) : 0.26;
+  const nzMax = IS_C172 ? C172.NZ_LIMIT : IS_SF50 ? (flaps > 1 ? SF50.NZ_FLAP_LIMIT : SF50.NZ_LIMIT) : IS_IL76 ? (flaps > 1 ? IL76.NZ_FLAP_LIMIT : IL76.NZ_LIMIT) : 3.5;
+  const nzMin = IS_C172 ? -1.52 : IS_SF50 ? (flaps > 1 ? 0 : SF50.NZ_NEG_LIMIT) : IS_IL76 ? (flaps > 1 ? IL76.NZ_FLAP_NEG : IL76.NZ_NEG_LIMIT) : -1.5;
+  const att = attitude(fdm.quat), auth = STICK_GA ? c172PitchAuthority((IS_SF50 || IS_IL76 ? casMs() : ias()) * KT, IS_SF50 ? SF50_STICK : IS_IL76 ? IL76_STICK : C172_STICK) : stickGearing(1, out.qbar || 0, M, 0);
   envelopeProtect(fdm.ctrl, { alpha: out.alpha || 0, aOn: aStall - PROT_A_ON, aMax: aStall - PROT_A_MAX, nz: out.nz || 1, nzMax, nzMin,
     pitch: att.pitch, bank: att.bank, auth, onGround: fdm.onGround, dt }, envProt);
 }
@@ -1014,6 +1058,7 @@ function stopTakeoff(msg) { if (!takeoff.on) return; takeoff.stop(); if (fdm.onG
 function startTakeoff() {
   if (IS_C172) { toast('Auto take-off is for the SR-71. Skyhawk: full throttle, rotate at 55 KIAS, climb at 74', true); return; }
   if (IS_SF50) { toast('Auto take-off is for the SR-71. Vision Jet: flaps 50 %, full thrust, rotate at 90 KIAS, gear up, climb at 120', true); return; }
+  if (IS_IL76) { toast('Auto take-off is for the SR-71. Il-76: T/O slats and flaps, full thrust, rotate at 171 KIAS (210 t), gear up, climb at 450 km/h', true); return; }
   if (takeoff.on) { stopTakeoff('Auto take-off cancelled'); return; }
   // live values, not fdm.out: out.ias and onGround are only refreshed when the sim steps, so after a respawn or while paused they still hold the previous flight
   const agl0 = fdm.pos.y - state.lastGround - CG_H, rolling = fdm.vel.length() * KT;
@@ -1044,6 +1089,7 @@ function goAround() {
   if (fdm.onGround || fdm.crashed || agl < 3) { toast('Go-around is for an approach in the air', true); return; }
   takeoff.stop(); landAid.on && landAid.disengage(); fdm.parkingBrake = false;
   if (IS_SF50) { autoland.disarm(); state.alBrakes = 0; ap.vsOverride = null; ap.tauV = null; ap.kiDiv = null; if (fdm.flapCmd > 1) fdm.setFlaps(1); }
+  if (IS_IL76 && fdm.flapCmd > 3) fdm.setFlaps(3); // landing flaps to the approach notch for the missed approach
   ap.startGoAround({ ctrl: fdm.ctrl, throttle: fdm.throttle }, attitude(fdm.quat), fdm.pos.y, ias());
   apEdited.clear(); writeApInputs(); syncAp(); toast('Go-around: full power, climbing');
 }
@@ -1052,6 +1098,7 @@ function climbToCruise() {
   if (!ap.on) engageAp();
   Object.keys(ap.modes).forEach((k) => { ap.modes[k] = false; }); Object.assign(ap.modes, { flch: true, hdg: true, mach: true });
   if (IS_SF50) { Object.assign(ap.target, { alt: 28000 / FT, mach: 0.48, vsLimit: 3000 / 196.85, hdg: Math.round(attitude(fdm.quat).heading) }); writeApInputs(); syncAp(); toast('Climbing to FL280 on the climb schedule (175 falling to 140 KIAS), then Mach 0.48'); return; }
+  if (IS_IL76) { Object.assign(ap.target, { alt: 33000 / FT, mach: 0.72, vsLimit: 2000 / 196.85, hdg: Math.round(attitude(fdm.quat).heading) }); writeApInputs(); syncAp(); toast('Climbing to FL330 at 450 km/h, then Mach 0.72'); return; }
   Object.assign(ap.target, { alt: 25900, mach: 3.2, vsLimit: 30, hdg: Math.round(attitude(fdm.quat).heading) });
   writeApInputs(); syncAp(); toast('Climbing to 85,000 ft at Mach 3.2: full power, then the cruise climb holds the Mach number');
 }
@@ -1144,11 +1191,14 @@ if (IS_SF50) {
 }
 // cabin door (Shift+N): opens only stopped on the ground, and closes by itself if the jet starts to roll
 controls.on('doors', () => {
-  if (!IS_SF50) { toast('Doors: Vision Jet only', true); return; }
+  if (IS_IL76) { il76c.doors(); return; }
+  if (!IS_SF50) { toast('Doors: Vision Jet and Il-76 only', true); return; }
   const open = visual.cabinDoor.cmd > 0;
   if (!open && (!fdm.onGround || Math.hypot(fdm.vel.x, fdm.vel.z) > 1)) { toast('The cabin door opens only when stopped on the ground', true); return; }
   visual.setDoors(!open); audio.play('gear-door', open ? 1 : -1); toast(open ? 'Cabin door closed' : 'Cabin door open');
 });
+// Il-76 only: spoilers and brake panels (2), thrust reverse (3), cargo hatch (4), paratroop doors (5)
+for (const [id, fn] of [['spoilers', 'spoilers'], ['reverse', 'reverse'], ['cargo', 'cargo'], ['paratroop', 'paratroop']]) controls.on(id, () => (IS_IL76 ? il76c[fn]() : toast('This is an Il-76 control', true)));
 controls.on('autoland', () => { if (IS_SF50) armAutoland(); else toast('Autoland is fitted to the Vision Jet', true); });
 controls.on('safeReturn', () => { if (IS_SF50) safeReturn(); else toast('Safe Return is fitted to the Vision Jet', true); });
 
@@ -1343,7 +1393,7 @@ function setMode(v) {
     const el = $(PRESET_IDS[k]);
     if (el.checked !== on) { el.checked = on; el.dispatchEvent(new Event('change')); }
   }
-  fdm.land = landingLimits(AIRCRAFT, settings.mode); resetProtect(envProt);
+  fdm.land = landingLimits(AIRCRAFT, settings.mode); if (IS_IL76) fdm.setMode(settings.mode); resetProtect(envProt);
   saveSettings(); showMode();
 }
 const modeSegs = [seg('intro-mode', setMode), seg('fly-mode', setMode)];
@@ -1384,6 +1434,7 @@ controls.on('gear', () => {
     if (!fdm.setGear(down)) { toast('Weight on wheels — gear locked down', true); return; }
     toast(down ? 'Gear down' : 'Gear up' + (casMs() * KT > SF50.VLO_RET ? ' — above 150 KIAS (VLO)' : '')); return;
   }
+  if (IS_IL76) { il76c.gear(); return; }
   if (fdm.onGround && fdm.gearDown) { toast('Weight on wheels — gear locked down', true); return; }
   fdm.gearDown = !fdm.gearDown; toast(fdm.gearDown ? 'Gear down' : 'Gear up');
 });
@@ -1412,7 +1463,7 @@ function refuelBlock() {
   if (fdm.unlimitedFuel) return 'Unlimited fuel is on (Settings)';
   if (fdm.fuel >= FUEL_CAP - 1) return 'Tanks are full';
   if (fdm.onGround) return Math.hypot(fdm.vel.x, fdm.vel.z) > 1.5 ? 'Stop the aircraft to refuel' : null;
-  if (IS_GA) return 'Refuel on the ground: land and stop';
+  if (IS_GA || IS_IL76) return 'Refuel on the ground: land and stop';
   if (fdm.pos.y * FT > 30000 || (fdm.out.M || 0) > 0.9) return 'Tanker refuelling: below 30,000 ft and Mach 0.9';
   return null;
 }
@@ -1451,6 +1502,7 @@ $('ap-refuel').addEventListener('click', () => controls.handlers.refuel && contr
 controls.on('chute', () => {
   if (IS_C172) { toast('No drag chute on the Skyhawk', true); return; }
   if (IS_SF50) { toast('No drag chute on the Vision Jet', true); return; }
+  if (IS_IL76) { toast('No drag chute on the Il-76', true); return; }
   if (fdm.chute === 'stowed') { fdm.chute = 'deployed'; fdm.chuteOpen = 0; audio.play('chute'); toast('Drag chute deployed'); }
   else if (fdm.chute === 'deployed') { fdm.chute = 'jettisoned'; toast('Drag chute jettisoned'); }
   else toast('Drag chute already used — restart to repack', true);
@@ -1468,6 +1520,8 @@ if (IS_SF50) {
   const flapsTo = (n) => { fdm.setFlaps(n); toast(`Flaps ${FLAP_NAME[fdm.flapCmd]}${casMs() * KT > VFE[fdm.flapCmd] ? ` — above ${VFE[fdm.flapCmd]} KIAS (VFE)` : ''}`); };
   controls.on('flapsDown', () => flapsTo(fdm.flapCmd >= SF50.FLAP_NOTCHES ? 0 : fdm.flapCmd + 1)); controls.on('flapsUp', () => flapsTo(fdm.flapCmd - 1));
 }
+// flaps and slats (Il-76): F one notch down, Shift+F one notch up; UP, then four notches to T/O and landing (the limit speeds are in il76.js)
+if (IS_IL76) { controls.on('flapsDown', () => il76c.flapsDown()); controls.on('flapsUp', () => il76c.flapsUp()); }
 controls.on('recover', () => {
   if (fdm.onGround || fdm.crashed) { toast('Recovery works in the air only', true); return; }
   ap.startRecovery({ ctrl: fdm.ctrl, throttle: fdm.throttle }); syncAp();
@@ -1485,9 +1539,21 @@ controls.on('slew', () => {
   state.slew = !state.slew; toast(state.slew ? `Slew mode: pitch and roll keys move, ${keymap.keysOf('slewUp')} / ${keymap.keysOf('slewDown')} climb` : 'Slew mode off');
   if (state.slew) state.slewSpeed = fdm.onGround ? 0 : fdm.vel.length(); else slewExit(fdm, state.slewSpeed, fdm.pos.y - groundAt(fdm.pos.x, fdm.pos.z) - CG_H);
 });
-controls.on('idle', () => { controls.throttle = 0; controls.touched = true; stopTakeoff('Auto take-off cancelled'); });
-controls.on('fullAB', () => { controls.throttle = 1; controls.touched = true; });
+controls.on('idle', () => { controls.throttle = 0; controls.engSel = 0; controls.engTrim.fill(0); controls.touched = true; stopTakeoff('Auto take-off cancelled'); });
+controls.on('fullAB', () => { controls.throttle = 1; controls.engSel = 0; controls.engTrim.fill(0); controls.touched = true; });
 controls.on('parkingBrake', () => { fdm.parkingBrake = !fdm.parkingBrake; toast(fdm.parkingBrake ? 'Parking brake set' : 'Parking brake released'); });
+controls.on('autobrake', () => { const l = autobrake.cycle(); toast(l === 'OFF' ? 'Autobrake off' : `Autobrake ${l}: brakes by itself after touchdown once the thrust lever is closed`); });
+// Rudder setting (numpad 4 / 6 in 5 % steps, 5 centres): stays until changed and adds to the rudder keys. The autopilot and the
+// take-off aids write the rudder themselves while they fly, so the setting only acts in manual flight and on the ground.
+const rudderStep = (d) => { controls.rudderSet = d ? Math.max(-1, Math.min(1, Math.round((controls.rudderSet + d) * 20) / 20)) : 0; const p = Math.round(Math.abs(controls.rudderSet) * 100); toast(p ? `Rudder ${controls.rudderSet < 0 ? 'left' : 'right'} ${p} %` : 'Rudder centred'); };
+controls.on('rudderLeftStep', () => rudderStep(-0.05)); controls.on('rudderRightStep', () => rudderStep(0.05)); controls.on('rudderCentre', () => rudderStep(0));
+// Engine select: Shift+1..4 picks one engine, the throttle keys then move its lever alone (an offset from the master lever, which the
+// flight models read as leverTrim); the same key again or Shift+0 goes back to all engines, Shift+0 also brings the levers together.
+const N_LEVERS = IS_GA ? 1 : fdm.engines.length; fdm.leverTrim = controls.engTrim;
+const engSelect = (n) => { if (N_LEVERS < 2) { toast('Single engine: one thrust lever'); return; } if (n > N_LEVERS) { toast(`This aircraft has ${N_LEVERS} engines`); return; }
+  controls.engSel = controls.engSel === n ? 0 : n; toast(controls.engSel ? `Engine ${n} selected: the throttle keys move its lever alone` : 'All engines selected'); };
+for (let i = 1; i <= 4; i++) controls.on('engine' + i, () => engSelect(i));
+controls.on('engineAll', () => { controls.engSel = 0; controls.engTrim.fill(0); toast('All engines selected, levers together'); });
 controls.on('sound', () => { audio.enabled = !audio.enabled; $('b-sound').classList.toggle('off', !audio.enabled); });
 addEventListener('pointerdown', () => audio.init());
 addEventListener('keydown', () => audio.init());
@@ -1578,29 +1644,38 @@ function simulate(dt) {
       if (ap.ga && fdm.gearDown && fdm.pos.y - state.lastGround - CG_H > 25 && fdm.vel.y > 2) { fdm.gearDown = false; toast('Gear up'); }
       // in the autoland flare and rollout the autoland flies the elevator and thrust: the autopilot's protection status there is not the pilot's concern
       if (ap.status.prot !== lastApProt) { if (ap.status.prot && !ap.status.recover && !(autoland.armed && ['flare', 'rollout'].includes(autoland.phase))) toast(`Autopilot ${ap.status.prot.toLowerCase()}`, true); lastApProt = ap.status.prot; }
-      if (ap.on && ap.status.gs && !autoland.armed && state.navOut.agl < (IS_SF50 ? 61 : 46)) { ap.disengage(); syncAp(); toast('Minimums — autopilot disconnected. Flare and land.', true); }
+      if (ap.on && ap.status.gs && !autoland.armed && state.navOut.agl < (IS_SF50 || IS_IL76 ? 61 : 46)) { ap.disengage(); syncAp(); toast('Minimums — autopilot disconnected. Flare and land.', true); }
     }
   }
+  // SR-71 elevon display: in the air the stick gearing leaves a full pull only ~2.5 deg of real elevon, so the elevons looked frozen.
+  // While the pilot's geared command reaches the surfaces untouched, aircraft.js draws the un-geared stick on top (physics unchanged).
+  let geared = null, visDe = 0;
   if (!ap.on && !tourFlying) {
     const shape = (v) => Math.sign(v) * Math.pow(Math.abs(v), 1.4);
     const q = fdm.out.qbar || 0, M = fdm.out.M || 0;
-    if (IS_GA) gaControlFrame(fdm, controls.axes, gaCtl, { kias: (IS_SF50 ? casMs() : ias()) * KT, dt, cfg: IS_SF50 ? SF50_STICK : undefined, assist: settings.handsOff !== false, frozen: !!fdm.crashed || state.slew || state.paused });
-    else { fdm.ctrl.de = stickGearing(shape(controls.axes.pitch), q, M, fdm.onGround ? 1 : Math.max(0, Math.min(1, (40 - (fdm.pos.y - state.lastGround - CG_H)) / 25))); fdm.ctrl.da = rollGearing(shape(controls.axes.roll), q, M); fdm.ctrl.dr = controls.axes.yaw; }
-    if (!IS_GA) {
+    if (STICK_GA) gaControlFrame(fdm, controls.axes, gaCtl, { kias: (IS_SF50 || IS_IL76 ? casMs() : ias()) * KT, dt, cfg: IS_SF50 ? SF50_STICK : IS_IL76 ? IL76_STICK : undefined, assist: settings.handsOff !== false, frozen: !!fdm.crashed || state.slew || state.paused });
+    else { geared = fdm.ctrl.de = stickGearing(shape(controls.axes.pitch), q, M, fdm.onGround ? 1 : Math.max(0, Math.min(1, (40 - (fdm.pos.y - state.lastGround - CG_H)) / 25))); fdm.ctrl.da = rollGearing(shape(controls.axes.roll), q, M); fdm.ctrl.dr = controls.axes.yaw; }
+    if (!STICK_GA) {
       fdm.ctrl.de = rotAssist.apply({ fdm, axis: controls.axes.pitch, de: fdm.ctrl.de, ias: ias(), agl: fdm.pos.y - state.lastGround - CG_H, enabled: settings.rotAssist !== false && !takeoff.on, dt });
       flightAssist(dt); landingAid(dt);
       takeoffFrame(dt);
     }
     envelopeGuard(dt);
+    if (geared !== null && fdm.ctrl.de === geared) visDe = shape(controls.axes.pitch) - geared;
   } else { assist.release(); landAid.on && landAid.disengage(); resetProtect(envProt); }
+  fdm.visDeExtra = visDe;
   if (!ap.on || !(ap.modes.spd || ap.modes.mach)) fdm.throttle = controls.throttle;
   // auto-trim: with the stick idle (and no autopilot / assist flying it) the trim follows the pitch rate to zero
-  if (!ap.on && !assist.on && !takeoff.on && !landAid.on) fdm.trim = autoTrimStep(autoTrim, { enabled: settings.autoTrim !== false && !controls.trimUp && !controls.trimDown, trim: fdm.trim, q: fdm.w.z, power: IS_SF50 ? fdm.out.pitchPower * SF50_TRIM_AUTH : IS_C172 ? fdm.out.pitchPower * 0.6 : fdm.out.pitchPower, alpha: fdm.out.alpha || 0, stick: controls.axes.pitch, V: fdm.out.V || 0, onGround: fdm.onGround, dt }, IS_SF50 ? SF50_AUTO_TRIM : IS_C172 ? AT_C172 : undefined);
+  if (!ap.on && !assist.on && !takeoff.on && !landAid.on) fdm.trim = autoTrimStep(autoTrim, { enabled: settings.autoTrim !== false && !controls.trimUp && !controls.trimDown, trim: fdm.trim, q: fdm.w.z, power: IS_SF50 ? fdm.out.pitchPower * SF50_TRIM_AUTH : IS_IL76 ? fdm.out.pitchPower * IL76_TRIM_AUTH : IS_C172 ? fdm.out.pitchPower * 0.6 : fdm.out.pitchPower, alpha: fdm.out.alpha || 0, stick: controls.axes.pitch, V: fdm.out.V || 0, onGround: fdm.onGround, dt }, IS_SF50 ? SF50_AUTO_TRIM : IS_IL76 ? IL76_AUTO_TRIM : IS_C172 ? AT_C172 : undefined);
   // the Vision Jet's trim wheel spans its whole range (take-off trim alone sits past 0.6); the Blackbird keeps its +-0.6 elevon trim
   if (controls.trimUp) fdm.trim = Math.min(TRIM_LIM, fdm.trim + TRIM_RATE * dt);
   if (controls.trimDown) fdm.trim = Math.max(-TRIM_LIM, fdm.trim - TRIM_RATE * dt);
   fdm.brakes = Math.max(controls.brake, state.alBrakes || 0);
+  { const gs = Math.hypot(fdm.vel.x, fdm.vel.z), acc = dt > 0 && state.abGs !== undefined ? (gs - state.abGs) / dt : 0; state.abGs = gs; state.abAcc = (state.abAcc || 0) + (acc - (state.abAcc || 0)) * Math.min(1, dt * 4);
+    const was = autobrake.level, b = autobrake.update({ onGround: fdm.onGround, gs, accel: state.abAcc, throttle: controls.throttle, pedal: controls.brake }, dt);
+    if (was && !autobrake.level) toast('Autobrake off: manual braking'); if (b > fdm.brakes) fdm.brakes = b; }
   if (IS_SF50 && visual.cabinDoor && visual.cabinDoor.cmd > 0 && Math.hypot(fdm.vel.x, fdm.vel.z) > 3) { visual.setDoors(false); toast('Cabin door closed for taxi'); }
+  if (IS_IL76) fdm.throttle = Math.min(fdm.throttle, il76c.frame()); // doors close when rolling; no take-off power with the cargo hatch open
   const ground = groundAt(fdm.pos.x, fdm.pos.z);
   state.lastGround = ground;
   const wind = windVector(fdm.pos.y - ground, fdm.pos.y, dt);
@@ -1644,19 +1719,20 @@ function simulate(dt) {
     else if (e === 'crash') {
       // the wreck plays out first; the crash report follows once it has come to rest
       ap.disengage(); syncAp(); takeoff.stop();
-      wreck.start(visual, fdm, fdm.crashKind, IS_C172 ? { fuelCap: C172.FUEL_MAX, speedRef: 75, sinkRef: 28, size: 0.3 } : IS_SF50 ? { fuelCap: SF50.FUEL_MAX, speedRef: 110, sinkRef: 35, size: 0.45 } : undefined);
+      wreck.start(visual, fdm, fdm.crashKind, IS_C172 ? { fuelCap: C172.FUEL_MAX, speedRef: 75, sinkRef: 28, size: 0.3 } : IS_SF50 ? { fuelCap: SF50.FUEL_MAX, speedRef: 110, sinkRef: 35, size: 0.45 } : IS_IL76 ? { fuelCap: IL76.FUEL_MAX, speedRef: 120, sinkRef: 40, size: 1.4 } : undefined);
       crashAudio();
       state.crashShown = false; $('crash-why').textContent = fdm.crashed; pause(state.paused); // refreshes the status chip
       state.orbitBeforeCrash = { az: rig.orbit.az, el: rig.orbit.el, dist: rig.orbit.dist };
       if (rig.view !== 'orbit' && rig.view !== 'tower' && rig.view !== 'flyby') {
-        state.viewBeforeCrash = rig.view; setView('orbit'); Object.assign(rig.orbit, { az: rig.orbit.az, el: 0.25, dist: IS_GA ? 40 : 110 });
+        state.viewBeforeCrash = rig.view; setView('orbit'); Object.assign(rig.orbit, { az: rig.orbit.az, el: 0.25, dist: IS_GA ? 40 : IS_IL76 ? 160 : 110 });
       }
     }
     else if (e.type === 'gear-interlock') toast('Weight on wheels — gear lever back down', true);
-    else if (e.type === 'gear-overspeed') toast(`Gear speed exceeded (VLE ${SF50.VLE} KIAS)`, true);
+    else if (e.type === 'gear-overspeed') toast(`Gear speed exceeded (VLE ${Math.round(IS_IL76 ? IL76.VLE : SF50.VLE)} KIAS)`, true);
     else if (e === 'chute-fail') toast('Drag chute torn off — deploy below 210 kt', true);
     else if (e.type === 'scrape') { audio.play('touch', 0.6); state.bump += 0.6; toast(e.part && e.part !== 'tail' ? `${e.part[0].toUpperCase() + e.part.slice(1)} scraped the runway — less nose-up or bank at touchdown` : 'Tail strike — ease the back pressure at rotation', true); }
-    else if (e.type === 'touch') { if (e.vs > 0.5) audio.play('touch', Math.min(1.5, e.vs / 2)); state.bump += Math.min(1.5, e.vs * 0.4); }
+    else if (e.type === 'touch') { if (e.vs > 0.5) { if (!IS_IL76) audio.play('touch', Math.min(1.5, e.vs / 2)); else if (performance.now() - (state.il76Touch || 0) > 2500) { state.il76Touch = performance.now(); audio.play('touch-bogies', Math.min(1.5, e.vs / 2)); } } state.bump += Math.min(1.5, e.vs * 0.4); }
+    else if (e.type === 'spoilers-out' || e.type === 'spoilers-in') audio.play('spoiler', e.type === 'spoilers-out' ? -1 : 1);
     else if (e.type === 'ab-light') { audio.play('ab-light', rig.view === 'cockpit' ? 0.5 : 1); visual.event(e); state.bump += 0.25; }
     else if (e.type === 'unstart') { audio.play('unstart'); visual.event(e); state.bump += 2.2; toast(`${e.engine ? 'RIGHT' : 'LEFT'} INLET UNSTART — restarting`, true); }
     else if (e.type === 'restart') toast(`${e.engine ? 'Right' : 'Left'} inlet restarted`);
@@ -1715,6 +1791,11 @@ function sf50State(att, warn) {
     settings, nav: n, ap, warn, com1Name: tw ? `${tw.a.ident} TWR` : '', destElevFt: destElevFt(),
     airports: db.near(ll.lat, ll.lon, 70).slice(0, 8).map(({ a, d }) => ({ id: a.ident, brgDeg: bearing(ll.lat, ll.lon, a.lat, a.lon), distNm: d / 1852 })),
   }, 0.1);
+}
+
+// the Il-76's PFD, ND and engine display feed (src/il76feed.js): bank is + right wing down, pitch and bank in degrees
+function il76State(att, warn) {
+  return il76Feed(fdm, { att: { pitch: att.pitch / D2R, roll: att.bank / D2R, heading: att.heading }, casMs: casMs(), gsMs: Math.hypot(fdm.vel.x, fdm.vel.z), altM: fdm.pos.y, warn, selHdg: ap.on ? ap.target.hdg : undefined });
 }
 
 // ---------- frame ----------
@@ -1828,7 +1909,7 @@ function frameBody(now) {
   const groundY = groundAt(fdm.pos.x, fdm.pos.z);
   const att = attitude(fdm.quat), out = fdm.out;
   const iasMs = ias(), agl = fdm.pos.y - groundY - CG_H;
-  const warn = IS_SF50 ? sf50Warn(fdm, { casKt: casMs() * KT, iasMs, agl }) : {
+  const warn = IS_SF50 ? sf50Warn(fdm, { casKt: casMs() * KT, iasMs, agl }) : IS_IL76 ? il76Warn(fdm, { casKt: casMs() * KT, iasMs, agl, dt }) : {
     stall: !fdm.onGround && (IS_C172 ? (out.stall || 0) > 0.05 || (out.buffet || 0) > 0.35 : (out.alpha || 0) > 0.26) && iasMs > (IS_C172 ? 8 : 20),
     pullUp: !fdm.onGround && agl < 600 && fdm.vel.y < -8 && agl / -fdm.vel.y < 9,
     gearUnsafe: !IS_C172 && !fdm.gearDown && agl < 300 && fdm.vel.y < 0 && iasMs * KT < 230,
@@ -1849,7 +1930,7 @@ function frameBody(now) {
     buildings.uni.uWetB.value = env.wet * 0.9;
     TERRAIN_UNIFORMS.uWet.value = env.wet; TERRAIN_UNIFORMS.uRip.value = r > 0.05 ? r : 0; }
   if (visual.glassWater && post.glassWater !== visual.glassWater) { post.glassWater = visual.glassWater; visual.glassWater.setMode(post.enabled ? 0 : 1); }
-  if (!wreck.active) visual.update(dt, fdm, cw, rig.view, env, groundY, IS_SF50 ? (rig.view === 'cockpit' ? () => sf50State(att, warn) : null) : rig.view === 'cockpit' ? panelState(att, warn) : null);
+  if (!wreck.active) visual.update(dt, fdm, cw, rig.view, env, groundY, IS_SF50 ? (rig.view === 'cockpit' ? () => sf50State(att, warn) : null) : IS_IL76 ? (rig.view === 'cockpit' ? () => il76State(att, warn) : null) : rig.view === 'cockpit' ? panelState(att, warn) : null);
   else visual.shadow.visible = false;
   if (state.started && !state.pending) traffic.update(state.paused ? 0 : dt, { camWorld: cw, lat: ll.lat, lon: ll.lon, night: env.night, own: fdm.pos });
   { // tree colour follows the climate band under the aircraft: lush and warm in the tropics, dark blue-green conifers toward the poles
@@ -1861,7 +1942,7 @@ function frameBody(now) {
     if (nz.length) { _aft.set(-1, 0, 0).applyQuaternion(fdm.quat); _aft.y = 0; if (_aft.lengthSq() < 1e-4) _aft.set(1, 0, 0); _aft.normalize();
       blast.update(state.paused ? 0 : dt, { fdm, camWorld: cw, groundY, nozzles: nz, aft: _aft, daylight: env.daylight, height: terrain.cam.agl, px: renderer.domElement.height * 0.5, scale: IS_SF50 ? 0.3 : 1 }); }
     // the vortex ropes, contrails and condensation are placed for the Blackbird's airframe (and tuned for the Skyhawk): the Vision Jet gets none
-    airflow.update(state.paused || state.pending ? 0 : dt, { fdm, model: IS_SF50 ? null : visual.model, camWorld: cw, daylight: env.daylight, px: renderer.domElement.height * 0.5, geoVersion: geo.version,
+    airflow.update(state.paused || state.pending ? 0 : dt, { fdm, model: IS_SF50 || IS_IL76 ? null : visual.model, camWorld: cw, daylight: env.daylight, px: renderer.domElement.height * 0.5, geoVersion: geo.version,
       humidity: 0.12 + 0.7 * cloudEff.cover + 0.8 * (weather.rain || 0) + 0.3 * (env.wet || 0) + 0.5 * (state.cloudIn || 0), wind: { x: Math.sin((settings.windDir + 180) * Math.PI / 180) * settings.windSpd, z: -Math.cos((settings.windDir + 180) * Math.PI / 180) * settings.windSpd } });
     const U = TERRAIN_UNIFORMS;
     if (post.clouds && vclouds.tex && vclouds.march && cloudEff.cover > 0.02) {
@@ -1881,9 +1962,10 @@ function frameBody(now) {
   // The depth bias is a fraction of the camera's depth range: it is scaled with the range so it stays ~8 cm (at 1.3 cm the thin flaps and
   // ailerons shadowed themselves and turned blue-grey)
   // from the Vision Jet's seat the sun map only needs the cabin: a tighter box gives its seats and panel crisp shadows
-  if (IS_GA) { const sh = env.sun.shadow, c = sh.camera, r = wreck.active ? 22 : IS_SF50 && rig.view === 'cockpit' ? 3.5 : 8;
+  // Il-76: a 50 m span needs a 32 m box, with the sun's depth range widened to match
+  if (IS_GA || IS_IL76) { const sh = env.sun.shadow, c = sh.camera, r = wreck.active ? (IS_IL76 ? 60 : 22) : IS_IL76 ? 32 : IS_SF50 && rig.view === 'cockpit' ? 3.5 : 8, nr0 = IS_IL76 ? 40 : 64, fr0 = IS_IL76 ? 120 : 96;
     if (c.right !== r) { if (state.sunBias === undefined) state.sunBias = { bias: sh.bias, range: c.far - c.near };
-      Object.assign(c, { left: -r, right: r, top: r, bottom: -r, near: wreck.active ? 1 : 64, far: wreck.active ? 200 : 96 }); c.updateProjectionMatrix();
+      Object.assign(c, { left: -r, right: r, top: r, bottom: -r, near: wreck.active ? 1 : nr0, far: wreck.active ? 200 : fr0 }); c.updateProjectionMatrix();
       sh.bias = state.sunBias.bias * state.sunBias.range / (c.far - c.near); shAt.v = null; } }
   // The map is redrawn only when the aircraft's shape seen from the sun changes (below), but its matrix must follow the aircraft every frame:
   // with the matrix of the last redraw the aircraft looked its shadow up where it had been, so shadows slid over it as the camera moved and
@@ -1965,9 +2047,11 @@ function frameBody(now) {
   try {
     audio.update({
       paused: state.paused || !!state.pending, cockpit: rig.view === 'cockpit', camDist, camFwdDot: fwd.dot(dirToCam),
-      inMachConeAhead: coneSilent, doppler: a / Math.max(a * 0.3, a - vRad), mach: M, engines: IS_SF50 ? [fdm.engines[0]] : fdm.engines, fan: IS_SF50, piston: IS_C172 ? { rpm: fdm.rpm || 0, thr: fdm.throttle } : null,
+      inMachConeAhead: coneSilent, doppler: a / Math.max(a * 0.3, a - vRad), mach: M, engines: IS_SF50 ? [fdm.engines[0]] : fdm.engines, fan: IS_SF50, profile: IS_IL76 ? 'turbofan4' : null, piston: IS_C172 ? { rpm: fdm.rpm || 0, thr: fdm.throttle } : null,
       crashed: !!fdm.crashed, rho: out.rho || 1.2, ias: iasMs * KT, onGround: fdm.onGround, gs: fdm.vel.length(), rain: weather.rain,
-      gearMoving: fdm.gearPos > 0.001 && fdm.gearPos < 0.999, warnTone: warn.pullUp ? 2 : (warn.stall ? 1 : 0), warn,
+      gearMoving: fdm.gearPos > 0.001 && fdm.gearPos < 0.999, warnTone: IS_IL76 ? il76c.warnTone(warn) : warn.pullUp ? 2 : (warn.stall ? 1 : 0), warn,
+      ...(IS_IL76 ? { flapMoving: Math.abs(fdm.flaps - IL76_NOTCHES[fdm.flapCmd].flap) > 0.05 || Math.abs(fdm.slats - IL76_NOTCHES[fdm.flapCmd].slat) > 0.05, cargoMoving: visual.cargoMoving(),
+        revMoving: fdm.engines.some((e) => e.rev > 0.02 && e.rev < 0.98), spoilers: fdm.spoilers, apu: fdm.onGround && fdm.vel.length() < 6 } : {}),
       callout: { aglFt: (fdm.pos.y - state.lastGround - CG_H) * FT, vsFpm: fdm.vel.y * FT * 60, onGround: fdm.onGround, throttle: fdm.throttle, crashed: fdm.crashed },
     });
   } catch (e) { console.warn('audio', e); }
@@ -1978,7 +2062,7 @@ function frameBody(now) {
   if (state.started && cmap.visible) { const cl = aircraftLatLon(), n = state.navOut || {};
     cmap.update({ lat: cl.lat, lon: cl.lon, hdg: attitude(fdm.quat).heading, trackDeg: (Math.atan2(fdm.vel.x, -fdm.vel.z) * 180 / Math.PI + 360) % 360, gsKt: Math.hypot(fdm.vel.x, fdm.vel.z) * KT,
       altFt: fdm.pos.y * FT, route: nav.wps, activeIdx: nav.active, arrival: nav.arrival, ils: { valid: !!n.ilsValid, ident: n.ilsIdent, distNm: n.distNm }, metric: settings.metric }, now); }
-  $('strip').style.display = settings.strip && (!inside || IS_GA) && state.started ? 'flex' : 'none';
+  $('strip').style.display = settings.strip && (!inside || IS_GA || IS_IL76) && state.started ? 'flex' : 'none';
   uiT += dt; mapT += dt;
   if (uiT > 0.1) {
     uiT = 0;
@@ -1990,8 +2074,10 @@ function frameBody(now) {
     const lb = fdm.fuel * 2.20462;
     if (IS_C172) txt('d-fuel', settings.metric ? Math.round(fdm.fuel / 0.72) : (fdm.fuel / 2.72).toFixed(1)); else
     txt('d-fuel', settings.metric ? Math.round(fdm.fuel).toLocaleString() : Math.round(lb).toLocaleString()); txt('d-fuel2', `${IS_C172 ? (settings.metric ? 'L' : 'gal') : settings.metric ? 'kg' : 'lb'} · ${Math.round(fdm.fuel / FUEL_MAX * 100)}%`);
-    if (IS_GA) { const el = $('d-tl'); el.style.height = Math.min(100, fdm.engines[0].dry * 100) + '%'; el.style.background = '#5ee1ff'; } else
+    if (IS_IL76) fdm.engines.forEach((e, i) => { const el = $(['d-tl', 'd-tr', 'd-t3', 'd-t4'][i]); el.style.height = Math.min(100, e.n1) + '%'; el.style.background = e.rev > 0.5 ? '#f2b84b' : !e.lit ? '#e5342a' : '#5ee1ff'; }); // N1 bars
+    else if (IS_GA) { const el = $('d-tl'); el.style.height = Math.min(100, fdm.engines[0].dry * 100) + '%'; el.style.background = '#5ee1ff'; } else
     fdm.engines.forEach((e, i) => { const el = $(i ? 'd-tr' : 'd-tl'); el.style.height = Math.min(100, (e.dry * 75 + e.ab * 25)) + '%'; el.style.background = e.ab > 0.01 ? '#ff7b2e' : e.unstart > 0 ? '#e5342a' : '#5ee1ff'; });
+    if (IS_IL76) txt('d-thr', `${fdm.reverserCmd ? 'REV ' : ''}${fdm.throttle < 0.02 ? 'IDLE' : Math.round(fdm.throttle * 100) + '%'} · ${IL76_NOTCHES[fdm.flapCmd].name}${fdm.spoilers > 0.5 ? ' · SPLR' : ''}`); else
     if (IS_GA) txt('d-thr', `${fdm.throttle < 0.02 ? 'IDLE' : Math.round(fdm.throttle * 100) + '%'} · FLAPS ${Math.round(fdm.flaps || 0)}°`); else
     txt('d-thr', fdm.throttle < 0.02 ? 'IDLE' : fdm.throttle > 0.75 ? `A/B ${Math.round((fdm.throttle - 0.75) / 0.25 * 100)}%` : `${Math.round(fdm.throttle / 0.75 * 100)}% MIL`);
     const pill = (id, cls) => { $(id).className = 'pill' + (cls ? ' ' + cls : ''); };
@@ -1999,7 +2085,8 @@ function frameBody(now) {
     // the gear takes 7 s: show which way it is going and how far, so retraction reads as clearly as extension
     const moving = fdm.gearPos > 0.02 && fdm.gearPos < 0.98;
     txt('p-gear', IS_C172 ? `FLAPS ${FLAP_DEG[fdm.flapCmd]}` : moving ? (fdm.gearDown ? 'GEAR ▼' : 'GEAR ▲') : 'GEAR'); $('p-gear').style.setProperty('--p', `${Math.round(fdm.gearPos * 100)}%`);
-    pill('p-brk', fdm.parkingBrake ? 'a' : fdm.brakes > 0 ? 'g' : '');
+    pill('p-brk', fdm.parkingBrake ? 'a' : fdm.brakes > 0 ? 'g' : ''); { const t = autobrake.level ? 'BRK ' + AUTOBRAKE[autobrake.level] : 'BRK', el = $('p-brk'); if (el.textContent !== t) el.textContent = t; }
+    ['d-tl', 'd-tr', 'd-t3', 'd-t4'].forEach((id, i) => { const el = $(id); if (el) el.parentElement.style.boxShadow = controls.engSel === i + 1 ? '0 0 0 2px #ffd166' : ''; }); // the selected engine's bar
     pill('p-chute', fdm.chute === 'deployed' ? 'g' : fdm.chute === 'failed' ? 'r' : '');
     pill('p-ap', ap.on ? 'g' : ''); $('p-ap').textContent = ap.on ? ap.status.lat : 'A/P';
     pill('p-ab', fdm.engines.some((e) => e.ab > 0.01) ? 'a' : '');
@@ -2037,7 +2124,7 @@ let crashWarm = false;
 // the crash scene (wreck, fire, extra light) set up for a shader compile and taken down again in the same tick, so no frame ever draws it
 function crashWarmSetup() {
   if (wreck.active || !state.lastSpawn) return null;
-  const f = IS_C172 ? new C172Model() : IS_SF50 ? new SF50Model() : new FlightModel(); f.reset(new THREE.Vector3(0, 40, 0), 0, IS_C172 ? 50 : IS_SF50 ? 60 : 150, false, 0); f.crash('warm-up');
+  const f = IS_C172 ? new C172Model() : IS_SF50 ? new SF50Model() : IS_IL76 ? new IL76Model() : new FlightModel(); f.reset(new THREE.Vector3(0, 40, 0), 0, IS_C172 ? 50 : IS_SF50 ? 60 : IS_IL76 ? 110 : 150, false, 0); f.crash('warm-up');
   wreck.start(visual, f, 'impact');
   wreck.light.intensity = 1; wreck.ground.ring.visible = true;
   return () => { wreck.clear(visual); wreck.ground.ring.visible = false; wreck.light.intensity = 0; };
@@ -2092,6 +2179,7 @@ function prewarmCrash() { startWarm(); }
   wreck.piecesWarmed = wreck.prepared.then(() => new Promise((res) => { const w = () => (warm.finished !== undefined ? whenIdle(res, 4000) : setTimeout(w, 500)); w(); }))
     .then(() => wreck.warmPieces(visual, renderer, scene, camera, post.enabled ? post.sceneRT : null)).catch((e) => console.warn('crash piece warm-up failed', e));
   if (visual.gearRig) visual.gearRig.onDoor = (d) => audio.play('gear-door', d === 'open' ? -1 : 1);
+  if (IS_IL76) visual.onDoorSound = (k) => audio.play('cargo-clunk', k === 'cargo-open' ? -1 : 1); // the cargo hatch reaching its stops
   const a = homeAirport();
   dep.apt = a; dep.rwy = Math.min(home.rwy, a.runways.length - 1); dep.end = home.end;
   $('dep-q').value = `${a.ident} — ${a.name}`;
@@ -2100,7 +2188,7 @@ function prewarmCrash() { startWarm(); }
   $('start-btn').disabled = false; $('home-go').disabled = false;
   window.__simReady = true;
   if (window.__startQueued) { const id = window.__startQueued; window.__startQueued = null; $(id).click(); } // clicked while loading: start now
-  setView('orbit'); rig.orbit.az = 0.9; rig.orbit.el = 0.14; rig.orbit.dist = IS_C172 ? 16 : IS_SF50 ? 18 : 46;
+  setView('orbit'); rig.orbit.az = 0.9; rig.orbit.el = 0.14; rig.orbit.dist = IS_C172 ? 16 : IS_SF50 ? 18 : IS_IL76 ? 66 : 46;
   bar(1, 'Preparing graphics…');
   setTimeout(() => startWarm().then(() => { // once the first frames have set the lights and environment the shaders depend on
     visual.lateReady.then((late) => { if (!late.length) return; const undo = revealCockpit(late); try { return warmLate({ renderer, scene, camera, post }, late); } finally { undo(); } }).catch((e) => console.warn('late warm-up failed', e));

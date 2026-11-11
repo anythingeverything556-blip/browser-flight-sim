@@ -31,10 +31,18 @@ const WRECK_SOUNDS = new Set(['impact', 'crunch', 'scrape', 'grind', 'explosion'
 
 const NO_FAN = { cabin: 1, rumble: 1, roar: 1, hiss: 1, pitch: 1, whine: 1, whineLo: 1100, whineSpan: 3400 };
 const FAN = { cabin: 0.55, rumble: 0.4, roar: 0.55, hiss: 1.1, pitch: 1.5, whine: 2.6, whineLo: 1900, whineSpan: 3800 };
+// The Il-76: four PS-90A-76 turbofans (33 fan blades, N1 4,340 rpm at 100 %, N2 11,740 rpm, idle N1 30 %, N2 60 %: FLIGHT-DATA.md section 11). The fan
+// blade-passing tone is blades x shaft rate, so whineLo / whineSpan are its 716 Hz at idle and 2,387 Hz at take-off, linear in N1. The big low-bypass-noise
+// engines are quieter and lower than a small jet's, the cabin is large and well insulated, and the airframe is calibrated to 400 kt rather than 250.
+const TURBOFAN4 = { cabin: 0.5, rumble: 0.9, roar: 0.75, hiss: 0.8, pitch: 0.8, whine: 1.5, whineLo: 716, whineSpan: 1671, blades: 33, n1Rpm: 4340, n2Rpm: 11740, speedDamp: 0.35, windRef: 400, windCab: 0.6 };
+const smoothstep = (a, b, x) => { const u = clamp((x - a) / (b - a), 0, 1); return u * u * (3 - 2 * u); };
 
 export class Audio {
   constructor() { this.ctx = null; this.enabled = true; this.volume = 0.7; this.held = false; this.last = new WeakMap(); this.wreckBus = null; this.route = null;
-    this.voiceOn = true; this.voiceStyle = DEFAULT_VOICE_STYLE; this.voiceBase = '/'; this.voiceClips = {}; this.voiceSrc = null; this.voiceSched = new VoiceScheduler(); this.calloutsOn = true; this.callouts = new AltCallouts(); this.calloutClips = null; this.calloutSrc = null; }
+    this.voiceOn = true; this.voiceStyle = DEFAULT_VOICE_STYLE; this.voiceBase = '/'; this.voiceClips = {}; this.voiceSrc = null; this.voiceSched = new VoiceScheduler(); this.calloutsOn = true; this.callouts = new AltCallouts(); this.calloutClips = null; this.calloutSrc = null; this.cfg = { engines: 2 }; this.il = null; }
+
+  // before init(): the engine count the aircraft needs (2 by default; the Il-76 builds four voices, panned by their position, and its systems layers)
+  configure(cfg) { Object.assign(this.cfg, cfg); }
 
   // ctx: an existing (e.g. offline) context, for tests
   init(ctx) {
@@ -117,19 +125,29 @@ export class Audio {
     };
     this._voice = voice;
 
-    this.eng = [-0.22, 0.22].map((pan) => {
+    const four = this.cfg.engines === 4;
+    this.eng = (four ? [-0.6, -0.22, 0.22, 0.6] : [-0.22, 0.22]).map((pan) => {
       const out = C.createStereoPanner(); out.pan.value = pan; out.connect(this.mix);
       const e = {
         rumble: voice(this.brown, 'bandpass', 140, 0.45, out, 0.25, true),
         roar: voice(this.pink, 'bandpass', 600, 0.6, out, 0.2, true),
         hiss: voice(this.white, 'highpass', 3000, 0.5, out, 0.15, true),
+      };
+      // afterburner layers: only the engines that have one
+      if (!four) Object.assign(e, {
         abLow: voice(this.brown, 'bandpass', 95, 0.6, out, 0.45, true),
         abMid: voice(this.grit, 'bandpass', 300, 0.7, out, 0.3, true),
         abHigh: voice(this.pink, 'bandpass', 1250, 0.6, out, 0.25, true),
         crack: voice(this.crackle, 'highpass', 500, 0.7, out, 0, true),
-      };
+      });
+      if (four) {
+        // buzz-saw: the shock-borne tones of supersonic fan tips (shaft rate and its harmonics); core: the high-pressure spool's whine at 4 x N2
+        const bo = C.createOscillator(); bo.type = 'sawtooth'; bo.frequency.value = 100; const bf = filt('bandpass', 400, 1.1), bg = gain(0); bo.connect(bf); bf.connect(bg); bg.connect(out); bo.start();
+        const co = C.createOscillator(); co.type = 'triangle'; co.frequency.value = 500; const cf = filt('lowpass', 3000, 0.7), cg = gain(0); co.connect(cf); cf.connect(cg); cg.connect(out); co.start();
+        e.buzz = { o: bo, fl: bf, g: bg }; e.core = { o: co, fl: cf, g: cg };
+      }
       // compressor whine: the blade-pass tone and two upper partials, slightly detuned so two engines beat
-      const detune = rnd(0.985, 1.015);
+      const detune = four ? rnd(0.98, 1.02) : rnd(0.985, 1.015); // four engines never run at exactly one speed: wider beating
       const oscs = [[1, 'sine', 1], [2.003, 'sine', 0.45], [3.01, 'triangle', 0.22]].map(([m, type, a]) => {
         const o = C.createOscillator(); o.type = type; o.frequency.value = 2000; const og = gain(a); o.connect(og); o.start(); return { o, og, m };
       });
@@ -154,6 +172,12 @@ export class Audio {
     this.rainBand = voice(this.pink, 'bandpass', 4300, 0.6, this.mix, 0.25);
     this.rainPatter = voice(this.pink, 'bandpass', 2300, 1.1, this.mix, 0.55);
     const hum = C.createOscillator(); hum.type = 'sine'; hum.frequency.value = 400; this.humGain = gain(0); hum.connect(this.humGain); this.humGain.connect(this.mix); hum.start();
+
+    // the Il-76's own layers: APU whine on the ground, the low boom of the big hold, spoiler / brake-panel buffet
+    if (four) {
+      const ao = C.createOscillator(); ao.type = 'triangle'; ao.frequency.value = 1180; const af = filt('bandpass', 1500, 0.9), ag = gain(0); ao.connect(af); af.connect(ag); ag.connect(this.mix); ao.start();
+      this.il = { apu: { o: ao, g: ag }, apuHiss: voice(this.pink, 'bandpass', 2600, 0.8, this.mix), hold: voice(this.brown, 'lowpass', 150, 0.6, this.mix, 0.2), buffet: voice(this.brown, 'bandpass', 110, 0.8, this.mix, 0.5) };
+    }
 
     // hydraulics: pump tone with motor noise
     const pump = C.createOscillator(); pump.type = 'sawtooth'; pump.frequency.value = 150;
@@ -348,6 +372,29 @@ export class Audio {
         this.burst(0.5 * hard + 0.25, 1500, 0.2 * hard, { type: 'bandpass', q: 9, f1: 1000, buf: this.white, attack: 0.03 });
         this.burst(0.7, 2600, 0.12 * hard, { type: 'bandpass', q: 1.2, buf: this.pink, attack: 0.04 }); break;
       }
+      case 'touch-bogies': {
+        // twenty wheels: the four main bogies hit a fraction of a second apart (rear pair of each side a little later), then the nose gear; one long squeal and a rubbery puff
+        const hard = clamp(k, 0.1, 1.6);
+        [0, 0.05, 0.09, 0.14, 0.6].forEach((d, i) => { const nose = i === 4, lvl = hard * (nose ? 0.7 : 1); this.tone(nose ? 96 : 72 - i * 3, 0.36, 0.42 * lvl, { f1: 38, delay: d }); this.burst(0.22, nose ? 460 : 320, 0.4 * lvl, { type: 'lowpass', buf: this.brown, delay: d }); this.modal(nose ? 120 : 90, 0.3 * lvl, 0.18, d + 0.01); });
+        this.burst(0.9 * hard + 0.4, 1500, 0.3 * hard, { type: 'bandpass', q: 9, f1: 950, buf: this.white, attack: 0.03 });
+        this.burst(1.1, 2400, 0.16 * hard, { type: 'bandpass', q: 1.2, buf: this.pink, attack: 0.05 }); break;
+      }
+      case 'reverser-deploy':
+        // the actuators' whine, then the sleeves hitting their stops: two bangs a beat apart
+        this.tone(210, 0.7, 0.16 * k, { type: 'sawtooth', f1: 340 }); this.burst(0.7, 900, 0.2 * k, { type: 'bandpass', q: 0.8, buf: this.pink, attack: 0.05 });
+        this.modal(130, 0.5 * k, 0.2, 0.62); this.modal(170, 0.4 * k, 0.16, 0.72); this.tone(56, 0.3, 0.5 * k, { f1: 36, delay: 0.62 }); break;
+      case 'reverser-stow':
+        this.tone(340, 0.6, 0.14 * k, { type: 'sawtooth', f1: 200 }); this.burst(0.6, 800, 0.16 * k, { type: 'bandpass', q: 0.8, buf: this.pink, attack: 0.05 }); this.modal(120, 0.42 * k, 0.18, 0.55); this.tone(52, 0.26, 0.4 * k, { f1: 34, delay: 0.55 }); break;
+      case 'spoiler':
+        // k < 0: the panels lift (a whoosh as the air catches them); k >= 0: they drop back with a thud
+        if (k < 0) { this.burst(0.5, 700, 0.3, { type: 'bandpass', q: 0.7, buf: this.pink, attack: 0.08 }); this.tone(64, 0.3, 0.3, { f1: 40, delay: 0.3 }); }
+        else { this.modal(150, 0.3, 0.12); this.burst(0.25, 500, 0.2, { type: 'bandpass', buf: this.pink }); this.tone(58, 0.22, 0.3, { f1: 36 }); } break;
+      case 'cargo-clunk':
+        // the hatch reaching a stop: ramp, clamshell doors or upper door seating; k < 0 fully open, k >= 0 closed and locked (a heavier double clunk)
+        if (k < 0) { this.modal(95, 0.5, 0.3); this.tone(46, 0.4, 0.6, { f1: 30 }); this.burst(0.3, 400, 0.25, { type: 'lowpass', buf: this.brown }); }
+        else { this.modal(110, 0.5, 0.26); this.modal(160, 0.34, 0.18, 0.18); this.tone(50, 0.35, 0.55, { f1: 32 }); this.tone(62, 0.3, 0.4, { f1: 40, delay: 0.18 }); } break;
+      case 'flap-clunk':
+        this.modal(240, 0.18 * k, 0.09); this.burst(0.15, 600, 0.12 * k, { type: 'bandpass', buf: this.pink }); break;
       case 'ab-light':
         this.tone(78, 1.0, 1.1 * k, { f1: 30, attack: 0.02 }); this.burst(1.2, 700, 1.0 * k, { type: 'lowpass', buf: this.brown, f1: 90, attack: 0.04 });
         this.burst(0.18, 1800, 0.35 * k, { type: 'bandpass', buf: this.crackle, delay: 0.03 }); break;
@@ -468,25 +515,39 @@ export class Audio {
     const jet = s.piston ? 0 : 1; // the Skyhawk: jet voices silent, the piston voice below instead
     if (s.piston) this._pistonUpdate(s.piston, s, set, near, dens, dop, ext);
     // the Vision Jet: one small aft-mounted turbofan (pass it alone in s.engines): lighter rumble, a higher and louder fan whine, quieter behind the cabin wall
-    const F = s.fan ? FAN : NO_FAN;
+    const F = s.profile === 'turbofan4' ? TURBOFAN4 : s.fan ? FAN : NO_FAN, jv = F.speedDamp ? 1 - F.speedDamp * clamp(s.ias / 300, 0, 1) : 1;
+    let thrAvg = 0;
     s.engines.forEach((e, i) => {
+      const E = this.eng[i]; if (!E) return; // an aircraft with more engines than voices built (configure() before init()) plays the first ones
       const n = s.crashed ? 0 : e.dry, ab = s.crashed ? 0 : e.ab, un = e.unstart > 0 ? 0.35 : 1;
-      const E = this.eng[i], base = near * silent * dens * un * jet * (ext ? 1 : F.cabin), p = clamp(n, 0, 1);
-      level(E.rumble, (0.04 + 0.3 * p) * base * rear * F.rumble, (110 + 260 * p) * dop * F.pitch);
-      level(E.roar, (0.012 + 0.2 * Math.pow(p, 1.3)) * base * (0.6 + 0.4 * rear) * F.roar, (340 + 1200 * p) * dop * F.pitch);
-      level(E.hiss, (0.008 + 0.075 * Math.pow(p, 2.2)) * base * rear * (ext ? 1 : 0.25) * F.hiss, 2400 + 1800 * p);
-      level(E.abLow, 0.5 * ab * base * rear, 80 + 40 * ab);
-      level(E.abMid, 0.62 * ab * base * rear, 260 + 360 * ab);
-      level(E.abHigh, 0.26 * ab * base * rear * (ext ? 1 : 0.4), 1000 + 600 * ab);
-      level(E.crack, 0.5 * ab * base * rear * (ext ? 1 : 0.35));
+      const base = near * silent * dens * un * jet * jv * (ext ? 1 : F.cabin), p = clamp(n, 0, 1);
+      // thrust reverser out (Il-76): the forward-angled cascade exhaust is a louder, lower, rougher roar, heard best from ahead
+      const rv = e.rev > 0.5 && !s.crashed ? clamp(e.revPow ?? p, 0, 1) : 0, rvk = 1 + 0.9 * rv, rvf = 1 - 0.25 * rv, rvAhead = rv ? 0.7 + 0.3 * front : 1;
+      thrAvg += p / s.engines.length;
+      level(E.rumble, (0.04 + 0.3 * p) * base * rear * F.rumble * (1 + 0.5 * rv), (110 + 260 * p) * dop * F.pitch * rvf);
+      level(E.roar, (0.012 + 0.2 * Math.pow(p, 1.3)) * base * (0.6 + 0.4 * rear) * F.roar * rvk * rvAhead, (340 + 1200 * p) * dop * F.pitch * rvf);
+      level(E.hiss, (0.008 + 0.075 * Math.pow(p, 2.2)) * base * rear * (ext ? 1 : 0.25) * F.hiss * rvk * rvAhead, 2400 + 1800 * p);
+      if (E.abLow) {
+        level(E.abLow, 0.5 * ab * base * rear, 80 + 40 * ab);
+        level(E.abMid, 0.62 * ab * base * rear, 260 + 360 * ab);
+        level(E.abHigh, 0.26 * ab * base * rear * (ext ? 1 : 0.4), 1000 + 600 * ab);
+        level(E.crack, 0.5 * ab * base * rear * (ext ? 1 : 0.35));
+      }
       const f = (F.whineLo + F.whineSpan * p) * dop * E.whine.detune;
       E.whine.oscs.forEach((x) => set(x.o.frequency, f * x.m, 0.08));
       set(E.whine.wf.frequency, ext ? 7000 : 3500);
-      set(E.whine.g.gain, 0.016 * F.whine * Math.pow(p, 0.8) * near * silent * front * un * jet * (ext ? 1 : F.cabin));
+      set(E.whine.g.gain, 0.016 * F.whine * Math.pow(p, 0.8) * near * silent * front * un * jet * (ext ? 1 : F.cabin) * (1 - 0.6 * rv));
+      if (E.buzz) {
+        // shaft rate (N1 30 % at idle): the buzz-saw rides on its harmonics above ~85 % N1, strongest from ahead and in the cabin; the core spool's whine is at 4 x N2
+        const shaft = F.n1Rpm / 60 * (0.3 + 0.7 * p) * E.whine.detune, n2 = F.n2Rpm / 60 * (0.6 + 0.4 * p) * E.whine.detune;
+        set(E.buzz.o.frequency, shaft * 2 * dop, 0.08); set(E.buzz.fl.frequency, shaft * 6 * dop, 0.1);
+        set(E.buzz.g.gain, 0.05 * smoothstep(0.8, 1, p) * near * silent * front * un * (ext ? 1 : 0.9) * (1 - rv));
+        set(E.core.o.frequency, n2 * 4 * dop, 0.08); set(E.core.g.gain, 0.006 * (0.3 + 0.7 * p) * near * silent * un * (ext ? 0.7 : F.cabin * 1.2));
+      }
     });
 
-    const w = clamp(s.ias / 250, 0, 1.6), cab = s.cockpit ? 1 : 0;
-    level(this.wind, 0.2 * w * w * (cab ? 0.95 : 0.22) * dens, 380 + 1500 * w);
+    const w = clamp(s.ias / (F.windRef || 250), 0, 1.6), cab = s.cockpit ? 1 : 0;
+    level(this.wind, 0.2 * w * w * (cab ? 0.95 * (F.windCab || 1) : 0.22) * dens, 380 + 1500 * w);
     set(this.windHi.g.gain, 0.03 * w * w * (cab ? 1 : 0.1)); set(this.windHi.fl.frequency, 4200 + 1500 * w);
     this.whistle.forEach((x, i) => { set(x.g.gain, cab ? 0.004 * Math.pow(w, 3) * (i ? 0.7 : 1) : 0); set(x.o.frequency, x.f * (0.92 + 0.12 * w), 0.3); });
     const ground = s.onGround ? clamp(s.gs / 60, 0, 1) : 0;
@@ -502,12 +563,19 @@ export class Audio {
       set(this.breath.g.gain, live * env * 0.16, 0.03); set(this.breath.fl.frequency, inh > 0 ? 1300 : 700, 0.08);
     }
 
-    // hydraulics: the pump climbs in pitch with load while the gear is moving
-    const moving = s.gearMoving ? 1 : 0, hv = moving * (cab ? 0.05 : 0.012 * near / 0.5);
+    // hydraulics: the pump climbs in pitch with load while the gear (or, on the Il-76, a flap / slat, the cargo hatch or a reverser) is moving
+    const moving = s.gearMoving || s.flapMoving || s.cargoMoving || s.revMoving ? 1 : 0, hv = moving * (cab ? 0.05 : 0.012 * near / 0.5);
     set(this.hyd.pumpG.gain, hv, 0.18); set(this.hyd.pump2G.gain, hv * 0.35, 0.18);
-    set(this.hyd.pump.frequency, 140 + 55 * Math.sin(t * 0.9) * moving + (s.gearMoving ? 30 : 0), 0.3);
+    set(this.hyd.pump.frequency, 140 + 55 * Math.sin(t * 0.9) * moving + (s.gearMoving ? 30 : 0) + (s.flapMoving ? 70 : 0) - (s.cargoMoving ? 40 : 0), 0.3);
     set(this.hyd.pump2.frequency, 420 + 90 * Math.sin(t * 0.9 + 1) * moving, 0.3);
     set(this.hyd.noise.g.gain, moving * (cab ? 0.012 : 0.004 * near), 0.2);
+    // Il-76 layers: APU whine while parked or taxiing, the hold's low boom with thrust and airspeed, buffet from the spoilers and brake panels
+    if (this.il) {
+      const I = this.il, apu = s.apu && !s.crashed ? 1 : 0, boom = (0.25 + 0.75 * thrAvg) * (0.3 + 0.7 * w), buf = clamp(s.spoilers || 0, 0, 1) * clamp(s.ias / 150, 0, 1.2);
+      set(I.apu.g.gain, apu * (cab ? 0.014 : 0.004 * near), 0.4); set(I.apu.o.frequency, 1180 * dop, 0.2); set(I.apuHiss.g.gain, apu * (cab ? 0.012 : 0.004 * near), 0.4);
+      level(I.hold, !s.crashed && cab ? 0.16 * boom : 0, 90 + 70 * thrAvg);
+      level(I.buffet, !s.crashed ? buf * (cab ? 0.16 : 0.04 * near) : 0, 80 + 50 * buf);
+    }
 
     const rn = clamp(s.rain || 0, 0, 1);
     set(this.rainHiss.g.gain, rn * (cab ? 0.014 : 0.03)); set(this.rainBand.g.gain, rn * (cab ? 0.02 : 0.04)); mod(this.rainBand, rn * 0.04);
@@ -526,6 +594,8 @@ export class Audio {
     let on = 0, f = 880;
     if (warn === 1) { on = Math.floor(now / 110) % 2 === 0 ? 1 : 0; f = 1180; }
     else if (warn === 2) { const ph = (now % 760) / 760; on = ph < 0.62 ? 1 : 0; f = 520 + 640 * Math.min(1, ph / 0.62); }
+    else if (warn === 3) { on = (now % 700) < 380 ? 1 : 0; f = 740; }                                  // configuration horn (gear not down on approach): two beeps a second
+    else if (warn === 4) { on = Math.floor(now / 62) % 2 === 0 ? 1 : 0; f = 1000; }                     // overspeed clacker
     // spoken call-outs: the tones step aside while a phrase plays, so it is heard as "whoop whoop, PULL UP"
     if (s.crashed || !this.voiceOn) { if (this.voiceSrc || this.voiceSched.playing) this._stopVoice(); }
     else if (!s.paused) {

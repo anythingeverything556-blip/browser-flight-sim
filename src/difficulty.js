@@ -40,6 +40,12 @@ export const LANDING = {
     medium: { sinkMax: 6, sinkBottom: 4.5, scrapeVs: 2.5 },
     realistic: { sinkMax: 4.5, sinkBottom: 3, scrapeVs: 1.5 },
   },
+  // Il-76: the 3.05 m/s (10 ft/s) design sink at landing weight plus the usual reserve is 3.7; the easier modes are guesses
+  il76: {
+    easy: { sinkMax: 6, sinkBottom: 4.8, scrapeVs: 2.8 },
+    medium: { sinkMax: 4.8, sinkBottom: 3.8, scrapeVs: 1.9 },
+    realistic: { sinkMax: 3.7, sinkBottom: 2.8, scrapeVs: 1.2 },
+  },
 };
 export const landingLimits = (aircraft, mode) => ({ ...(LANDING[aircraft] || LANDING.sr71)[modeOf(mode)] });
 

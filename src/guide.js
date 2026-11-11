@@ -2,8 +2,8 @@
 // completes when the jet does the thing, and the whole guide can be skipped or quit at any time. Never touches the controls.
 const K = (l, c, cls = '') => ({ l, c: [].concat(c), cls });
 const STEPS = [
-  { id: 'throttle', title: 'Add power', text: 'The engines need about 8 seconds to spool and light the afterburners. Hold B (brakes), push the throttle with Shift or E (Q pulls it back) or drag the lever, then release B.',
-    pads: [{ rows: [[K('Shift', ['ShiftLeft', 'ShiftRight'], 'wide'), K('Q', 'KeyQ')]], cap: 'throttle up · down' }, { rows: [[K('B', 'KeyB'), K('9', 'Digit9'), K('0', 'Digit0')]], cap: 'brakes · full A/B · idle' }],
+  { id: 'throttle', title: 'Add power', text: 'The engines need about 8 seconds to spool and light the afterburners. Hold B (brakes), push the throttle with E (Q pulls it back) or drag the lever, then release B.',
+    pads: [{ rows: [[K('E', 'KeyE'), K('Q', 'KeyQ')]], cap: 'throttle up · down' }, { rows: [[K('B', 'KeyB'), K('9', 'Digit9'), K('0', 'Digit0')]], cap: 'brakes · full A/B · idle' }],
     live: (c) => `Throttle ${Math.round(c.throttle * 100)}%`, done: (c) => c.throttle > 0.7 },
   { id: 'steer', title: 'Keep it straight', text: 'The jet is rolling. On the ground A and D steer the nose wheel, so tap them gently to stay on the centre line.',
     pads: [{ rows: [[K('A', 'KeyA'), K('D', 'KeyD')]], cap: 'steer left · right' }],

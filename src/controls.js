@@ -19,18 +19,31 @@ export const KEY_ACTIONS = [
   { id: 'rollSteerRight', label: 'Roll right in the air · steer right on the ground', group: 'Flight controls', hold: true, keys: ['KeyD'] },
   { id: 'yawLeft', label: 'Rudder left (nose-wheel steering)', group: 'Flight controls', hold: true, keys: ['KeyZ', 'Comma'] },
   { id: 'yawRight', label: 'Rudder right (nose-wheel steering)', group: 'Flight controls', hold: true, keys: ['KeyX', 'Period'] },
+  { id: 'rudderLeftStep', label: 'Rudder setting 5 % more left (stays until changed)', group: 'Flight controls', keys: ['Numpad4'] },
+  { id: 'rudderRightStep', label: 'Rudder setting 5 % more right (stays until changed)', group: 'Flight controls', keys: ['Numpad6'] },
+  { id: 'rudderCentre', label: 'Rudder setting back to centre', group: 'Flight controls', keys: ['Numpad5'] },
   { id: 'trimDown', label: 'Pitch trim nose down', group: 'Flight controls', hold: true, keys: ['Semicolon'] },
   { id: 'trimUp', label: 'Pitch trim nose up', group: 'Flight controls', hold: true, keys: ['Quote'] },
-  { id: 'throttleUp', label: 'Throttle up (hold)', group: 'Engine', hold: true, keys: ['Shift', 'KeyE', 'PageUp', 'Equal', 'NumpadAdd', 'BracketRight'] },
+  { id: 'throttleUp', label: 'Throttle up (hold)', group: 'Engine', hold: true, keys: ['KeyE', 'PageUp', 'Equal', 'NumpadAdd', 'BracketRight'] },
   { id: 'throttleDown', label: 'Throttle down (hold)', group: 'Engine', hold: true, keys: ['KeyQ', 'PageDown', 'Minus', 'NumpadSubtract', 'BracketLeft'] },
   { id: 'idle', label: 'Throttle to idle', group: 'Engine', keys: ['Digit0'] },
+  { id: 'engine1', label: 'Select engine 1: the throttle keys then move its lever alone (again = all engines)', group: 'Engine', keys: ['Shift+Digit1'] },
+  { id: 'engine2', label: 'Select engine 2', group: 'Engine', keys: ['Shift+Digit2'] },
+  { id: 'engine3', label: 'Select engine 3 (four-engine aircraft)', group: 'Engine', keys: ['Shift+Digit3'] },
+  { id: 'engine4', label: 'Select engine 4 (four-engine aircraft)', group: 'Engine', keys: ['Shift+Digit4'] },
+  { id: 'engineAll', label: 'Select all engines and bring the levers together', group: 'Engine', keys: ['Shift+Digit0'] },
   { id: 'fullAB', label: 'Full power (SR-71: max afterburner)', group: 'Engine', keys: ['Digit9'] },
   { id: 'brakes', label: 'Wheel brakes (hold)', group: 'Ground and gear', hold: true, keys: ['KeyB', 'Space'] },
   { id: 'parkingBrake', label: 'Parking brake', group: 'Ground and gear', keys: ['Shift+KeyB'] },
-  { id: 'gear', label: 'Landing gear (Skyhawk: tail wheel; Vision Jet: retractable)', group: 'Ground and gear', keys: ['KeyG'] },
-  { id: 'flapsDown', label: 'Flaps down a notch, then back to 0 (Skyhawk, Vision Jet)', group: 'Ground and gear', keys: ['KeyF'] },
-  { id: 'doors', label: 'Cabin door open / close, on the ground (Vision Jet)', group: 'Ground and gear', keys: ['Shift+KeyN'] },
-  { id: 'flapsUp', label: 'Flaps up a notch (Skyhawk, Vision Jet)', group: 'Ground and gear', keys: ['Shift+KeyF'] },
+  { id: 'autobrake', label: 'Autobrake: off / low / medium / max', group: 'Ground and gear', keys: ['Digit6'] },
+  { id: 'gear', label: 'Landing gear (Skyhawk: tail wheel; Vision Jet, Il-76: retractable)', group: 'Ground and gear', keys: ['KeyG'] },
+  { id: 'flapsDown', label: 'Flaps down a notch, then back to 0 (Skyhawk, Vision Jet; Il-76: slats and flaps)', group: 'Ground and gear', keys: ['KeyF'] },
+  { id: 'doors', label: 'Cabin door open / close, on the ground (Vision Jet); crew doors (Il-76)', group: 'Ground and gear', keys: ['Shift+KeyN'] },
+  { id: 'spoilers', label: 'Spoilers and brake panels out / in (Il-76; deploy on touchdown by themselves in Medium and Easy)', group: 'Ground and gear', keys: ['Digit2'] },
+  { id: 'reverse', label: 'Thrust reverse out / stowed, on the ground only; the thrust lever then sets the reverse power (Il-76)', group: 'Ground and gear', keys: ['Digit3'] },
+  { id: 'cargo', label: 'Cargo hatch: clamshell doors, ramp and upper door open / close (Il-76)', group: 'Ground and gear', keys: ['Digit4'] },
+  { id: 'paratroop', label: 'Paratroop doors open / close (Il-76)', group: 'Ground and gear', keys: ['Digit5'] },
+  { id: 'flapsUp', label: 'Flaps up a notch (Skyhawk, Vision Jet, Il-76)', group: 'Ground and gear', keys: ['Shift+KeyF'] },
   { id: 'chute', label: 'Drag chute (SR-71)', group: 'Ground and gear', keys: ['KeyC'] },
   { id: 'autopilot', label: 'Autopilot on / off', group: 'Autopilot and aids', keys: ['KeyK'] },
   { id: 'recover', label: 'Recover from an unusual attitude', group: 'Autopilot and aids', keys: ['KeyU'] },
@@ -61,7 +74,7 @@ export const DEFAULT_KEYS = Object.fromEntries(KEY_ACTIONS.map((a) => [a.id, [..
 export const RESERVED_KEYS = new Set(['Escape', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'ContextMenu', 'Tab', 'CapsLock']);
 // the full table from saved overrides (only actions the player changed are saved)
 export function resolveKeys(over) {
-  const out = {}; for (const a of KEY_ACTIONS) out[a.id] = Array.isArray(over && over[a.id]) ? over[a.id].filter((k) => typeof k === 'string') : [...a.keys];
+  const out = {}; for (const a of KEY_ACTIONS) out[a.id] = Array.isArray(over && over[a.id]) ? over[a.id].filter((k) => typeof k === 'string' && !(a.id === 'throttleUp' && k === 'Shift')) : [...a.keys]; // Shift alone is no longer a throttle key: it got in the way of the Shift chords
   return out;
 }
 export function keyOverrides(table) {
@@ -94,6 +107,7 @@ class Controls {
   constructor() {
     ((this.keys = new Set()),
       (this.axes = { pitch: 0, roll: 0, yaw: 0 }),
+      (this.yawKey = 0), (this.rudderSet = 0), (this.engSel = 0), (this.engTrim = [0, 0, 0, 0]), // rudder keys (eased), the held rudder setting, the selected engine (0 = all) and each engine's lever offset
       (this.throttle = 0),
       (this.touched = !1),
       (this.brake = 0),
@@ -164,7 +178,7 @@ class Controls {
     this.locked && this.releaseAll();
   }
   releaseAll() {
-    this.axes.pitch = this.axes.roll = this.axes.yaw = 0; this.brake = 0; this.manual = false; this.pbChord = false; this.shiftT = 0;
+    this.axes.pitch = this.axes.roll = this.axes.yaw = 0; this.yawKey = 0; this.brake = 0; this.manual = false; this.pbChord = false; this.shiftT = 0;
     this.slew = { fwd: 0, turn: 0, up: 0 }; this.trimUp = this.trimDown = false;
   }
   centerMouse() {
@@ -193,9 +207,9 @@ class Controls {
     const e = this.keys,
       // Exponential smoothing: the stick starts moving the instant a key goes down and eases to full over ~0.35 s. A fast
       // reversal and a quick release keep it from feeling like it lags behind the fingers.
-      n = (d, p, v) => {
+      n = (d, p, v, slow = 1) => {
         const g = (v ? 1 : 0) - (p ? 1 : 0),
-          tau = g ? (Math.sign(g) !== Math.sign(d) && d ? 0.07 : 0.14) : 0.1,
+          tau = g ? (Math.sign(g) !== Math.sign(d) && d ? 0.07 : 0.14) * slow : 0.1,
           out = d + (g - d) * (1 - Math.exp(-t / tau));
         return Math.abs(out) < 0.002 && !g ? 0 : Kr(out, -1, 1);
       },
@@ -214,7 +228,8 @@ class Controls {
       ((this.manual = i || r || a || l),
       (this.axes.pitch = n(this.axes.pitch, i, r)),
       (this.axes.roll = n(this.axes.roll, a, l)),
-      (this.axes.yaw = n(this.axes.yaw, h, u)),
+      (this.yawKey = n(this.yawKey, h, u, 3)), // the rudder comes in over about a second, so a tap is a small input
+      (this.axes.yaw = Kr(this.yawKey + this.rudderSet, -1, 1)),
       this.mouseStick)
     ) {
       const d = (p) => (Math.abs(p) < 0.04 ? 0 : p);
@@ -227,8 +242,10 @@ class Controls {
     // throttle (default Shift / E up, Q down). Not Ctrl: held Ctrl turned W/S/G into browser shortcuts (Ctrl+W closed the tab).
     // B held for the brakes still lets Shift push the throttle (the first guide step); a Shift chord (Shift+B, Shift+V, ?) holds it off
     const thrUp = this.held('throttleUp'), thrDn = this.held('throttleDown');
-    if (thrUp) { this.throttle = Kr(this.throttle + 0.35 * t, 0, 1); this.touched = true; }
-    if (thrDn) { this.throttle = Kr(this.throttle - 0.35 * t, 0, 1); this.touched = true; }
+    const one = this.engSel - 1; // an engine selected: the keys move its lever alone, as an offset from the master lever
+    if (one >= 0 && (thrUp || thrDn)) { this.engTrim[one] = Kr(this.throttle + this.engTrim[one] + (thrUp ? 0.35 : -0.35) * t, 0, 1) - this.throttle; this.touched = true; }
+    else { if (thrUp) { this.throttle = Kr(this.throttle + 0.35 * t, 0, 1); this.touched = true; }
+    if (thrDn) { this.throttle = Kr(this.throttle - 0.35 * t, 0, 1); this.touched = true; } }
     ((this.slewKeys = 0),
       (this.trimUp = this.held('trimUp')),
       (this.trimDown = this.held('trimDown')),

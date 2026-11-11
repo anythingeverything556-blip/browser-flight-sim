@@ -748,7 +748,10 @@ export class AircraftVisual {
     const M = fdm.out.M || 0, rhoRatio = (fdm.out.rho || 1.225) / 1.225;
 
     // elevons: pitch + roll mix, TE up positive; vec4 = (left inner, left outer, right inner, right outer)
-    const de = Math.max(-1, Math.min(1, fdm.surf.de + fdm.trim)) * 18 * D2R, da = fdm.surf.da * 12 * D2R;
+    // visDeExtra (main.js) restores the pilot's un-geared stick for display, so the elevons visibly answer the stick in the air
+    const extra = fdm.crashed ? 0 : fdm.visDeExtra || 0;
+    this.visDe = (this.visDe || 0) + Math.max(-3 * dt, Math.min(3 * dt, extra - (this.visDe || 0)));
+    const de = Math.max(-1, Math.min(1, fdm.surf.de + fdm.trim + this.visDe)) * 18 * D2R, da = fdm.surf.da * 12 * D2R;
     this.uElev.value.set(de - da, de - da * 1.3, de + da, de + da * 1.3);
     // all-moving fins: positive rudder swings the trailing edges right
     // on the ground the pedals steer the nose wheel; the fins only visibly swing once there is airflow over them

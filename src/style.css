@@ -211,6 +211,8 @@ body.idle:not(.sheet-open):not(.intro) #rail:hover, body.idle #rail:focus-within
 .thr .bars { display: flex; height: 28px; align-items: stretch; gap: 4px; margin: 2px 0; }
 .thr .bars i { position: relative; width: 12px; overflow: hidden; border-radius: var(--r-xs); background: var(--surface-3); }
 .thr .bars i::after { content: ""; position: absolute; inset: 0 0 75% 0; background: rgba(242, 184, 75, 0.2); }
+.thr .bars.four i { width: 9px; }
+.thr .bars.four i::after { display: none; }
 .thr .bars em { position: absolute; right: 0; bottom: 0; left: 0; height: 0; background: var(--accent); transition: height 90ms linear; }
 .pills { display: grid; grid-template-columns: repeat(3, auto); align-content: center; gap: 4px; padding: 8px 12px; }
 .pill { min-width: 56px; padding: 4px 8px; border-radius: var(--r-xs); background: var(--surface-2); color: var(--faint); font: 500 12px var(--mono); text-align: center; }
@@ -244,8 +246,8 @@ body.intro #hero { position: fixed; z-index: 3; top: clamp(32px, 9vh, 88px); lef
 body.intro #hero-ac:not(:empty) { position: fixed; z-index: 3; bottom: 56px; left: clamp(24px, 5vw, 80px); display: block;
   width: min(760px, calc(100vw - min(440px, calc(100vw - 32px)) - clamp(16px, 3vw, 44px) - clamp(24px, 5vw, 80px) - 40px)); }
 #hero-ac .lbl { margin: 0 0 8px; color: var(--text); text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
-#hero-ac .ac-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
-#hero-ac .ac-card { grid-template-columns: minmax(0, 1fr); grid-template-areas: "icon" "name" "specs"; align-content: start; align-items: start; gap: 8px; padding: 16px;
+#hero-ac .ac-cards { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+#hero-ac .ac-card { grid-template-columns: minmax(0, 1fr); grid-template-areas: "icon" "name" "specs"; align-content: start; align-items: start; gap: 8px; padding: 14px;
   border: 1px solid var(--line); background: var(--surface); box-shadow: var(--shadow); }
 #hero-ac .ac-card:hover { background: var(--surface-2); }
 #hero-ac .ac-card.on { border-color: var(--accent); background: var(--surface-2); }

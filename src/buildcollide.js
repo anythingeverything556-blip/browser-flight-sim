@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { HARD, CG_MODEL } from './flight.js';
 import { C172_HARD, C172_CG, C172_GEAR } from './c172.js';
 import { SF50_HARD, SF50_CG, SF50_GEAR } from './sf50.js';
+import { IL76_HARD, IL76_CG, IL76_GEAR } from './il76.js';
 
 // airframe points that must never touch a building: the 13 ground-contact hard points plus mid-wing and wing-root points the wings sweep through
 const EXTRA = [[-6, 2.0, -4.5], [-6, 2.0, 4.5], [-2, 2.0, -2.5], [-2, 2.0, 2.5]].map(([x, y, z]) => new THREE.Vector3(x - CG_MODEL.x, y - CG_MODEL.y, z - CG_MODEL.z));
@@ -22,6 +23,11 @@ const SF50_EXTRA = [[0.6, 1.3, -3.0], [0.6, 1.3, 3.0], [1.2, 1.4, -1.2], [1.2, 1
   .map(([x, y, z]) => new THREE.Vector3(x - SF50_CG.x, y - SF50_CG.y, z - SF50_CG.z));
 export const SF50_COLLIDE_POINTS = [...SF50_HARD.map((h) => h[1]), ...SF50_GEAR.map((g) => g.p), ...SF50_EXTRA];
 export const SF50_PAD = 0.4;
+// Il-76: its 13 hard points, the five gear units, the high wing's mid-span and root points and the tail
+const IL76_EXTRA = [[-6, 4.9, -12], [-6, 4.9, 12], [-4, 5.2, -4], [-4, 5.2, 4], [10, 6.0, 0], [-10, 6.5, 0]]
+  .map(([x, y, z]) => new THREE.Vector3(x - IL76_CG.x, y - IL76_CG.y, z - IL76_CG.z));
+export const IL76_COLLIDE_POINTS = [...IL76_HARD.map((h) => h[1]), ...IL76_GEAR.map((g) => g.p), ...IL76_EXTRA];
+export const IL76_PAD = 1.2;
 
 export function buildingBoxes(tile) {
   const pos = tile.mesh.geometry.attributes.position, arr = pos.array, ver = pos.version ?? 0;

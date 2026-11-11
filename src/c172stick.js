@@ -13,6 +13,10 @@ export const C172_STICK = {
 // Vision Jet: stalls at 84 KIAS and flies to 250, so full authority holds a little longer; the floor still reaches the +3.6 g limit near VMO without breaking the airframe
 export const SF50_STICK = { ...C172_STICK, FULL_KIAS: 95, MIN_AUTH: 0.24 };
 
+// Il-76: the same elevator, scheduled against speed (full authority to its approach speed, a fifth of it at VMO), but a slow, heavy pitch response
+// and a gentler roll slew; the full-pull floor stays below the +2 g limit.
+export const IL76_STICK = { ...C172_STICK, FULL_KIAS: 150, MIN_AUTH: 0.22, PITCH_EXP: 1.3, PITCH_SLEW: 1.2, ROLL_EXP: 1.3, ROLL_SLEW: 2 };
+
 const shape = (v, e) => Math.sign(v) * Math.pow(Math.min(1, Math.abs(v)), e);
 const slew = (cur, target, rate, dt) => cur + Math.max(-rate * dt, Math.min(rate * dt, target - cur));
 

@@ -16,6 +16,11 @@ export const AIRCRAFT_TYPES = {
     blurb: 'Seven-seat single-engine personal jet. One Williams FJ33-5A turbofan, V-tail, retractable gear, flaps 0-15-39°, Perspective Touch+ flight displays.',
     stats: [['Cruise', '311-317 KTAS'], ['Ceiling', 'FL310'], ['Seats', '7 · 1 × FJ33-5A']],
   },
+  il76: {
+    id: 'il76', name: 'Ilyushin Il-76MD-90A', short: 'Il-76', model: 'IL76_v6.glb',
+    blurb: 'Four-engine heavy military transport. Four PS-90A-76 turbofans, slats and double-slotted flaps, spoilers, thrust reversers, 20-wheel gear and a rear cargo ramp.',
+    stats: [['Cruise', '770 km/h'], ['Payload', '60 t'], ['Ceiling', '12,200 m']],
+  },
 };
 export function aircraftChoice(settings, search = '') {
   let q = null; try { q = new URLSearchParams(search).get('aircraft'); } catch { /* no URL */ }
