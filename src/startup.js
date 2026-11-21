@@ -1,3 +1,4 @@
+import { diagnostics } from './telemetry.js';
 // Imagery is optional; aircraft/airport assets are not. Do not leave either on an indefinite loader.
 export const IMAGERY_DEADLINE_MS = 12000;
 export function withAssetDeadline(promise, ms = 30000) {
@@ -5,6 +6,7 @@ export function withAssetDeadline(promise, ms = 30000) {
   return Promise.race([promise, new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('Asset loading timed out')), ms); })]).finally(() => clearTimeout(timer));
 }
 export function showStartupError(text) {
+  diagnostics.record('load_failure', 'startup');
   const el = document.getElementById('loadmsg');
   if (el) { el.textContent = text; el.classList.add('err'); }
   document.querySelectorAll('#start-btn, #home-go').forEach(b => { b.disabled = true; });

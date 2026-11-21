@@ -4,6 +4,8 @@
 
 Local only, based on P1 `d085612656ca991f5f102e30879d10cfa4a705b4`; no push/deploy/PR/ZIP. Evidence under `/home/earthwing-evidence/p2/`.
 
+- **20 — Fixed (local diagnostics only):** bounded in-memory allowlisted events for all six funnel milestones, errors/rejections and Three shader/program failures; console diagnostics preserved/chained. No provider/origin/consent assumed, no transport/storage/URLs/stacks/messages/IDs or third-party egress added. Provider or none remains owner decision; pre-existing hosting analytics remains separately owner-controlled. Full checks `20-test.log`, `20-build.log`; actual Chrome event/error/mobile evidence recorded with smoke.
+
 - **19 — Fixed:** deterministic explicit manifest preserves all original 100 scripts plus P2 checks, including terrain-bench; no shell chaining/early exit. Per-child 120 s / 2 MiB limits, all-result table and aggregate nonzero failure. Controlled temporary exit-7 and timeout fixtures prove a later script still executes. No retries or masking of stochastic failures. Full checks `19-test.log`, `19-build.log`, `19-results.json`; original manifest comparison `runner-preservation.json`.
 
 - **18 — Fixed (repository workflow; hosted run pending):** push/PR CI uses clean npm ci/test/build, supported Node 24 LTS, read-only permissions and maintained official checkout/setup-node v6 pinned to upstream tag SHAs resolved via read-only `git ls-remote`. No secrets or deployment. Local `npm ci`, full checks `18-ci.log`, `18-test.log`, `18-build.log`; no push or Actions execution claimed.

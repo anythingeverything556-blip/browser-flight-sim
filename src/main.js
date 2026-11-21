@@ -1,3 +1,4 @@
+import { diagnostics, installShaderDiagnostics } from './telemetry.js';
 import { FlightLogbook } from './logbook.js';
 import { mountTouchControls } from './touchcontrols.js';
 import { IMAGERY_DEADLINE_MS, showStartupError, withAssetDeadline } from './startup.js';
@@ -102,6 +103,7 @@ const wantRevDepth = (() => {
   } catch { return false; }
 })();
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: (LS.get('settings', {}) || {}).gfx === 'low', logarithmicDepthBuffer: !wantRevDepth, reversedDepthBuffer: wantRevDepth, powerPreference: 'high-performance' });
+installShaderDiagnostics(renderer);
 const REV_DEPTH = isReversed(renderer);
 renderer.setSize(innerWidth, innerHeight, false);
 setPanelHardware({ maxTextureSize: renderer.capabilities.maxTextureSize, maxAnisotropy: renderer.capabilities.getMaxAnisotropy() });
@@ -742,7 +744,7 @@ function updateLoadUi(now) {
     if (now - loadUi.tip > 4500) { loadUi.tip = now; $('ls-tip').textContent = LS_TIPS[(Math.random() * LS_TIPS.length) | 0]; }
   } else {
     loadUi.since = 0;
-    if (loadUi.shown && !loadUi.done) { loadUi.done = true; loadUi.p = 0; ['aircraft', 'elevation', 'imagery', 'shaders', 'weather'].forEach((n) => lsStep(n, 'done')); $('ls-fill').style.width = '100%'; $('ls-pct').textContent = '100%'; setTimeout(() => lsEl.classList.add('out'), 250); setTimeout(() => { lsEl.hidden = true; loadUi.shown = false; maybeStartGuide(); }, 950); }
+    if (loadUi.shown && !loadUi.done) { diagnostics.record('cockpit_reached', 'flight'); loadUi.done = true; loadUi.p = 0; ['aircraft', 'elevation', 'imagery', 'shaders', 'weather'].forEach((n) => lsStep(n, 'done')); $('ls-fill').style.width = '100%'; $('ls-pct').textContent = '100%'; setTimeout(() => lsEl.classList.add('out'), 250); setTimeout(() => { lsEl.hidden = true; loadUi.shown = false; maybeStartGuide(); }, 950); }
     else if (!loadUi.shown && state.started && !state.guideChecked) maybeStartGuide();
   }
 }
@@ -1877,14 +1879,14 @@ function frame(now) {
   requestAnimationFrame(frame);
   try { frameBody(now); } catch (e) {
     if (!frame.err) { frame.err = e; console.error('frame error', e); }
-    window.__frameErr = String((e && e.stack) || e);
+    diagnostics.record('runtime_error', 'javascript'); window.__frameErr = String((e && e.stack) || e);
   }
 }
 // animation frames stop in a hidden tab, so a world started loading there sat on "loading" forever: keep the loader turning on a timer meanwhile
 const hiddenPump = { id: 0 };
 function syncHiddenPump() {
   clearInterval(hiddenPump.id); hiddenPump.id = 0;
-  if (document.hidden) hiddenPump.id = setInterval(() => { if (!state.pending) return; try { frameBody(performance.now()); } catch (e) { window.__frameErr = String((e && e.stack) || e); } }, 250);
+  if (document.hidden) hiddenPump.id = setInterval(() => { if (!state.pending) return; try { frameBody(performance.now()); } catch (e) { diagnostics.record('runtime_error', 'javascript'); window.__frameErr = String((e && e.stack) || e); } }, 250);
 }
 document.addEventListener('visibilitychange', () => { syncHiddenPump(); holdAudio(); });
 // paused or hidden: the AudioContext suspends and ATC speech stops (both kept running and talking in a background tab)

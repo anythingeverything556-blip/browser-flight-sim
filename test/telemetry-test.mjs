@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { createDiagnostics, diagnostics, installRuntimeDiagnostics, installShaderDiagnostics } from '../src/telemetry.js';
+const d=createDiagnostics(3);
+for(let i=0;i<10;i++)d.record('start_screen_viewed','screen');assert.equal(d.events().length,3);
+d.record('https://private.example','secret');d.record('aircraft_chosen','secret');d.record('__proto__','toString');assert.equal(d.events().length,3);
+const copy=d.events();copy[0].name='changed';assert.equal(d.events()[0].name,'start_screen_viewed');assert.deepEqual(Object.keys(copy[0]),['name','category']);
+const target=new EventTarget();installRuntimeDiagnostics(target);installRuntimeDiagnostics(target);
+const event=new Event('unhandledrejection',{cancelable:true});event.reason={message:'private secret'};target.dispatchEvent(event);assert.equal(event.defaultPrevented,false);assert.deepEqual(diagnostics.events().at(-1),{name:'runtime_error',category:'promise'});
+let chained=0;const renderer={debug:{onShaderError:()=>chained++}};installShaderDiagnostics(renderer);renderer.debug.onShaderError({}, {}, {}, {});assert.equal(chained,1);assert.equal(renderer.debug.checkShaderErrors,true);assert.deepEqual(diagnostics.events().at(-1),{name:'graphics_error',category:'shader'});
+console.log('PASS local diagnostics bound, sanitization, detached snapshots, console/default preservation and shader hook chaining');

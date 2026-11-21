@@ -406,3 +406,20 @@ output; timeout/output overflow is a failure, never a retry or skipped pass.
 The final table reports every outcome and exits nonzero if any failed.
 Set `TEST_REPORT_PATH` to keep machine-readable per-script results.
 The controlled failure/timeout regression runs only temporary test fixtures.
+
+## Local diagnostics, not hosted analytics
+
+`window.__earthwingDebug.events()` returns at most 100 in-memory records with
+only allowlisted `name` and `category` fields. The six funnel milestones are
+start screen viewed, Start clicked (including Just fly), cockpit/flight view
+reached after loading, aircraft chosen, load failure and mobile gate shown.
+Window errors/rejections and Three.js shader/program failures add sanitized
+categories. No URLs, stack traces, messages, identifiers, timestamps, personal
+data, storage or network transport are collected by this module. Console
+diagnostics remain intact. Reloading clears it; no provider is configured.
+
+The owner must choose **none** or an analytics provider, destination/origin and
+consent policy before any remote reporting is implemented. Existing external
+world-data requests are not telemetry. A previously enabled Cloudflare Pages
+beacon is a separate hosting decision: this local change neither enables it nor
+changes the projects; decide whether to disable it on both hosts.

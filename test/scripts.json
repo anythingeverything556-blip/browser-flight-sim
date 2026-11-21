@@ -100,5 +100,6 @@
   "test/il76-visual-test.mjs",
   "test/il76-wiring-test.mjs",
   "test/existing-aircraft-test.mjs",
-  "test/test-runner-test.mjs"
+  "test/test-runner-test.mjs",
+  "test/telemetry-test.mjs"
 ]
