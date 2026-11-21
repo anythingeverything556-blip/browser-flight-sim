@@ -444,5 +444,24 @@ in memory. No production services are contacted by the fixture. It fails on
 **every** console error/page error/request failure and on Three shader/program
 errors; there is no broad network-error/console-error ignore filter. The negative
 control uses an actual invalid GLSL program plus console and thrown page errors,
-and verifies exit 1 with all three categories detected. Raw test errors stay in
+and verifies exit 1 with all three categories detected. The negative wrapper also rejects any unrelated error or missing local asset; it does not treat arbitrary console failures as a successful negative control. Raw test errors stay in
 local test evidence, never in the sanitized telemetry buffer or a remote provider.
+
+## Incremental engineering seams
+
+`sheet-controller.js` owns panel open/close DOM state; `flight-lifecycle.js` owns
+flight activation; `mission-session.js` owns ordered stop/start dispatch.
+Physics and existing keyboard/touch handlers are unchanged. This is **partial**
+extraction: `main.js` still owns terrain/spawn settlement, crash/restart, mission
+HUD/beacons/updates and panel-specific AP/weather/settings bindings. Extract
+those only behind measured regression coverage; no bulk rewrite is intended.
+
+### Owner decisions and P3 recommendations (read-only)
+
+- Licence: existing LICENSE/NOTICE untouched; owner must choose any licensing change.
+- Analytics: none selected. Decide provider or none, consent and destination before remote reporting.
+- Embeds: choose exact trusted domains and hosting; allowlist stays empty by default.
+- P3 recommendations only: independently review simulation estimates against
+  published sources; profile SF50/Il-76 geometry and draw calls on real hardware;
+  test touch/accessibility on real devices; finish the remaining controller seams
+  with behavior coverage. No P3 code or physical-model changes were made here.

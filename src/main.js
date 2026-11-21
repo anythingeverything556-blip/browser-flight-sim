@@ -1,3 +1,6 @@
+import { createSheetController } from './sheet-controller.js';
+import { activateFlight } from './flight-lifecycle.js';
+import { beginMissionSession, stopMissionSession } from './mission-session.js';
 import { diagnostics, installShaderDiagnostics } from './telemetry.js';
 import { FlightLogbook } from './logbook.js';
 import { mountTouchControls } from './touchcontrols.js';
@@ -351,31 +354,19 @@ function freeOrbitBehind() {
 }
 function beginFlight() {
   if (!state.setup) { const m = state.lastSpawn?.meta; if (m?.rwy?.ap) state.setup = {aircraft:AIRCRAFT,airport:m.rwy.ap.ident,rwy:m.rwy.ap.runways.indexOf(m.rwy),end:m.end,mode:'runway',mission:missionKind,weather:settings.weather,hour:env.hour}; }
-  logbook.begin(state.setup); renderLogbook();
-  if (settings.cmap !== false && !cmap.visible) cmap.toggle(true); // on by default once flying; N hides it
-  document.body.classList.remove('intro'); state.started = true; controls.enabled = true; openSheet(null); placeAircraftPicker();
-  syncStripH();
-  toast('W/S pitch · A/D roll (steer the nose wheel on the ground) · ? all keys');
+  activateFlight({ document, state, controls, cmap, settings, logbook, renderLogbook, openSheet, placeAircraftPicker, syncStripH, toast });
 }
 
 // ---------- sheets ----------
 const railBtns = [...document.querySelectorAll('#rail button[data-sheet]')];
 railBtns.forEach((b) => b.addEventListener('click', () => openSheet(b.dataset.sheet)));
 document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => openSheet(null)));
-function openSheet(id, force) {
-  const el = id && $('sheet-' + id);
-  const open = el ? (force ?? !el.classList.contains('open')) : false;
-  document.querySelectorAll('.sheet').forEach((p) => p.classList.remove('open'));
-  railBtns.forEach((b) => b.classList.remove('on'));
-  document.body.classList.toggle('sheet-open', !!open);
-  document.body.classList.toggle('sheet-wide', !!open && el.classList.contains('wide'));
-  if (!open) return;
-  el.classList.add('open');
-  railBtns.find((b) => b.dataset.sheet === id).classList.add('on');
+const controlSheets = createSheetController({ document, buttons: railBtns, onOpen: id => {
   if (id === 'map') mapPanel.shown();
   if (id === 'airports') renderAptList();
   if (id === 'flight') renderHome();
-}
+} });
+function openSheet(id, force) { controlSheets(id, force); }
 addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.body.classList.contains('intro')) openSheet(null); });
 // dock labels are tooltips; range tracks fill to their value; the dock fades while the pointer is idle
 document.querySelectorAll('#rail button[title]').forEach((b) => { b.dataset.tip = b.title; b.removeAttribute('title'); });
@@ -810,14 +801,10 @@ function tourEngage(t) {
   ap.target.vsLimit = 55;
 }
 function clearBeacons() { beacons.forEach((b) => { scene.remove(b.mesh); b.mesh.geometry.dispose(); b.mesh.material.dispose(); }); beacons = []; }
-function clearMission() { tour.stop(); tutorial.stop(); coachHidden = false; renderCoach(null); mission = null; clearBeacons(); $('mission').hidden = true; }
+function clearMission() { stopMissionSession({ tour, tutorial, resetCoach: () => { coachHidden = false; renderCoach(null); mission = null; }, clearBeacons, hideMission: () => { $('mission').hidden = true; } }); }
 function startMission() {
   clearMission();
-  const s = state.lastSpawn && state.lastSpawn.s;
-  if (!s) return;
-  if (missionKind === 'tour') { tour.start(s.hdg); return; }
-  if (missionKind === 'tutorial') { tutorial.start(tutorialCtx()); return; }
-  mission = createMission(missionKind, { lat: s.lat, lon: s.lon, hdg: s.hdg });
+  mission = beginMissionSession({ kind: missionKind, spawn: state.lastSpawn && state.lastSpawn.s, tour, tutorial, tutorialCtx, createMission });
   if (!mission) return;
   toast(`${MISSIONS[missionKind].name}: ${MISSIONS[missionKind].blurb}`);
   if (missionKind === 'landassist') { // the autopilot takes the ILS down to minimums, the pilot lands it

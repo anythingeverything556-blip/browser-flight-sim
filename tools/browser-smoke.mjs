@@ -29,7 +29,7 @@ function png(){
  const raw=Buffer.alloc(256*(1+256*3));for(let y=0;y<256;y++)for(let x=0;x<256;x++)raw[y*769+1+x*3]=128; // zero-metre Terrarium, synthetic red imagery
  return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),chunk('IHDR',head),chunk('IDAT',deflateSync(raw)),chunk('IEND',Buffer.alloc(0))]).toString('base64');
 }
-let browser, page;const errors=[],requests=[];let report;
+let browser, page;let panelResults=[];const errors=[],requests=[];let report;
 try {
  browser=await puppeteer.launch({executablePath:process.env.CHROME_PATH||'/usr/bin/google-chrome',headless:true,protocolTimeout:180000,args:['--no-sandbox','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
  page=await browser.newPage();await page.setViewport({width:960,height:640});
@@ -47,6 +47,9 @@ try {
  await page.click('#just-fly');await page.waitForFunction(()=>__sim.state.started&&!__sim.state.pending,{timeout:90000});
  await page.evaluate(()=>__sim.setView('cockpit'));await page.waitForFunction(()=>window.__earthwingDebug.events().some(e=>e.name==='cockpit_reached'),{timeout:15000});
  await new Promise(r=>setTimeout(r,600));
+ const panels=await page.evaluate(async()=>{const results=[];for(const id of ['flight','airports','map','ap','env','settings','help']){__sim.openSheet(id,true);await new Promise(resolve=>setTimeout(resolve,80));results.push({id,open:document.getElementById('sheet-'+id).classList.contains('open'),active:!!document.querySelector('#rail [data-sheet="'+id+'"].on')});}__sim.openSheet(null);return results;});
+ panelResults=panels;
+ if(panels.some(panel=>!panel.open||!panel.active))errors.push({kind:'verification',detail:'Panel controller failed open/active state'});
  if(injected){
    await page.evaluate(()=>{
      console.error('Controlled smoke console failure');
@@ -62,6 +65,6 @@ try {
  if(!report.webgl2||!report.drawCalls||!report.programs||!report.renderer.includes('SwiftShader'))errors.push({kind:'verification',detail:'Expected actual Chrome WebGL2 SwiftShader draw/program evidence'});
 }catch(e){errors.push({kind:'harness',detail:e.message});if(page){report=await page.evaluate(()=>({load:document.querySelector('#loadmsg')?.textContent,events:window.__earthwingDebug?.events()})).catch(()=>null);await page.screenshot({path:path.join(outDir,'smoke-failed.png')}).catch(()=>{});}}
 finally{if(browser)await browser.close();await new Promise(r=>server.close(r));}
-const result={softwareRendering:'Chrome / ANGLE SwiftShader (not real GPU/phone)',syntheticWorld:true,injected,report,errors,missingLocal,mockedExternalPageRequests:requests.length};
+const result={softwareRendering:'Chrome / ANGLE SwiftShader (not real GPU/phone)',syntheticWorld:true,injected,report,panels:panelResults,errors,missingLocal,mockedExternalPageRequests:requests.length};
 await fs.writeFile(path.join(outDir,injected?'smoke-injected.json':'smoke-positive.json'),JSON.stringify(result,null,2)+'\n');
 console.log(JSON.stringify(result,null,2));process.exitCode=errors.length?1:0;
