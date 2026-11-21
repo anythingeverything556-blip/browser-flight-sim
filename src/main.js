@@ -1420,11 +1420,28 @@ Object.values(PRESET_IDS).forEach((id) => $(id).addEventListener('change', showM
 showMode();
 $('vol').value = settings.volume; $('vol-l').textContent = Math.round(settings.volume * 100) + '%';
 $('vol').addEventListener('input', () => { settings.volume = +$('vol').value; audio.volume = settings.volume; $('vol-l').textContent = Math.round(settings.volume * 100) + '%'; saveSettings(); });
-$('relief').value = settings.relief; $('relief-l').textContent = Math.round(settings.relief * 100) + '%';
-$('relief').addEventListener('input', () => { settings.relief = +$('relief').value; TERRAIN_UNIFORMS.uRelief.value = settings.relief; $('relief-l').textContent = Math.round(settings.relief * 100) + '%'; saveSettings(); });
 if (!GFX[settings.gfx]) settings.gfx = 'normal';
 setUnits(settings.metric ? 'met' : 'imp'); setDetail(settings.gfx); applyGfx(settings.gfx);
 setApAltUnits();
+// Reset through the existing live event paths: effects and UI remain in step.
+$('settings-reset').addEventListener('click', () => {
+  setMode('medium');
+  const defaults = { 'opt-strip': true, 'opt-buildings': true, 'opt-trees': true, 'opt-shake': false,
+    'opt-traffic': false, 'opt-dynres': true, 'opt-hud': false, 'opt-mouse': false,
+    'opt-voice': true, 'opt-callouts': true, 'opt-fulltanks': false };
+  for (const [id, value] of Object.entries(defaults)) { $(id).checked = value; $(id).dispatchEvent(new Event('change')); }
+  settings.gfx = firstRunGfx(gpuName()); state.gfxActive = null; setDetail(settings.gfx); applyGfx(settings.gfx); holdForShaders();
+  $('rscale').value = 1; $('rscale').dispatchEvent(new Event('input'));
+  $('vol').value = .7; $('vol').dispatchEvent(new Event('input'));
+  setUnits('imp'); settings.metric = false; syncEnvUi(); renderHome(); setApAltUnits();
+  settings.voiceStyle = DEFAULT_VOICE_STYLE; setVoiceStyle(DEFAULT_VOICE_STYLE); audio.setVoice(true, DEFAULT_VOICE_STYLE, BASE);
+  saveSettings(); toast('Flight, sound and display defaults applied');
+});
+$('weather-reset').addEventListener('click', () => {
+  env.hour = 15; settings.windDir = 320; settings.cloudBase = 6000 / FT;
+  settings.metarAuto = false; $('metar-auto').checked = false; settings.runClock = false; $('tod-run').checked = false;
+  applyWeather('clear'); syncEnvUi(); saveSettings(); toast('Clear skies at 15:00 — live weather off');
+});
 TERRAIN_UNIFORMS.uRelief.value = settings.relief; audio.volume = settings.volume;
 buildings.enabled = settings.buildings !== false; trees.enabled = settings.trees !== false; fdm.unlimitedFuel = !!settings.fuel; controls.mouseStick = !!settings.mouse; hud.visible = !!settings.hud;
 

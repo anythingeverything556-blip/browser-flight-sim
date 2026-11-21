@@ -767,3 +767,7 @@ body.intro::before { content: ""; position: fixed; inset: 0; z-index: 2; pointer
 }
 .touch-hint { flex: 0 0 100%; margin: 0 0 3px; padding: 5px 8px; font-size: 12px; color: var(--text); background: var(--surface); border-radius: var(--r-md); pointer-events: none !important; }
 #touch-controls { flex-wrap: wrap; }
+
+.panel-summary { margin: 0 0 18px; line-height: 1.5; color: var(--text); }
+.advanced { margin: 18px 0; padding: 12px 0; border-block: 1px solid var(--line); }
+.advanced > summary { cursor: pointer; color: var(--muted); margin-bottom: 12px; }

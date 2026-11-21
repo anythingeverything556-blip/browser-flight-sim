@@ -160,8 +160,9 @@
       <button type="button" class="x" data-close aria-label="Close airports"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
     <div class="body">
+      <p class="panel-summary">Find a runway, plan an arrival or move your aircraft to another airport.</p>
       <div class="search"><input id="apt-q" type="search" placeholder="Search 8,200+ airports" autocomplete="off" aria-label="Search airports" /></div>
-      <div class="seg small" id="apt-filter" role="group" aria-label="Filter airports"><button type="button" data-v="near" class="on">Nearby</button><button type="button" data-v="all">All</button><button type="button" data-v="mil">Military</button><button type="button" data-v="long" title="Runways of 3 km or longer">3 km+</button></div>
+      <div class="seg small" id="apt-filter" role="group" aria-label="Filter airports"><button type="button" data-v="near" class="on">Nearby</button><button type="button" data-v="all">All</button><button type="button" data-v="mil">Military</button><button type="button" data-v="long" title="Runways of 3 km or longer">Runways ≥ 3 km</button></div>
       <div id="apt-list" class="list" aria-label="Airport search results"></div>
       <div id="apt-detail"></div>
     </div>
@@ -174,11 +175,9 @@
       <button type="button" class="x" data-close aria-label="Close autopilot"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
     <div class="body">
+      <p class="panel-summary">Let the fitted autopilot hold a target or follow your planned route.</p>
       <button type="button" id="ap-takeoff" class="ghost wide">Auto take-off (T): full power, rotate, gear up, climb to the target altitude below</button>
       <button type="button" id="ap-cruise" class="ghost wide">Climb to cruise: 85,000 ft at Mach 3.2 (FLCH)</button>
-      <button type="button" id="ap-tuneils" class="ghost wide">Tune ILS ahead (\): nearest runway in front, needles and HSI live without the autopilot</button>
-      <button type="button" id="ap-refuel" class="ghost wide">Refuel (L): stopped on the ground, or the SR-71 from a tanker below 30,000 ft</button>
-      <button type="button" id="ap-goaround" class="ghost wide">Go-around (J): full power, wings level, climb 600 m, gear up</button>
       <button type="button" id="ap-master" class="cta">Engage autopilot</button>
       <div class="modes" id="ap-modes" role="group" aria-label="Autopilot modes">
         <button type="button" data-m="hdg">HDG</button><button type="button" data-m="nav">NAV</button><button type="button" data-m="appr">APPR</button>
@@ -190,6 +189,11 @@
       <div class="dial" data-k="spd"><span title="Target equivalent airspeed (KEAS), the airspeed the autopilot and the structural limits use">Speed</span><button type="button" data-d="-50">−50</button><button type="button" data-d="-5">−</button><input id="ap-spd" type="number" value="350" aria-label="Airspeed target" /><button type="button" data-d="5">+</button><button type="button" data-d="50">+50</button><i>KEAS</i></div>
       <div class="dial" data-k="mach"><span>Mach</span><button type="button" data-d="-0.5">−.5</button><button type="button" data-d="-0.05">−</button><input id="ap-mach" type="number" value="3.2" step="0.05" aria-label="Mach target" /><button type="button" data-d="0.05">+</button><button type="button" data-d="0.5">+0.5</button><i>M</i></div>
       <div class="dial" data-k="vsl"><span>Climb limit</span><button type="button" data-d="-1000">−1k</button><button type="button" data-d="-250">−</button><input id="ap-vsl" type="number" value="6000" step="250" aria-label="Vertical speed limit" /><button type="button" data-d="250">+</button><button type="button" data-d="1000">+1k</button><i>fpm</i></div>
+      <details class="advanced"><summary>Advanced autopilot actions</summary>
+      <button type="button" id="ap-tuneils" class="ghost wide">Tune ILS ahead (\): nearest runway in front, needles and HSI live without the autopilot</button>
+      <button type="button" id="ap-refuel" class="ghost wide">Refuel (L): stopped on the ground, or the SR-71 from a tanker below 30,000 ft</button>
+      <button type="button" id="ap-goaround" class="ghost wide">Go-around (J): full power, wings level, climb 600 m, gear up</button>
+      </details>
       <button type="button" id="ap-sync" class="ghost wide">Sync targets to current flight</button>
       <p class="note">NAV follows the flight plan from the Map. APPR captures the localizer and glideslope of the arrival runway and disconnects at 150 ft — the SR-71 had no autoland, so you flare and land by hand.</p>
     </div>
@@ -210,6 +214,7 @@
       <button type="button" class="x" data-close aria-label="Close time and weather"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
     <div class="body">
+      <p class="panel-summary">Choose the light, wind and weather you want to fly in.</p>
       <label class="lbl" for="tod">Time of day <span id="tod-l" class="val"></span></label>
       <input type="range" id="tod" min="0" max="24" step="0.05" value="15" aria-label="Time of day" />
       <label class="check"><input type="checkbox" id="tod-run" /> <span>Clock runs in real time</span></label>
@@ -219,6 +224,7 @@
       <p class="note" id="metar-raw" aria-live="polite">Reads the current METAR from aviationweather.gov and sets wind, visibility, cloud and rain to match.</p>
       <div class="lbl">Weather</div>
       <div class="seg wrap" id="wx-presets" role="group" aria-label="Weather preset"><button type="button" data-v="clear">Clear</button><button type="button" data-v="few">Fair</button><button type="button" data-v="scattered">Scattered</button><button type="button" data-v="overcast">Overcast</button><button type="button" data-v="rain">Rain</button><button type="button" data-v="storm">Storm</button><button type="button" data-v="fog">Fog</button><button type="button" data-v="windy">Gusty</button></div>
+      <details class="advanced"><summary>Advanced weather adjustments</summary>
       <div class="lbl">Cloud coverage</div>
       <div class="seg" id="clouds" role="group" aria-label="Cloud coverage"><button type="button" data-v="0">Clear</button><button type="button" data-v="0.3" class="on">Few</button><button type="button" data-v="0.6">Scattered</button><button type="button" data-v="0.9">Broken</button></div>
       <label class="lbl" for="cloud-base">Cloud base <span id="cb-l" class="val"></span></label>
@@ -229,6 +235,9 @@
       <input type="range" id="turb" min="0" max="1" step="0.05" value="0.1" aria-label="Turbulence" />
       <label class="lbl" for="vis">Visibility <span id="vis-l" class="val"></span></label>
       <input type="range" id="vis" min="0.3" max="3" step="0.1" value="1" aria-label="Visibility" />
+      </details>
+      <button type="button" id="weather-reset" class="ghost wide">Reset to clear skies at 15:00</button>
+      <p class="note">Applies immediately and turns automatic live weather off. No location sharing.</p>
     </div>
   </section>
 
@@ -238,6 +247,7 @@
       <button type="button" class="x" data-close aria-label="Close settings"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
     <div class="body">
+      <p class="panel-summary">Adjust flight assists, sound and graphics for this browser.</p>
       <div class="lbl">Units</div>
       <div class="seg" id="units" role="group" aria-label="Measurement units"><button type="button" data-v="imp" class="on">Feet · knots</button><button type="button" data-v="met">Metres · km/h</button></div>
       <label class="lbl" for="vol">Master volume <span id="vol-l" class="val"></span></label>
@@ -253,11 +263,10 @@
       <label class="lbl" for="rscale">Render resolution <span id="rscale-l" class="val"></span></label>
       <input type="range" id="rscale" min="0.75" max="2.5" step="0.05" value="2" aria-label="Render resolution (supersampling)" />
       <p class="note quality-note">100% is your screen's native pixels. Above 100% renders more pixels than the screen has and scales down, which is sharper and smoother but costs frame rate.</p>
-      <label class="lbl" for="relief" hidden>Terrain relief shading <span id="relief-l" class="val"></span></label>
-      <input type="range" id="relief" hidden min="0" max="1" step="0.05" value="1" aria-label="Terrain relief shading" />
       <div class="lbl">Flying mode</div>
       <div class="seg" id="fly-mode" role="group" aria-label="Flying mode"><button type="button" data-v="easy">Easy</button><button type="button" data-v="medium" class="on">Medium</button><button type="button" data-v="realistic">Realistic</button></div>
       <p class="note" id="fly-mode-note"></p>
+      <details class="advanced"><summary>Advanced flight and display options</summary>
       <div class="setting-list">
         <label class="check"><input type="checkbox" id="opt-strip" checked /> <span>Flight data strip</span></label>
         <label class="check"><input type="checkbox" id="opt-buildings" checked /> <span>3D buildings<small>From OpenStreetMap</small></span></label>
@@ -277,6 +286,9 @@
         <label class="check"><input type="checkbox" id="opt-fuel" /> <span>Unlimited fuel</span></label>
         <label class="check"><input type="checkbox" id="opt-fulltanks" /> <span>Full tanks at airport starts<small>36.3 t, heavier take-off</small></span></label>
       </div>
+      </details>
+      <button type="button" id="settings-reset" class="ghost wide">Reset flight, sound and display defaults</button>
+      <p class="note">Applies immediately: Medium assists, recommended graphics, native 100% resolution, adaptive on, volume 70%. Aircraft, home, weather, logbook and custom keys are kept.</p>
       <details class="keymap-box" id="keymap-box">
         <summary><span class="lbl">Keyboard controls</span><span class="field-meta">Change keys</span></summary>
         <p class="note">Click <b>+</b> on a row and press the key you want (Shift+key works too). <b>×</b> removes a key, <b>↺</b> puts a row back. A key taken from another control is moved, not shared. Saved in this browser.</p>
@@ -291,6 +303,7 @@
       <button type="button" class="x" data-close aria-label="Close help"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
     <div class="body cols">
+      <p class="panel-summary">Learn the keys and inputs that move your aircraft and operate its systems.</p>
       <table class="keys">
         <caption class="sr-only">Flight and simulator keyboard controls</caption>
         <tbody id="help-keys">
