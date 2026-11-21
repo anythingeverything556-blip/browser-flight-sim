@@ -1,11 +1,6 @@
 // Check for WebGL 2 (required by three.js r180) before loading the simulator, so an unsupported
 // browser gets an explanation on the start screen instead of an uncaught exception.
-const msg = (text) => {
-  const el = document.getElementById('loadmsg');
-  if (el) { el.textContent = text; el.classList.add('err'); }
-  document.querySelectorAll('#start-btn, #home-go').forEach((b) => { b.disabled = true; });
-  const ls = document.getElementById('loadscreen'); if (ls) ls.hidden = true; // a queued start must not cover the error
-};
+import { showStartupError as msg } from './startup.js';
 
 // Start flight answers the first click even while the simulator is still loading: the loading screen opens at once and main.js replays the
 // click when it is ready (window.__simReady). The buttons used to stay disabled for the first 10-30 s, so early clicks did nothing.

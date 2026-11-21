@@ -58,6 +58,7 @@
     <p>Fly the SR-71, a Cessna 172, the Vision Jet or the Il-76 from 8,200+ real airports, over satellite imagery and terrain at full scale.</p>
     <div class="hero-loader">
       <div class="hero-loader-head"><span>Starting up</span><span id="loadmsg" aria-live="polite">Loading aircraft…</span></div>
+      <button type="button" id="startup-retry" hidden>Retry loading</button>
       <div id="loadline"><div id="loadbar"></div></div>
     </div>
   </div>
@@ -335,6 +336,8 @@
   <div id="warnline" role="alert" aria-live="assertive"></div>
   <aside id="coach" hidden aria-live="polite"><div class="coach-step"></div><h3></h3><p></p><div class="coach-live"></div><div class="coach-hint"></div><div class="coach-btns"><button type="button" id="coach-next" class="ghost" hidden>Skip step</button><button type="button" id="coach-skip" class="ghost">Hide coach</button></div></aside>
   <aside id="mission" hidden aria-live="off"><div class="m-title"></div><div class="m-body"></div></aside>
+  <aside id="imagery-notice" hidden><span id="imagery-status" role="status">Imagery unavailable, retrying. Flying with shaded terrain.</span> <button type="button" id="imagery-retry">Retry imagery</button></aside>
+
   <div id="loadscreen" role="status" aria-live="polite" aria-label="Loading the flight" hidden>
     <div class="ls-card">
       <div class="ls-brand"><span class="h-kicker">Earthwing</span></div>

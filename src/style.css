@@ -724,3 +724,8 @@ body:has(#guide:not([hidden])) #radio { top: 64px; right: 16px; bottom: auto; le
   .adsb-ctl:not(.open) .adsb-body { display: none; }
 }
 body.sheet-open .tl-hint { display: none !important; }
+
+/* Persistent, non-modal service state: flight controls remain available. */
+#imagery-notice { position: fixed; z-index: 22; top: 58px; left: var(--sheet-left, 84px); right: 16px; width: fit-content; max-width: calc(100vw - var(--sheet-left, 84px) - 16px); padding: 8px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-md); }
+#imagery-notice[hidden], body.intro #imagery-notice { display: none; }
+#imagery-retry, #startup-retry { min-height: 44px; color: var(--accent); background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 6px 12px; }

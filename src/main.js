@@ -1,3 +1,4 @@
+import { IMAGERY_DEADLINE_MS, showStartupError, withAssetDeadline } from './startup.js';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Geo, haversine, bearing, D2R, destination } from './geo.js';
@@ -279,7 +280,7 @@ function groundStatus(s) {
   const st = terrain.stats, busy = st.imgActive + st.demActive + st.imgWait, now = performance.now();
   const sp = terrain.sceneryProgress(3000), lvl = terrain.levelAt(s.lat, s.lon);
   if (busy === 0) s.quiet = s.quiet ?? now; else s.quiet = null;
-  const settled = s.quiet !== null && now - s.quiet > 1500 && lvl >= 11;
+  const settled = s.quiet !== null && now - s.quiet > 1500 && lvl >= 11 && sp >= 0.9;
   const ok = (sp >= 0.9 && lvl >= GROUND_LEVEL) || settled;
   const p = ok ? 1 : Math.min(0.99, 0.6 * Math.min(1, sp / 0.9) + 0.4 * Math.min(1, Math.max(0, (lvl - 9) / (GROUND_LEVEL - 9))));
   return { ok, p, sp, lvl };
@@ -287,6 +288,7 @@ function groundStatus(s) {
 // physics waits until the elevation under the aircraft is known so it never spawns underground
 function finishPending() {
   const s = state.pending, waited = performance.now() - s.t0;
+  if (waited >= IMAGERY_DEADLINE_MS && !groundStatus(s).ok) { terrain.imageryFallback = true; $('imagery-notice').hidden = false; }
   // wait for the fine elevation tile; after 15 s settle for any loaded level. Never reuse the previous place's ground
   // height: that put the jet under the dirt at a higher airport or inside mountains after a teleport.
   let h = terrain.heightAt(s.lat, s.lon);
@@ -301,11 +303,11 @@ function finishPending() {
   // one more pass now that the lights, environment and fog are in their flight state: it only compiles what the menu-time pass could not know
   if (!warm.final) { warm.final = true; startWarm(true); return; }
   // the picture the player first sees must be the sharp one: wait for the ring of ground around the jet to show its imagery at a fine level (or for the
-  // loader to run dry, which is as sharp as the provider gets there), up to 45 s
+  // loader to run dry, which is as sharp as the provider gets there), up to 12 s
   const gs = groundStatus(s);
-  if (!gs.ok && waited < 45000 && !state.fastSpawn) { $('st-state').textContent = `Loading imagery ${Math.round(gs.p * 100)}%`; return; }
+  if (!gs.ok && waited < IMAGERY_DEADLINE_MS && !state.fastSpawn) { $('st-state').textContent = `Loading imagery ${Math.round(gs.p * 100)}%`; return; }
   // never start on a coarse tile: it is drawn above the runway, which puts the jet and the camera under the ground
-  if (terrain.levelAt(s.lat, s.lon) < 11 && waited < 45000 && !state.fastSpawn) { $('st-state').textContent = 'Sharpening ground'; return; }
+  if (terrain.levelAt(s.lat, s.lon) < 11 && !terrain.imageryFallback && waited < IMAGERY_DEADLINE_MS && !state.fastSpawn) { $('st-state').textContent = 'Sharpening ground'; return; }
   state.lastGround = h;
   if (s.ground) fdm.pos.y = h + CG_H; else fdm.pos.y = Math.max(fdm.pos.y, h + 300);
   state.pending = null;
@@ -1829,7 +1831,9 @@ function cueFor(n) {
   if (ap.on && ap.modes.nav && n.valid) { navCue.mode = 'LNAV'; navCue.lateral = clampN(-n.xtkNm, 2); navCue.vertical = NaN; return navCue; }
   return null;
 }
+$('imagery-retry').addEventListener('click', () => { terrain.retryImagery(); $('imagery-status').textContent = 'Imagery unavailable, retrying. Flying with shaded terrain.'; });
 function frameBody(now) {
+  if (terrain.imageryFallback && !state.pending && state.lastSpawn && groundStatus(state.lastSpawn).ok) { terrain.imageryFallback = false; $('imagery-notice').hidden = true; }
   if ((rig.view === 'cockpit') !== state.cabRes) { state.cabRes = rig.view === 'cockpit'; setRenderScale(); } // re-apply the cockpit's resolution floor
   perf.begin(now);
   // 0.1 s, not 0.05: below 20 fps the game ran in slow motion (a quarter of real time at 5 fps). Physics still steps at 240 Hz inside it.
@@ -2166,11 +2170,11 @@ function prewarmCrash() { startWarm(); }
   };
   loadWayback(`${BASE}data/wayback.json`); // finer archived Esri releases at some airports; optional
   try {
-    await Promise.all([
+    await withAssetDeadline(Promise.all([
       visual.load(`${BASE}models/${AC.model}`, (p) => bar(p * 0.6, 'Loading aircraft…')),
       db.load(`${BASE}data/airports.json`),
-    ]);
-  } catch (e) { $('loadmsg').textContent = 'Loading failed: ' + e.message; lsEl.hidden = true; console.error(e); return; }
+    ]));
+  } catch (e) { showStartupError('Aircraft or airport data could not load. Check your connection, then retry.'); console.error(e); return; }
   bar(0.8, 'Loading scenery…');
   visual.registerOccluders(occlusion);
   visual.attachSelfShadow(env.sun); // self-shadow and the finest cascade draw the ~37k triangle LOD proxy, not the ~300k triangle airframe
