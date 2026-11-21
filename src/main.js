@@ -1,3 +1,4 @@
+import { mountFlightHud } from './flight-hud.js';
 import { createSheetController } from './sheet-controller.js';
 import { activateFlight } from './flight-lifecycle.js';
 import { beginMissionSession, stopMissionSession } from './mission-session.js';
@@ -174,6 +175,7 @@ const buildingHit = IS_C172 ? new BuildingCollider(C172_COLLIDE_POINTS, C172_PAD
 const takeoff = new TakeoffAid(), rotAssist = new RotationAssist(), autoTrim = makeAutoTrim();
 const nav = new Navigation();
 const hud = new HUD($('hud'));
+mountFlightHud();
 const syncStripH = () => { const e = $('strip'); if (e) document.documentElement.style.setProperty('--strip-h', Math.round(e.getBoundingClientRect().height) + 'px'); }; // the guide sits above the strip (style.css)
 if (window.ResizeObserver && $('strip')) new ResizeObserver(syncStripH).observe($('strip'));
 const audio = new Audio();

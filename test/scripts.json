@@ -6,6 +6,7 @@
   "test/logbook-test.mjs",
   "test/panel-defaults-test.mjs",
   "test/rail-label-test.mjs",
+  "test/flight-hud-test.mjs",
   "test/aircraft-art-test.mjs",
   "test/c172-lesson-test.mjs",
   "test/quick-start-test.mjs",
