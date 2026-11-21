@@ -4,6 +4,8 @@
 
 Local only, based on P1 `d085612656ca991f5f102e30879d10cfa4a705b4`; no push/deploy/PR/ZIP. Evidence under `/home/earthwing-evidence/p2/`.
 
+- **16 — Fixed:** four static, script-independent aircraft pages with unique copy/title/description, canonical links, social metadata, VideoGame JSON-LD, visible cross-links and explicit aircraft Play now links. Reuses verified P1 Three.js model renders (`public/images/aircraft-*.webp`), no stock assets or collection. Sitemap covers all five canonical routes. Chrome before/after and full checks: `discovery-before.json`, `landing-after.json`, `landing-*.png`, `16-test.log`, `16-build.log`.
+
 - **15 — Fixed:** static robots, canonical sitemap, web manifest/icon, complete social metadata and top-level Pages `404.html` disable SPA fallback on both hosts. Root query deep links remain valid; existing `/api/*` functions unchanged. Vite preview is not a Pages routing emulator; production status must be verified after a separately authorized dual-host deployment. Full checks: `15-test.log`, `15-build.log`.
 
 ## Unreleased (P1 experience and performance — 21 November 2026)
