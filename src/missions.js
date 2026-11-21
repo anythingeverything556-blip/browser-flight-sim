@@ -1,7 +1,10 @@
+import { C172Lesson } from './c172lesson.js';
 import { bearing, destination, haversine } from './geo.js';
 
 const FT = 3.28084, NM = 1852, wrap180 = (a) => ((a + 540) % 360) - 180;
 export const MISSIONS = {
+  c172guide: { name: 'C172 guided flight', blurb: 'A short hand-flown lesson: power, take-off, climb, turn and trim.' },
+  c172pattern: { name: 'C172 traffic pattern', blurb: 'Take off, fly a left-hand pattern, return to the departure runway and stop. Use the map and visual alignment.' },
   free: { name: 'Free flight', blurb: 'No objectives.' },
   tutorial: { name: 'Tutorial', blurb: 'Learn the take-off, climb and autopilot. You fly, it tells you what to do next.' },
   landassist: { name: 'Landing 1', blurb: 'Start on a 10 NM final. The autopilot flies the ILS to 150 ft, then you flare and land it.' },
@@ -12,7 +15,7 @@ export const MISSIONS = {
 };
 
 // Where each mission has to start. The R key, Return, the Airports sheet and the map use this to put the jet where the selected mission expects it.
-const MISSION_SPAWN = { tutorial: 'runway', tour: 'runway', landassist: 'approach', landhand: 'final' };
+const MISSION_SPAWN = { c172guide: 'runway', c172pattern: 'runway', tutorial: 'runway', tour: 'runway', landassist: 'approach', landhand: 'final' };
 export const missionSpawnMode = (kind, fallback = 'runway') => MISSION_SPAWN[kind] || fallback;
 export const missionFits = (kind, mode) => !MISSION_SPAWN[kind] || MISSION_SPAWN[kind] === mode;
 export const missionSurvivesTeleport = (kind) => kind === 'highfast' || kind === 'recon' || kind === 'free';
@@ -201,6 +204,7 @@ class Landing {
 }
 
 export function createMission(kind, start) {
+  if (kind === 'c172guide' || kind === 'c172pattern') return new C172Lesson(start, kind === 'c172pattern');
   if (kind === 'landassist' || kind === 'landhand') return new Landing(kind);
   if (kind === 'highfast') { const m = new HighFast(); const u = m.update.bind(m); m.update = (dt, s) => { m.s = s; return u(dt, s); }; return m; }
   if (kind === 'recon') return new Recon(start.lat, start.lon, start.hdg);

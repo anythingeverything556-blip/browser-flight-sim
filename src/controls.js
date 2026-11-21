@@ -110,6 +110,7 @@ class Controls {
       (this.yawKey = 0), (this.rudderSet = 0), (this.engSel = 0), (this.engTrim = [0, 0, 0, 0]), // rudder keys (eased), the held rudder setting, the selected engine (0 = all) and each engine's lever offset
       (this.throttle = 0),
       (this.touched = !1),
+      (this.touch = { pitch: null, roll: null, yaw: null, brake: false }),
       (this.brake = 0),
       (this.mouseStick = !1),
       (this.mouse = { x: 0, y: 0 }),
@@ -178,6 +179,7 @@ class Controls {
     this.locked && this.releaseAll();
   }
   releaseAll() {
+    this.touch.pitch = this.touch.roll = this.touch.yaw = null; this.touch.brake = false;
     this.axes.pitch = this.axes.roll = this.axes.yaw = 0; this.yawKey = 0; this.brake = 0; this.manual = false; this.pbChord = false; this.shiftT = 0;
     this.slew = { fwd: 0, turn: 0, up: 0 }; this.trimUp = this.trimDown = false;
   }
@@ -237,6 +239,13 @@ class Controls {
         (this.axes.pitch = Kr(d(this.mouse.y) * 1.3, -1, 1)),
         this.mouseMoved && (this.manual = !0));
     }
+    // A touch axis owns only its active pointer: keyboard, mouse and gamepad remain usable.
+    if (!this.mouseStick) {
+      if (this.touch.pitch !== null && !i && !r) this.axes.pitch = this.touch.pitch;
+      if (this.touch.roll !== null && !a && !l) this.axes.roll = this.touch.roll;
+    }
+    if (this.touch.yaw !== null && !h && !u) this.axes.yaw = Kr(this.touch.yaw + this.rudderSet, -1, 1);
+    if (Math.max(Math.abs(this.touch.pitch || 0), Math.abs(this.touch.roll || 0)) > 0.05) this.manual = true;
     this.mouseMoved = !1;
     this.shiftT = e.has('ShiftLeft') || e.has('ShiftRight') ? this.shiftT + t : 0;
     // throttle (default Shift / E up, Q down). Not Ctrl: held Ctrl turned W/S/G into browser shortcuts (Ctrl+W closed the tab).
@@ -249,7 +258,7 @@ class Controls {
     ((this.slewKeys = 0),
       (this.trimUp = this.held('trimUp')),
       (this.trimDown = this.held('trimDown')),
-      (this.brake = this.held('brakes') ? 1 : 0),
+      (this.brake = this.held('brakes') || this.touch.brake ? 1 : 0),
       (this.slew = {
         fwd: i ? 1 : r ? -1 : 0,
         turn: l || kD ? 1 : a || kA ? -1 : 0,

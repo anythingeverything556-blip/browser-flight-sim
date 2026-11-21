@@ -147,6 +147,7 @@ export class Terrain {
     this.daylight = new THREE.Color(1, 1, 1);
     this.stats = { imgOk: 0, imgFail: 0, imgNodata: 0, demOk: 0, demFail: 0, visible: 0, draws: 0, tris: 0, tiles: 0, built: 0, imgActive: 0, demActive: 0, imgWait: 0, demWait: 0 };
     this.cam = { lat: 0, lon: 0, cos: 1, h: 0, ground: 0, agl: 100, ahead: null };
+    this.imageryFallback = false; // keep DEM relief and lighting when the imagery startup deadline expires
     this.fallbackColor = new THREE.Color(0x6f7a4f);
     this.anisotropy = 8;
     this.drawn = []; this.camera = null; this.now = performance.now();
@@ -472,8 +473,15 @@ export class Terrain {
       if (t.built && !t.pendingTex && (tex || t.tex)) t.ready = true;
     }
   }
+  retryImagery() {
+    for (const t of this.tiles.values()) {
+      if (t.img === 'loading') this.cancelImage(t);
+      if (t.img !== 'ready') { t.img = 'none'; t.tries = 0; t.retryAt = 0; this.noSplit.delete(tkey(t.z - 1, t.x >> 1, t.y >> 1)); }
+    }
+    this.pumpImg();
+  }
   canBuild(t) {
-    if (t.img !== 'ready' && !(t.z === ROOT_Z && (t.img === 'nodata' || (t.img === 'failed' && t.tries >= 2)))) return false;
+    if (!this.imageryFallback && t.img !== 'ready' && !(t.z === ROOT_Z && (t.img === 'nodata' || (t.img === 'failed' && t.tries >= 2)))) return false;
     if (t.mk === 'loading' && this.now - t.mkAt < 2500) return false; // water mask usually arrives with the imagery
     for (const e of t.demList) if (!(e.state === 'ready' || e.settled)) return false;
     return true;

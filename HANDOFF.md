@@ -4,6 +4,8 @@
 > mirror that can lag behind. Every deploy must update **both** https://earthwing.pages.dev and
 > https://sr71-blackbird.pages.dev (`npm run deploy` does both). Read `AGENTS.md` before changing anything.
 
+**Local P1 release update (21 November 2026, not deployed):** see the top P1 CHANGELOG section. Quick start, C172 coaching, real model cards, wide rail labels, panel resets, local logbook/Resume and selected-model loading are implemented. SF50/Il-76 geometry is unchanged (403,431 / 368,929 tris): only conservative texture reductions were adopted. Historical texture sizes/costs below refer to the pre-P1 assets. The ~200k geometry and fewer-draw-call target, real-GPU measurements and real-device touch verification remain outstanding. Nothing in this update authorizes deployment or packaging.
+
 State on 10 November 2026. This release contains the fixes listed under the top
 `Unreleased` entry of `CHANGELOG.md`. The items below are **not** finished.
 Work in this order.

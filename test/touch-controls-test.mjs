@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { touchOnly } from '../src/touchcontrols.js';
+const media = fine => query => ({ matches: query.includes('coarse') || fine });
+assert.equal(touchOnly({maxTouchPoints:5}, media(false)), true);
+assert.equal(touchOnly({maxTouchPoints:5}, media(true)), false, 'hybrid desktop is not gated');
+assert.equal(touchOnly({maxTouchPoints:0}, media(false)), false);
+globalThis.window = {addEventListener(){}};
+Object.defineProperty(globalThis,'navigator',{value:{getGamepads:()=>[]},configurable:true});
+const {Controls}=await import('../src/controls.js'); const c=new Controls();
+c.touch.pitch=.8;c.touch.roll=-.6;c.touch.yaw=.4;c.touch.brake=true;c.update(.1);
+assert.equal(c.axes.pitch,.8);assert.equal(c.axes.roll,-.6);assert.equal(c.axes.yaw,.4);assert.equal(c.brake,1);assert.equal(c.manual,true);
+c.keys.add('ArrowUp');c.update(.2);assert.ok(c.axes.pitch<0,'keyboard still overrides active touch on its axis');
+c.enabled=false;c.update(.1);assert.equal(c.brake,0);assert.equal(c.axes.roll,0);assert.equal(c.touch.pitch,null);
+c.enabled=true;c.update(.1);assert.equal(c.axes.roll,0,'no stuck touch after menu');
+c.touch.brake=true;c.setLocked(true);assert.equal(c.touch.brake,false);
+console.log('PASS touch-only/hybrid detection, axes, brakes, keyboard coexistence, disabled/paused release');

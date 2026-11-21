@@ -1,0 +1,39 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { IMAGERY_DEADLINE_MS, withAssetDeadline } from '../src/startup.js';
+globalThis.OffscreenCanvas = class { getContext() { return {}; } };
+const { Terrain } = await import('../src/terrain.js');
+const { Geo } = await import('../src/geo.js');
+assert.equal(IMAGERY_DEADLINE_MS, 12000);
+const terrain = new Terrain(new THREE.Scene(), new Geo(39, -121), null);
+const tile = { img: 'loading', z: 15, mk: 'none', demList: [{ state: 'ready' }] };
+assert.equal(terrain.canBuild(tile), false);
+terrain.imageryFallback = true;
+assert.equal(terrain.canBuild(tile), true, 'a hanging imagery request cannot block shaded terrain');
+tile.img = 'failed'; assert.equal(terrain.canBuild(tile), true, 'blocked imagery can render shaded terrain');
+tile.demList[0].state = 'loading'; assert.equal(terrain.canBuild(tile), false, 'imagery fallback does not bypass elevation safety');
+const jobs = [];
+terrain.loader.cancel = id => jobs.push(id);
+terrain.tiles.set(1, { img: 'loading', z:15, x: 12, y: 20, jobId: 41, imgSrc:null, imgCost:1 });
+terrain.tiles.set(3, { img: 'nodata', z: 15, x: 14, y: 20, tries: 2, retryAt: 99999 });
+terrain.tiles.set(2, { img: 'failed', z:15, x: 13, y: 20, tries:4, retryAt:99999 });
+terrain.retryImagery();
+assert.deepEqual(jobs, [41]);
+for (const t of terrain.tiles.values()) { assert.equal(t.img, 'none'); assert.equal(t.retryAt, 0); }
+assert.equal(await withAssetDeadline(Promise.resolve('ok'), 50), 'ok');
+await assert.rejects(withAssetDeadline(new Promise(() => {}), 5), /timed out/);
+console.log('PASS imagery deadline, blocked/hanging fallback, safe DEM gate, explicit retry, fatal asset timeout');
+
+// Fatal startup errors must be actionable on narrow layouts and must not leave
+// the early quick-start queue enabled when there is no simulator to answer it.
+const { showStartupError } = await import('../src/startup.js');
+const buttons = Array.from({length:4},()=>({disabled:false}));
+const nodes = {loadmsg:{textContent:'',classList:{add(){}}},loadscreen:{hidden:false},'startup-retry':{hidden:true}};
+const bodyClasses=new Set();let selector='';
+globalThis.document={body:{classList:{add:x=>bodyClasses.add(x)}},getElementById:id=>nodes[id],querySelectorAll:q=>{selector=q;return buttons}};
+showStartupError('Graphics unavailable — try another browser.');
+assert.ok(bodyClasses.has('startup-failed'));
+assert.ok(buttons.every(b=>b.disabled));assert.match(selector,/#just-fly/);assert.match(selector,/#resume-flight/);
+assert.equal(nodes.loadscreen.hidden,true);assert.equal(nodes['startup-retry'].hidden,false);assert.equal(typeof nodes['startup-retry'].onclick,'function');
+assert.match(nodes.loadmsg.textContent,/Graphics unavailable/);delete globalThis.document;
+console.log('PASS visible fatal-startup state, all early launch actions disabled, loader closed and retry available');

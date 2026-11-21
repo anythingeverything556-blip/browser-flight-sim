@@ -7,7 +7,8 @@ import { EVO_SECONDS, setTexOffsets } from './vclouds.js';
 const SIZE = 20000, N = 160, FADE = 0.33;
 const FRAG = `
 precision highp float; precision highp sampler3D;
-uniform sampler3D tShape; uniform vec3 uSun; uniform vec2 uOff, uRelC; uniform vec4 uT0, uT1; // uT*: cloudTexOffsets() of uOff (cloudlayer.js) uniform float uSize, uCover, uBase, uTop, uGround, uEvo;
+uniform sampler3D tShape; uniform vec3 uSun; uniform vec2 uOff, uRelC; uniform vec4 uT0, uT1; // uT*: cloudTexOffsets() of uOff (cloudlayer.js)
+uniform float uSize, uCover, uBase, uTop, uGround, uEvo;
 varying vec2 vUv;
 float h21(vec2 p) { p = fract(p * vec2(0.1031, 0.1030)); p += dot(p, p.yx + 33.33); return fract((p.x + p.y) * p.x); }
 float vn2(vec2 p) { vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1, 0)), f.x), mix(h21(i + vec2(0, 1)), h21(i + vec2(1, 1)), f.x), f.y); }

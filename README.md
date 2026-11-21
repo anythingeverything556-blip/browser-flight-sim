@@ -17,7 +17,7 @@ over satellite imagery and terrain at full scale. No install, no account.
 
 </div>
 
-Earthwing began as an SR-71 simulator called *Blackbird*. It now flies three very different aircraft
+Earthwing began as an SR-71 simulator called *Blackbird*. It now flies four very different aircraft
 over the whole planet, so it has a new name; the Blackbird is still here, and still the fastest way to
 see the world.
 
@@ -27,14 +27,14 @@ see the world.
   Mach 3.2 at 85,000 ft and watch the curvature of the Earth.
 - **A real flight model.** Six degrees of freedom at 240 Hz, per-aircraft engines and systems, fuel,
   turbulence, wind shear and crash physics.
-- **Nothing to install.** Open the link in a desktop browser with WebGL 2 and press *Start flight*.
+- **Nothing to install.** Open the link in a desktop browser with WebGL 2 and press **Just fly** for clear-sky free flight from your saved home (KBAB on first use), or customize **Start flight**. No location sharing is required.
 
 ## Aircraft
 
 | Aircraft | Performance | What it's like to fly |
 | --- | --- | --- |
-| **Lockheed SR-71A Blackbird** | Mach 3.2 cruise, 85,000 ft, 2 × J58 | Afterburners, inlet unstarts, drag chute and air-to-air refuelling. Full autopilot with SPD and MACH holds; every mission and the tutorial are built around it. |
-| **Cessna 172SP Skyhawk** | 122 KTAS, 180 hp, 4 seats | A trainer you fly by hand: live six-pack instruments, flaps, trim and nose-wheel steering. No autopilot fitted. |
+| **Lockheed SR-71A Blackbird** | Mach 3.2 cruise, 85,000 ft, 2 × J58 | Afterburners, inlet unstarts, drag chute and air-to-air refuelling. Full autopilot with SPD and MACH holds; the original missions and tutorial remain available. |
+| **Cessna 172SP Skyhawk** | 122 KTAS, 180 hp, 4 seats | A trainer you fly by hand: live six-pack instruments, flaps, trim and nose-wheel steering. No autopilot fitted. A short guided flight and a hand-flown traffic-pattern lesson are available. |
 | **Cirrus Vision Jet SF50 G3** | 311 KTAS, FL310, FJ33-5A | Glass PFD and MFD, NAV/APPR autopilot with autoland, go-around and a *Safe Return* landing at the nearest suitable airport. |
 | **Ilyushin Il-76MD-90A** | 770 km/h cruise, 12,200 m ceiling, 210 t, 4 × PS-90A-76 | Il-76: a heavy four-engine transport with slats, triple-slotted flaps, spoilers, thrust reversers, 20 wheels that fold into the fuselage, and a cargo ramp, clamshell doors and paratroop doors that open. |
 
@@ -42,11 +42,11 @@ Pick the aircraft on the start screen, or open the simulator with `?aircraft=sr7
 The Vision Jet model is unofficial and not affiliated with Cirrus, and the Il-76 model is unofficial and not affiliated with Ilyushin or United Aircraft Corporation (see `NOTICE.md`).
 The Il-76's flight model uses published figures where they exist and labelled estimates elsewhere (see the comment block at the top of `src/il76.js`); it is not a certified reproduction.
 
-<img src="public/social-preview.png" alt="Earthwing start screen: choose the SR-71A Blackbird, Cessna 172SP Skyhawk or Cirrus Vision Jet, then a departure airport" width="900">
+<img src="public/social-preview.png" alt="Earlier Earthwing start screen; the current release also includes the Il-76 and Just fly" width="900">
 
 ## Missions and training
 
-Choose one under **Mission** on the start sheet (missions are flown in the SR-71; the Skyhawk, Vision Jet and Il-76 fly free flights).
+Choose one under **Mission** on the start sheet. The SR-71 retains its original missions below. The C172 now offers **Guided flight** (power, take-off, climb, turn, trim) and **Take-off, pattern & landing** (a simple left-hand circuit back to the departure runway). You fly; coaching does not operate the controls. The Vision Jet and Il-76 retain free flight.
 
 - **Tutorial:** you fly, it coaches, in eleven steps from the take-off roll to the autopilot.
 - **Landing 1 and 2:** ILS approaches from a 10 NM or 5 NM final, scored on sink rate, speed, centreline and touchdown point.
@@ -55,6 +55,17 @@ Choose one under **Mission** on the start sheet (missions are flown in the SR-71
 - **Watch demo:** the jet takes off, climbs and engages the autopilot by itself, then hands over.
 
 Every aircraft has **Easy**, **Medium** and **Realistic** flying modes with adjustable assists.
+
+**Start quickly or resume.** Just fly is an explicit SR-71/C172 clear-sky free-flight choice; **Start flight** keeps your custom aircraft and conditions. **Resume last flight setup** restores aircraft, airport/runway, start profile, weather, time and mission, not airborne position. No account or location sharing is required. Saved aircraft preferences are not silently replaced by a deep link.
+
+**Local logbook.** The start sheet shows up to 50 completed landings, including aircraft, departure, nearby arrival (or Unknown), simulated duration and approximate sink-rate quality. One entry is recorded per flight setup, not each wheel bounce. It stays in this browser only; clearing site data removes it. Storage that is missing, corrupt or full does not stop flight.
+
+## Model performance status
+
+The selected aircraft alone is downloaded; selecting a different card reloads its model. The SR-71 loads its own LOD only when selected.
+A conservative texture-only pass reduces the SF50 GLB from 1,771,000 to 1,481,076 bytes and the Il-76 from 2,016,464 to 2,007,968 bytes.
+Geometry, moving-node pivots, extras and display wiring are unchanged: **403,431 SF50 / 368,929 Il-76 triangles**, so the ~200k geometry/draw-call target is **not done**.
+Instrument atlases and fine livery were retained where downsampling risked readability. Software Chrome checks verify functionality, not hardware frame rate. See [Changelog](CHANGELOG.md).
 
 ## Features
 
@@ -298,7 +309,7 @@ checkerboard: a clean fine grid means the page maps 1:1 to the screen, wide band
 
 F3 also splits GPU time by pass (shadow maps, scene, AO, glass, clouds, composite, bloom, SMAA) where the browser exposes timer queries, and shows
 done/skipped counts for each shadow cascade. **F5-F9** switch world shadows, AO, volumetric clouds, SMAA and bloom off one at a time: if a flicker or
-a slowdown goes away when one is switched off, that is the pass to look at. The render-resolution slider defaults to 200 % (75-250 %).
+a slowdown goes away when one is switched off, that is the pass to look at. The render-resolution slider defaults to **100%** (75–250%); **adaptive resolution is on** by default and does not reduce below the screen’s native pixels. A saved user choice is retained after the existing one-time migrations. Settings → Reset flight, sound and display defaults applies Medium assists, recommended graphics, 100%, adaptive on and 70% volume live; aircraft, home, weather, logbook and custom keys stay intact. Time & weather has a separate clear-skies/15:00 reset.
 
 **Cockpit frame cost.** The renderer uses a logarithmic depth buffer, so every material writes its own depth and the GPU cannot skip a hidden fragment
 before running its shader. In the cockpit that meant the heavy exterior-skin shader ran for the inside of the fuselage, and the terrain and sky shaders for
@@ -354,3 +365,103 @@ If you enjoy flying, a star helps other people find the project.
 
 Personal-use only, source-available. Gameplay videos, streams and screenshots are allowed (see section 4);
 redistributing or re-hosting the software is not. See `LICENSE` and `NOTICE.md`. This is not an open-source licence.
+
+## Framing policy (both Pages hosts)
+
+All ordinary routes use `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'`.
+Embedding is disabled by default, including same-origin frames. `/embed/` is a
+separate Pages Function and returns 403 unless a maintainer deliberately sets
+`EARTHWING_EMBED_ORIGINS` to a JSON array of exact HTTPS origins (up to 10).
+No domains are enabled here. Paths, wildcards, credentials, HTTP and malformed
+lists fail closed as a whole. Query parameters never select trusted origins.
+Only `/embed/` omits XFO (which cannot express an allowlist); its CSP allows only
+that exact ancestor list and keeps every other CSP directive/security header.
+Existing `/api/` Functions and root aircraft query links are unchanged.
+
+The owner must choose hosting and trusted domains, then apply any environment
+setting separately on **both** Pages projects through an authorized operation.
+Keep the normal root unframeable; do not weaken the global policy. Disabling the
+setting closes embeds again. Keep `_headers` and `functions/_lib/embed-policy.js`
+security constants in sync (`embed-policy-test` enforces parity).
+
+Local safe verification: `node test/embed-policy-test.mjs`; Chrome fixture proof
+is under `p2/frame-policy.json`. It intercepts HTTPS `.example` origins locally
+and invokes the real response helper; it does not publish or trust a real site.
+After separately authorized deployment, check headers on `/`, an aircraft page,
+`/embed/` and an unknown route on each host; test a frame from an explicitly
+allowed origin and a disallowed origin. No live headers were changed here.
+
+## Continuous checks
+
+`.github/workflows/ci.yml` runs on every push and pull request with read-only
+repository permission: Node 24 LTS, clean `npm ci`, full tests and production
+build. Official checkout/setup-node v6 actions are pinned to verified commit
+SHAs. No deployment, tokens or secrets are used. Local tests/build are verified;
+a hosted Actions run requires a separately authorized push and is not claimed.
+
+`npm test` runs the ordered `test/scripts.json` manifest through
+`tools/test-runner.mjs`. Every original script (including terrain-bench) runs
+even after a failure. Each child is bounded to 120 seconds and 2 MiB captured
+output; timeout/output overflow is a failure, never a retry or skipped pass.
+The final table reports every outcome and exits nonzero if any failed.
+Set `TEST_REPORT_PATH` to keep machine-readable per-script results.
+The controlled failure/timeout regression runs only temporary test fixtures.
+
+## Local diagnostics, not hosted analytics
+
+`window.__earthwingDebug.events()` returns at most 100 in-memory records with
+only allowlisted `name` and `category` fields. The six funnel milestones are
+start screen viewed, Start clicked (including Just fly), cockpit/flight view
+reached after loading, aircraft chosen, load failure and mobile gate shown.
+Window errors/rejections and Three.js shader/program failures add sanitized
+categories. No URLs, stack traces, messages, identifiers, timestamps, personal
+data, storage or network transport are collected by this module. Console
+diagnostics remain intact. Reloading clears it; no provider is configured.
+
+The owner must choose **none** or an analytics provider, destination/origin and
+consent policy before any remote reporting is implemented. Existing external
+world-data requests are not telemetry. A previously enabled Cloudflare Pages
+beacon is a separate hosting decision: this local change neither enables it nor
+changes the projects; decide whether to disable it on both hosts.
+
+## Automated Chrome smoke
+
+After `npm ci && npm run build`, run `npm run test:smoke` and
+`npm run test:smoke:negative`. Requires installed Google Chrome/Chromium; set
+`CHROME_PATH` if not `/usr/bin/google-chrome`. Puppeteer Core is pinned as a
+dev dependency, does not download a browser, and never uses a browser sign-in.
+Ubuntu hosted CI uses its preinstalled Google Chrome. Missing Chrome fails with
+an actionable launch error, not a skipped pass. `SMOKE_OUTPUT_DIR` selects logs
+and screenshots (default `/tmp/earthwing-smoke`).
+
+This starts a loopback-only static Pages-convention fixture on a random port,
+boots the actual production C172 model, clicks Just fly, reaches the cockpit,
+and requires actual WebGL 2 draw calls and shader programs on ANGLE SwiftShader.
+Traffic/weather API responses are local empty-success fixtures. World tiles are synthetic local zero-elevation/red-image fixtures: this tests
+engine/asset startup, not live imagery, GPU performance or physical flight accuracy.
+External page requests are intercepted; worker world-data requests are fulfilled
+in memory. No production services are contacted by the fixture. It fails on
+**every** console error/page error/request failure and on Three shader/program
+errors; there is no broad network-error/console-error ignore filter. The negative
+control uses an actual invalid GLSL program plus console and thrown page errors,
+and verifies exit 1 with all three categories detected. The negative wrapper also rejects any unrelated error or missing local asset; it does not treat arbitrary console failures as a successful negative control. Raw test errors stay in
+local test evidence, never in the sanitized telemetry buffer or a remote provider.
+
+## Incremental engineering seams
+
+`sheet-controller.js` owns panel open/close DOM state; `flight-lifecycle.js` owns
+flight activation; `mission-session.js` owns ordered stop/start dispatch.
+Physics and existing keyboard/touch handlers are unchanged. This is **partial**
+extraction: `main.js` still owns terrain/spawn settlement, crash/restart, mission
+HUD/beacons/updates and panel-specific AP/weather/settings bindings. Extract
+those only behind measured regression coverage; no bulk rewrite is intended.
+
+### Owner decisions and P3 recommendations (read-only)
+
+- Licence: existing LICENSE/NOTICE untouched; owner must choose any licensing change.
+- Analytics: none selected. Decide provider or none, consent and destination before remote reporting.
+- Embeds: choose exact trusted domains and hosting; allowlist stays empty by default.
+- P3 recommendations only: independently review simulation estimates against
+  published sources; profile SF50/Il-76 geometry and draw calls on real hardware;
+  test touch/accessibility on real devices; finish the remaining controller seams
+  with behavior coverage. No P3 code or physical-model changes were made here.

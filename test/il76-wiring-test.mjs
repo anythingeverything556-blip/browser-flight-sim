@@ -26,7 +26,7 @@ check('four aircraft; the Il-76 has a name, model file, blurb and three stats; ?
   assert.equal(Object.keys(AIRCRAFT_TYPES).join(), 'sr71,c172,sf50,il76'); const a = AIRCRAFT_TYPES.il76;
   assert.ok(a.model === 'IL76_v6.glb' && /Il-76MD-90A/.test(a.name) && a.short === 'Il-76' && a.stats.length === 3 && a.blurb.length > 40);
   assert.equal(aircraftChoice({}, '?aircraft=il76'), 'il76'); assert.equal(aircraftChoice({ aircraft: 'il76' }, ''), 'il76'); assert.equal(aircraftChoice({}, '?aircraft=il-76'), 'sr71');
-  const html = src('index.html'); assert.ok(html.includes('class="ac-card" data-v="il76"') && /<svg class="ac-icon"[^>]*><path d="M32 4c1\.4/.test(html), 'card with its own SVG icon');
+  const html = src('index.html'); assert.ok(html.includes('class="ac-card" data-v="il76"') && html.includes('src="/images/aircraft-il76.webp"'), 'card with actual Il-76 model render');
   assert.ok(/Ilyushin Il-76 from 8,200/.test(html) && /<td>2 · 3<\/td>/.test(html), 'meta copy and help rows');
   assert.ok(fs.statSync(new URL('../public/models/IL76_v6.glb', import.meta.url)).size > 1e6, 'the model is in public/');
   assert.ok(/Il-76/.test(src('src/controls.js')) && /id: 'spoilers'/.test(src('src/controls.js')));
