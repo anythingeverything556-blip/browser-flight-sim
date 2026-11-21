@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased — final film pose verification (21 November 2026)
+
+The first moving render exposed a capture-only race: one queued simulator frame restored the parked landing gear after the initial still. Re-rendered all 144 native 3840×2160 frames with the presentation pose asserted on every render; the final film keeps gear stowed throughout. No runtime aircraft/model/physics behavior changed. Final files: 4K 1,353,562 bytes; 1080p 341,529 bytes, six seconds / 24 fps / no audio. Final decoded-frame hashes and strict-header browser motion checks are in the visual follow-up evidence folder. Playback failures are latched for the page lifetime so ordinary menu/idle class changes cannot repeatedly re-download a failed decorative movie. Source render attempts and the rejected gear-down pass remain there; no upscaling or image-pan substitution was used.
+
 ## Unreleased — startup recovery and compact layout (21 November 2026)
 
 - Reproduced: at 390×844 the WebGL error/retry lived in a hidden hero loader, while Just fly remained enabled and could queue a flight forever. Moved status/retry into the setup panel at every viewport, allow long errors to wrap, force fatal status visible even if a ready class existed, and disable all four launch paths on fatal startup. Retry remains the existing explicit reload; no flight-model change.
