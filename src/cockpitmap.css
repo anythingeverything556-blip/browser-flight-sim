@@ -1,12 +1,12 @@
 /* Cockpit moving map: a small avionics MFD, bottom-left above the instrument strip, right of the rail */
 .cockpitmap {
-  position: fixed; z-index: 10; left: var(--sheet-left, 84px); bottom: 108px; display: flex; flex-direction: column; overflow: hidden;
-  width: min(320px, calc(100vw - var(--sheet-left, 84px) - 16px)); height: min(320px, calc(100vh - 200px)); min-height: 200px;
+  position: fixed; z-index: 10; left: var(--sheet-left, 84px); bottom: calc(var(--strip-h, 100px) + 32px); display: flex; flex-direction: column; overflow: hidden;
+  width: min(320px, calc(100vw - var(--sheet-left, 84px) - 16px)); height: min(320px, calc(100dvh - var(--strip-h, 100px) - 104px)); min-height: 200px;
   border: 1px solid var(--line-strong, #324255); border-radius: var(--r-lg, 12px); background: rgba(8, 12, 17, 0.82); box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, 0.4));
   -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); color: var(--text, #e7ecf1); font: 500 12px/1.2 var(--mono, ui-monospace, monospace); pointer-events: auto; user-select: none;
 }
 .cockpitmap[hidden] { display: none; }
-.cockpitmap.cm-large { width: min(560px, calc(100vw - var(--sheet-left, 84px) - 16px)); height: min(560px, calc(100vh - 200px)); }
+.cockpitmap.cm-large { width: min(560px, calc(100vw - var(--sheet-left, 84px) - 16px)); height: min(560px, calc(100dvh - var(--strip-h, 100px) - 104px)); }
 .cm-head { display: grid; flex: 0 0 auto; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--line, #232e3b); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .cm-gs { color: var(--text, #e7ecf1); }
 .cm-trk { color: var(--muted, #a9b4c0); }
