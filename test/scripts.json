@@ -102,5 +102,6 @@
   "test/existing-aircraft-test.mjs",
   "test/test-runner-test.mjs",
   "test/telemetry-test.mjs",
-  "test/controllers-test.mjs"
+  "test/controllers-test.mjs",
+  "test/hero-media-test.mjs"
 ]

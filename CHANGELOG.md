@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased — native 4K model film and sharper aircraft art (21 November 2026)
+
+Local follow-up to deployed source `44b50f7e131d491bd02f50f2a0ec228a3d6539f4`; this entry does not claim a deployment.
+
+- Replaced the stretched 640×360 GIF-frame background with an original six-second, 24 fps **native 3840×2160 model film**: 144 independently rendered Chrome/Three.js frames of the repository SR-71 with a periodic moving camera and procedural atmosphere/cloud motion. Not stock art, not an upscaled still and **not an in-flight game recording**. Label now says “SR-71 model film · rendered for Earthwing”. Render source: `tools/render-release-art.mjs`; Chrome ANGLE SwiftShader, not a hardware GPU.
+- Muted inline autoplay/loop on eligible desktop screens; 1920×1080 video on ordinary displays, actual 4K video on wide/high-DPR displays, responsive 960/1920/3840 posters. No video URL/download on phones, reduced motion, Save-Data or reported 2G/3G. Pause/play control, hidden-tab pause, flight-entry release and poster fallback for denied autoplay/decode failures. Security headers and simulation behavior unchanged.
+- Fresh brighter repository-model renders replace all four small card images; SR-71 is visibly lit and more tightly framed. Aircraft information pages now select larger native renders (SR-71 1280×720 crop; others 1920×1080) with responsive 480 px thumbnails, corrected intrinsic aspect ratio and high-resolution social metadata. No third-party imagery or new runtime dependency. Existing hero/thumbnail URLs are retained for upload compatibility; the old GIF-derived hero is no longer referenced.
+- At 1280×720, compact aircraft cards omit secondary specs so the rendered aircraft and title no longer compete with the tall lower selector; aircraft names, roles and controls remain.
+- Verification/evidence: `/home/earthwing-evidence/visual-followup/`; native renderer metadata, source frames, decoded frame hashes, ffprobe raster/duration/size, before/after 390×844, 1280×720 and 1920×1080 captures. Full suite/build and hosted-like browser smoke are recorded there. These are local/software-rendered checks, not real-device phone, hardware-FPS or deployment claims.
+
+
 ## Unreleased (P2 discoverability and engineering — 21 November 2026)
 
 Local only, based on P1 `d085612656ca991f5f102e30879d10cfa4a705b4`; no push/deploy/PR/ZIP. Evidence under `/home/earthwing-evidence/p2/`. Final full rerun: **104 scripts passed**, production build passed (`final-test.log`, `final-build.log`, including exact-origin delimiter edge cases). All original 100 scripts remain in order, including terrain-bench; added policy, runner, diagnostics and controller checks. The first item-22 run recorded the existing stochastic explosion failure explicitly below; it was not filtered or auto-retried by the runner. Chrome evidence is actual WebGL 2 on SwiftShader with synthetic world fixtures, not a hardware GPU, phone, live imagery or hosted CI/deployment claim.
