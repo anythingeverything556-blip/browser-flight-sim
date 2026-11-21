@@ -729,3 +729,22 @@ body.sheet-open .tl-hint { display: none !important; }
 #imagery-notice { position: fixed; z-index: 22; top: 58px; left: var(--sheet-left, 84px); right: 16px; width: fit-content; max-width: calc(100vw - var(--sheet-left, 84px) - 16px); padding: 8px 12px; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-md); }
 #imagery-notice[hidden], body.intro #imagery-notice { display: none; }
 #imagery-retry, #startup-retry { min-height: 44px; color: var(--accent); background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 6px 12px; }
+
+#touch-gate { max-width: min(440px, calc(100vw - 32px)); padding: 24px; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-lg); }
+#touch-gate::backdrop { background: rgba(3,5,8,.85); }
+#touch-gate p { line-height: 1.5; }
+#touch-continue { min-height: 48px; padding: 8px 12px; color: var(--canvas); background: var(--accent); border: 0; border-radius: var(--r-md); }
+#touch-controls { position: fixed; z-index: 20; left: var(--sheet-left, 84px); right: 12px; bottom: calc(var(--strip-h, 100px) + 32px); display: flex; align-items: end; justify-content: space-between; gap: 8px; pointer-events: none; }
+#touch-controls > * { pointer-events: auto; }
+.touch-stick { position: relative; flex: 0 0 112px; height: 112px; border: 1px solid var(--accent); border-radius: 50%; background: var(--surface); touch-action: none; user-select: none; text-align: center; padding-top: 4px; color: var(--muted); }
+.touch-stick i { position: absolute; left: 38px; top: 38px; width: 34px; height: 34px; background: var(--accent); border-radius: 50%; transform: translate(var(--stick-x, 0px), var(--stick-y, 0px)); }
+.touch-levers { display: grid; gap: 6px; width: min(220px, 100%); padding: 6px; border: 1px solid var(--line-strong); border-radius: var(--r-md); background: var(--surface); }
+.touch-levers label { display: grid; color: var(--text); font-size: 12px; }
+.touch-levers input { width: 100%; min-width: 0; height: 44px; touch-action: none; }
+.touch-buttons { display: flex; flex-wrap: wrap; gap: 4px; max-width: 330px; }
+.touch-buttons button { min-width: 44px; min-height: 44px; padding: 6px; color: var(--accent); background: var(--surface); border: 1px solid var(--line-strong); border-radius: var(--r-md); touch-action: none; }
+.touch-access { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.touch-access:focus-within { position: static; width: 180px; height: auto; clip-path: none; background: var(--surface); }
+.touch-access label { display: grid; }
+body.intro #touch-controls, body.sheet-open #touch-controls, body.shot #touch-controls { display: none; }
+@media (max-width: 700px) { #touch-controls { flex-wrap: wrap; } .touch-levers { flex: 1; } .touch-buttons { flex-basis: 100%; } body.touch-mode #throttle-lever { display: none; } }

@@ -21,13 +21,18 @@
   <link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/geist-mono-latin.woff2" as="font" type="font/woff2" crossorigin />
   <!-- start the two big downloads while the script bundle is still being parsed -->
-  <link rel="preload" as="fetch" crossorigin="anonymous" href="/models/SR71_sim.glb" />
-  <link rel="preload" as="fetch" crossorigin="anonymous" href="/data/airports.json" />
-  <link rel="preload" href="/models/SR71_lod.glb" as="fetch" crossorigin />
-  <link rel="preload" href="/draco/draco_wasm_wrapper.js" as="fetch" crossorigin />
-  <link rel="preload" href="/draco/draco_decoder.wasm" as="fetch" crossorigin />
+  <link rel="preload" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin="anonymous" href="/models/SR71_sim.glb" />
+  <link rel="preload" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin="anonymous" href="/data/airports.json" />
+  <link rel="preload" href="/models/SR71_lod.glb" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin />
+  <link rel="preload" href="/draco/draco_wasm_wrapper.js" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin />
+  <link rel="preload" href="/draco/draco_decoder.wasm" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin />
 </head>
 <body class="intro">
+  <dialog id="touch-gate" aria-labelledby="touch-title" aria-describedby="touch-description">
+    <h2 id="touch-title">Desktop recommended</h2>
+    <p id="touch-description">Touch flight controls are basic. Some cockpit tools still need a keyboard or pointer. Continuing downloads the aircraft and starts demanding WebGL graphics.</p>
+    <button type="button" id="touch-continue">Continue with touch controls</button>
+  </dialog>
   <canvas id="view" aria-hidden="true"></canvas>
   <div id="gloom" aria-hidden="true"></div>
   <div id="fogveil" aria-hidden="true"></div>

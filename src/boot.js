@@ -1,6 +1,7 @@
 // Check for WebGL 2 (required by three.js r180) before loading the simulator, so an unsupported
 // browser gets an explanation on the start screen instead of an uncaught exception.
 import { showStartupError as msg } from './startup.js';
+import { touchOnly } from './touchcontrols.js';
 
 // Start flight answers the first click even while the simulator is still loading: the loading screen opens at once and main.js replays the
 // click when it is ready (window.__simReady). The buttons used to stay disabled for the first 10-30 s, so early clicks did nothing.
@@ -16,6 +17,8 @@ document.addEventListener('click', (e) => {
 
 // The check opens the game's own context on the game's canvas, with the attributes three.js asks for (main.js: canvas MSAA only on Low), so the
 // renderer's getContext gets this same context back. A throwaway probe context here cost ~1 s of a SwiftShader boot and meant a second GPU context.
+function startSimulator() {
+  document.querySelectorAll('link[data-flight-preload]').forEach(link => { link.media = 'all'; });
 let gl = null;
 try {
   let low = false; try { low = (JSON.parse(localStorage.getItem('sr71sim.settings') || 'null') || {}).gfx === 'low'; } catch { /* storage blocked: main.js reads it the same way */ }
@@ -27,3 +30,11 @@ if (!gl) {
 } else {
   import('./main.js').catch((e) => { console.error(e); msg('Failed to start: ' + (e && e.message ? e.message : e)); });
 }
+
+}
+if (touchOnly()) {
+  const gate = document.getElementById('touch-gate');
+  gate.showModal();
+  gate.addEventListener('cancel', e => e.preventDefault());
+  document.getElementById('touch-continue').addEventListener('click', () => { gate.close(); startSimulator(); }, { once: true });
+} else startSimulator();

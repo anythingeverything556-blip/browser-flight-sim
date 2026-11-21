@@ -1,3 +1,4 @@
+import { mountTouchControls } from './touchcontrols.js';
 import { IMAGERY_DEADLINE_MS, showStartupError, withAssetDeadline } from './startup.js';
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
@@ -156,6 +157,7 @@ if (IS_SF50) { configureCameraAircraft({ eye: SF50_EYE, wing: new THREE.Vector3(
 // Il-76: the captain's eye (left seat, over the yoke), a wing camera behind the left wing's inboard trailing edge, chase and orbit for a 50 m aircraft
 if (IS_IL76) { configureCameraAircraft({ eye: IL76_EYE, wing: new THREE.Vector3(-10, 5.6, -12).sub(IL76_CG), look: 14, minDist: 30, chase: 62 }); rig.orbit.dist = 70; }
 const controls = new Controls();
+const touchControls = mountTouchControls(controls);
 controls.enabled = false; // until a flight is started from the setup screen
 const ap = new Autopilot(IS_SF50 ? SF50_AP : IS_IL76 ? IL76_AP : undefined), autoland = new SF50Autoland();
 // the autopilot's airspeed: equivalent for the Blackbird (its limits are KEAS), calibrated for the Vision Jet (VMO and the PFD are KCAS)
