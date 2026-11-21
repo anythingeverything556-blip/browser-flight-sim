@@ -1,3 +1,4 @@
+import { FlightLogbook } from './logbook.js';
 import { mountTouchControls } from './touchcontrols.js';
 import { IMAGERY_DEADLINE_MS, showStartupError, withAssetDeadline } from './startup.js';
 import * as THREE from 'three';
@@ -81,6 +82,8 @@ const FT = 3.28084, KT = 1.943844, NM = 1852;
 const START_FUEL = 25000; // kg
 const BASE = import.meta.env.BASE_URL;
 const LS = { get: (k, d) => { try { const v = localStorage.getItem('sr71sim.' + k); return v ? JSON.parse(v) : d; } catch { return d; } }, set: (k, v) => { try { localStorage.setItem('sr71sim.' + k, JSON.stringify(v)); } catch { /* private mode */ } } };
+
+const logbook = new FlightLogbook();
 
 // ---------- renderer & scene ----------
 const canvas = $('view');
@@ -241,6 +244,7 @@ function moveOrigin(lat, lon) {
 }
 
 function spawn(s, meta) {
+  logbook.cancel(); state.setup = null;
   state.refuel = null; if (warp.i) { warp.i = 0; $('st-warp').hidden = true; } // a new position starts at 1x with no tanker
   buildingHit.reset(); buildingHit.hasPrev = false;
   state.ditch = false;
@@ -328,6 +332,8 @@ function spawnAt(apt, rwyIdx, end, mode) {
   // the Il-76: 160 KIAS on final (slats, flaps and gear follow from the speed in IL76Model.reset), M 0.72 at 10,000 m (FL330) for the cruise start
   if (IS_IL76 && !sp.ground) { if (mode === 'cruise') { sp.alt = 10000; sp.speed = 0.72 * isa(sp.alt).a; sp.gamma = 0; } else sp.speed = 148 / KT; }
   spawn(sp, { rwy: r, end });
+  state.setup = {aircraft:AIRCRAFT,airport:apt.ident,rwy:rwyIdx,end,mode,mission:missionKind,weather:settings.weather,hour:env.hour};
+  if (state.started) { logbook.begin(state.setup); renderLogbook(); }
   toast(`${apt.ident} runway ${r.ends[end].ident} — ${mode === 'runway' ? 'ready for take-off' : mode === 'approach' ? '10 NM final' : mode === 'final' ? '5 NM final' : IS_C172 ? '8,000 ft cruise' : IS_SF50 ? 'FL250 cruise' : IS_IL76 ? 'FL330 cruise' : 'Mach 3.2 cruise'}`);
 }
 function restart() {
@@ -342,6 +348,8 @@ function freeOrbitBehind() {
   setView('orbit'); Object.assign(rig.orbit, { az: -((s ? s.hdg : 0) * Math.PI) / 180, el: 0.2, dist: IS_C172 ? 16 : IS_SF50 ? 19 : IS_IL76 ? 70 : 60 });
 }
 function beginFlight() {
+  if (!state.setup) { const m = state.lastSpawn?.meta; if (m?.rwy?.ap) state.setup = {aircraft:AIRCRAFT,airport:m.rwy.ap.ident,rwy:m.rwy.ap.runways.indexOf(m.rwy),end:m.end,mode:'runway',mission:missionKind,weather:settings.weather,hour:env.hour}; }
+  logbook.begin(state.setup); renderLogbook();
   if (settings.cmap !== false && !cmap.visible) cmap.toggle(true); // on by default once flying; N hides it
   document.body.classList.remove('intro'); state.started = true; controls.enabled = true; openSheet(null); placeAircraftPicker();
   syncStripH();
@@ -589,11 +597,30 @@ $('just-fly').addEventListener('click', () => {
   if (state.pending && state.started) return;
   const a = homeAirport(); if (!a) return;
   missionKind = 'free'; missionKindSet('free'); dep.mode = 'runway';
-  applyWeather('clear', false); env.hour = 15; settings.metarAuto = false;
+  applyWeather('clear', false); env.hour = 15; settings.metarAuto = false; $('metar-auto').checked = false; syncEnvUi();
   startWarm(); spawnAt(a, Math.min(home.rwy, a.runways.length - 1), home.end === 1 ? 1 : 0, 'runway');
   beginFlight(); if (state.pending) showLoadUi(); freeOrbitBehind(); startMission();
 });
 const missionKindSet = seg('mission-mode', (v) => { missionKind = v; $('mission-blurb').textContent = MISSIONS[v].blurb; });
+
+// Plain text rendering prevents corrupt local records from becoming markup.
+function renderLogbook() {
+  const d=logbook.read(), list=$('logbook-list'); list.replaceChildren();
+  for (const e of d.entries) { const li=document.createElement('li');li.textContent=`${AIRCRAFT_TYPES[e.aircraft].short} · ${e.departure} → ${e.arrival} · ${Math.floor(e.duration/60)}m ${e.duration%60}s · ${e.quality} (${e.sinkFpm} fpm)`;list.append(li); }
+  $('resume-flight').hidden=$('resume-note').hidden=!d.last;
+  $('logbook-status').textContent=!logbook.persisted?'Browser storage unavailable or full; flight continues without saving.':d.entries.length?'Saved only on this browser.':'No completed landings yet.';
+}
+$('resume-flight').addEventListener('click', () => {
+  const last=logbook.read().last;if(!last)return;
+  if(last.aircraft!==AIRCRAFT){const u=new URL(location.href);u.searchParams.set('aircraft',last.aircraft);u.searchParams.set('resume','1');location.assign(u);return;}
+  const a=db.get(last.airport);if(!a?.runways[last.rwy]){toast('Saved runway unavailable; choose a departure.',true);return;}
+  dep.apt=a;dep.rwy=last.rwy;dep.end=last.end;dep.mode=last.mode;
+  missionKind=(MISSIONS[last.mission] && (AIRCRAFT==='sr71'?!last.mission.startsWith('c172'):IS_C172?['free','c172guide','c172pattern'].includes(last.mission):last.mission==='free'))?last.mission:'free';missionKindSet(missionKind);
+  document.querySelectorAll('#start-mode button').forEach(b=>b.classList.toggle('on',b.dataset.v===dep.mode));
+  applyWeather(last.weather,false);env.hour=last.hour;settings.metarAuto=false;$('metar-auto').checked=false;
+  $('dep-q').value=`${a.ident} — ${a.name}`;renderDep();syncEnvUi();$('make-home').checked=false;$('start-btn').click();
+});
+renderLogbook();
 
 // ---------- guided flight and missions ----------
 let missionKind = 'free', mission = null, missionAcc = 0, beacons = [];
@@ -1647,6 +1674,7 @@ function stepWreck(dt, cw) {
 
 function simulate(dt) {
   state.flightT = (state.flightT || 0) + dt;
+  if (!state.slew) logbook.tick(dt);
   if (state.autoPark) { if (!fdm.parkingBrake) state.autoPark = false; else if (controls.throttle > 0.12) { fdm.parkingBrake = false; state.autoPark = false; toast('Parking brake released'); } }
   if (state.slew) {
     const s = controls.slew, att = attitude(fdm.quat);
@@ -1774,7 +1802,12 @@ function simulate(dt) {
     else if (e.type === 'restart') toast(`${e.engine ? 'Right' : 'Left'} inlet restarted`);
   }
   // one message per landing, not one per wheel contact (touchdown.js)
-  { const sink = touchdown.frame(fdm.events, dt, fdm.onGround); if (sink !== null) toast(`Touchdown ${Math.round(sink * 196.85)} fpm`); }
+  { const sink = touchdown.frame(fdm.events, dt, fdm.onGround); if (sink !== null) {
+      toast(`Touchdown ${Math.round(sink * 196.85)} fpm`);
+      const ll = aircraftLatLon(), nearest = db.nearest(ll.lat,ll.lon);
+      const a = nearest && (nearest.a || nearest); const arrival = a && haversine(ll.lat,ll.lon,a.lat,a.lon) < 3000 ? a.ident : 'Unknown';
+      if (logbook.land(arrival,sink)) renderLogbook();
+    } }
   fdm.events.length = 0;
   if (Math.hypot(fdm.pos.x, fdm.pos.z) > 30000) {
     const ll = aircraftLatLon();
@@ -2228,6 +2261,7 @@ function prewarmCrash() { startWarm(); }
   spawn(a.runways[dep.rwy].spawn(dep.end, 'runway'), { rwy: a.runways[dep.rwy], end: dep.end });
   $('start-btn').disabled = false; $('home-go').disabled = false;
   window.__simReady = true;
+  if (new URLSearchParams(location.search).get('resume') === '1') { const u=new URL(location.href);u.searchParams.delete('resume');history.replaceState(null,'',u);window.__startQueued='resume-flight'; }
   if (new URLSearchParams(location.search).get('quick') === '1') { const u = new URL(location.href); u.searchParams.delete('quick'); history.replaceState(null, '', u); window.__startQueued = 'just-fly'; }
   if (window.__startQueued) { const id = window.__startQueued; window.__startQueued = null; $(id).click(); } // clicked while loading: start now
   setView('orbit'); rig.orbit.az = 0.9; rig.orbit.el = 0.14; rig.orbit.dist = IS_C172 ? 16 : IS_SF50 ? 18 : IS_IL76 ? 66 : 46;
@@ -2244,7 +2278,7 @@ function prewarmCrash() { startWarm(); }
   const advanceWreck = (sec) => { for (let t = 0; t < sec; t += 1 / 30) if (wreck.active) stepWreck(1 / 30, rig.world); return { t: wreck.t, settled: wreck.settled() }; };
   // advance until the wreck's own clock (which runs slow at first) reaches t
   const advanceWreckTo = (t) => { for (let n = 0; wreck.active && wreck.t < t && n < 5000; n++) stepWreck(1 / 30, rig.world); return { t: wreck.t, settled: wreck.settled() }; };
-  window.__sim = { aircraft: AIRCRAFT, cmap, warp, autoland, configureCameraAircraft, depthMode: REV_DEPTH ? 'reversed' : 'log', cloudEff, shadows, takeoff, ap, rotAssist, controls, occlusion, occUniforms: OCC_UNIFORMS, GFX, applyGfx, stat, ChangeGate, cloudAdapt, warm, cloudShadow, airflow, traffic, perf, hud, post, vclouds, THREE, prewarmCrash, applyWeather, weather, simulate, advanceWreck, advanceWreckTo, fdm, wreck, terrain, buildings, trees, post, shadows, geo, db, nav, visual, rig, ap, spawn, spawnAt, setView, state, env, settings, controls, toggleAp, readAp, advance, attitude, audio, renderer, scene, camera, openSheet,
+  window.__sim = { logbook, renderLogbook, aircraft: AIRCRAFT, cmap, warp, autoland, configureCameraAircraft, depthMode: REV_DEPTH ? 'reversed' : 'log', cloudEff, shadows, takeoff, ap, rotAssist, controls, occlusion, occUniforms: OCC_UNIFORMS, GFX, applyGfx, stat, ChangeGate, cloudAdapt, warm, cloudShadow, airflow, traffic, perf, hud, post, vclouds, THREE, prewarmCrash, applyWeather, weather, simulate, advanceWreck, advanceWreckTo, fdm, wreck, terrain, buildings, trees, post, shadows, geo, db, nav, visual, rig, ap, spawn, spawnAt, setView, state, env, settings, controls, toggleAp, readAp, advance, attitude, audio, renderer, scene, camera, openSheet,
     // round 4 test hooks: which mission runs, the map's teleport, and the restart key's action
     missionInfo: () => ({ kind: missionKind, mission: mission ? mission.constructor.name : null, phase: mission ? mission.phase : null, tour: tour.active, tutorial: tutorial.active, toasts: [...document.querySelectorAll('#toasts > *')].map((t) => t.textContent).slice(-3) }),
     mapTeleport: (lat, lon) => mapPanel.cb.teleport(lat, lon), mapPanel, restart, holdForShaders, showAirport, homeAirport };

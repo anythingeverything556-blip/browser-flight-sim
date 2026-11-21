@@ -84,6 +84,9 @@
         <p class="sub" id="quick-description">Clear skies · free flight · home runway (KBAB on first use). Your saved preferences stay unchanged.</p>
         <p class="sub">Want the aircraft and conditions you selected? Use Start flight below.</p>
       </section>
+      <button type="button" id="resume-flight" class="ghost wide" hidden>Resume last flight setup</button>
+      <p class="sub" id="resume-note" hidden>Restores aircraft, runway, start profile, time, weather and mission — not an in-air save.</p>
+      <details id="logbook-view"><summary>Local logbook</summary><p class="note">Last 50 completed landings in this browser. Duration is simulated flight time; landing quality is approximate sink rate, not a certification score. No account or upload.</p><ol id="logbook-list"></ol><p id="logbook-status" class="note" aria-live="polite"></p></details>
       <div id="ac-slot"><div id="ac-pick">
         <div class="lbl">Aircraft</div>
         <div class="ac-cards" id="ac-cards" role="radiogroup" aria-label="Aircraft">

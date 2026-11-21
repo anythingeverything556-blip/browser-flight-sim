@@ -771,3 +771,7 @@ body.intro::before { content: ""; position: fixed; inset: 0; z-index: 2; pointer
 .panel-summary { margin: 0 0 18px; line-height: 1.5; color: var(--text); }
 .advanced { margin: 18px 0; padding: 12px 0; border-block: 1px solid var(--line); }
 .advanced > summary { cursor: pointer; color: var(--muted); margin-bottom: 12px; }
+
+#logbook-view { margin: 14px 0; padding: 10px 0; border-bottom: 1px solid var(--line); }
+#logbook-view summary { cursor: pointer; color: var(--muted); }
+#logbook-list { padding-left: 20px; font-size: 13px; line-height: 1.6; }
