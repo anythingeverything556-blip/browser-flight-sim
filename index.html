@@ -20,10 +20,8 @@
   <link rel="stylesheet" href="/src/style.css" />
   <link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/geist-mono-latin.woff2" as="font" type="font/woff2" crossorigin />
-  <!-- start the two big downloads while the script bundle is still being parsed -->
-  <link rel="preload" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin="anonymous" href="/models/SR71_sim.glb" />
+  <!-- Shared small dependencies only. main.js loads the selected aircraft, never an unconditional SR-71. -->
   <link rel="preload" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin="anonymous" href="/data/airports.json" />
-  <link rel="preload" href="/models/SR71_lod.glb" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin />
   <link rel="preload" href="/draco/draco_wasm_wrapper.js" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin />
   <link rel="preload" href="/draco/draco_decoder.wasm" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin />
 </head>
