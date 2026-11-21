@@ -4,6 +4,8 @@
 
 Local only, based on P1 `d085612656ca991f5f102e30879d10cfa4a705b4`; no push/deploy/PR/ZIP. Evidence under `/home/earthwing-evidence/p2/`.
 
+- **19 — Fixed:** deterministic explicit manifest preserves all original 100 scripts plus P2 checks, including terrain-bench; no shell chaining/early exit. Per-child 120 s / 2 MiB limits, all-result table and aggregate nonzero failure. Controlled temporary exit-7 and timeout fixtures prove a later script still executes. No retries or masking of stochastic failures. Full checks `19-test.log`, `19-build.log`, `19-results.json`; original manifest comparison `runner-preservation.json`.
+
 - **18 — Fixed (repository workflow; hosted run pending):** push/PR CI uses clean npm ci/test/build, supported Node 24 LTS, read-only permissions and maintained official checkout/setup-node v6 pinned to upstream tag SHAs resolved via read-only `git ls-remote`. No secrets or deployment. Local `npm ci`, full checks `18-ci.log`, `18-test.log`, `18-build.log`; no push or Actions execution claimed.
 
 - **17 — Fixed (local, deployment pending):** strict DENY/none on ordinary routes for both builds; separate `/embed/` Function is fail-closed, disabled without explicit server-owned exact-HTTPS allowlist. No origins enabled. CSP and other headers retained, header line-length regressions retained, `/api` untouched. Local safe `.example` Chrome iframe fixture and policy tests cover deny, allow and unrelated denial; `frame-policy.json`, `17-test.log`, `17-build.log`. Owner chooses hosting/domains. Initial policy regression caught URL accepting a wildcard hostname; explicitly rejected wildcard/whitespace and reran complete suite (`17-test-rerun.log`, `17-build-rerun.log`).

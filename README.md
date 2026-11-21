@@ -398,3 +398,11 @@ repository permission: Node 24 LTS, clean `npm ci`, full tests and production
 build. Official checkout/setup-node v6 actions are pinned to verified commit
 SHAs. No deployment, tokens or secrets are used. Local tests/build are verified;
 a hosted Actions run requires a separately authorized push and is not claimed.
+
+`npm test` runs the ordered `test/scripts.json` manifest through
+`tools/test-runner.mjs`. Every original script (including terrain-bench) runs
+even after a failure. Each child is bounded to 120 seconds and 2 MiB captured
+output; timeout/output overflow is a failure, never a retry or skipped pass.
+The final table reports every outcome and exits nonzero if any failed.
+Set `TEST_REPORT_PATH` to keep machine-readable per-script results.
+The controlled failure/timeout regression runs only temporary test fixtures.
