@@ -1,3 +1,4 @@
+import { cleanWeatherSnapshot } from './flight-weather.js';
 // Account-free, bounded local log. Storage failures never interrupt the simulation.
 const AIRCRAFT = new Set(['sr71','c172','sf50','il76']);
 const MODES = new Set(['runway','approach','final','cruise']);
@@ -7,9 +8,11 @@ export function cleanSetup(v) {
   if (!v || !AIRCRAFT.has(v.aircraft) || !ident(v.airport) || !MODES.has(v.mode)) return null;
   const integer = (n,max) => Number.isInteger(n) && n >= 0 && n <= max;
   if (!integer(v.rwy,100) || !integer(v.end,1)) return null;
+  const snapshot = cleanWeatherSnapshot(v.weatherSnapshot);
   return {aircraft:v.aircraft,airport:v.airport,rwy:v.rwy,end:v.end,mode:v.mode,
     mission:typeof v.mission==='string' && /^[a-z0-9]{1,24}$/.test(v.mission)?v.mission:'free',
-    weather:['clear','few','scattered','overcast','rain','storm','fog','windy'].includes(v.weather)?v.weather:'few',
+    weather:['clear','few','scattered','overcast','rain','storm','fog','windy', ...(snapshot?.metarWx ? ['metar'] : [])].includes(v.weather)?v.weather:'few',
+    ...(snapshot ? { weatherSnapshot: snapshot } : {}),
     hour:Number.isFinite(v.hour)&&v.hour>=0&&v.hour<=24?v.hour:15};
 }
 export class FlightLogbook {
@@ -30,6 +33,10 @@ export class FlightLogbook {
     const last=cleanSetup(setup);if(!last){this.active=null;return;}
     this.active={...last,id:`${Date.now().toString(36)}-${Math.random().toString(36).slice(2,10)}`,duration:0,recorded:false};
     const d=this.read();d.last=last;this.write(d);
+  }
+  updateSetup(setup) {
+    const last = cleanSetup(setup); if (!last || !this.active) return;
+    Object.assign(this.active, last); const d = this.read(); d.last = last; this.write(d);
   }
   tick(dt) {if(this.active&&Number.isFinite(dt)&&dt>0)this.active.duration=Math.min(604800,this.active.duration+dt);}
   land(arrival,sink) {

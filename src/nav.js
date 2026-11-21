@@ -7,6 +7,7 @@ class Navigation {
     ((this.wps = []),
       (this.active = 0),
       (this.legStart = null),
+      (this.done = false),
       (this.arrival = null),
       (this.locCap = !1),
       (this.gsCap = !1),
@@ -19,6 +20,7 @@ class Navigation {
     this.listeners.forEach((t) => t());
   }
   add(t, e) {
+    this.done = false;
     if ((this.wps.length || (this.legStart = null), e === void 0 || e >= this.wps.length)) this.wps.push(t);
     else {
       const n = Math.max(0, e);
@@ -28,6 +30,7 @@ class Navigation {
   }
   remove(t) {
     if (t < 0 || t >= this.wps.length) return;
+    this.done = false;
     const [e] = this.wps.splice(t, 1);
     (t < this.active
       ? (this.active--, this.active === 0 && (this.legStart = { lat: e.lat, lon: e.lon }))
@@ -39,23 +42,25 @@ class Navigation {
     const n = t + e;
     n < 0 ||
       n >= this.wps.length ||
-      (([this.wps[t], this.wps[n]] = [this.wps[n], this.wps[t]]),
+      ((this.done = false), ([this.wps[t], this.wps[n]] = [this.wps[n], this.wps[t]]),
       this.active === t ? (this.active = n) : this.active === n && (this.active = t),
       this.changed());
   }
   clear() {
-    ((this.wps = []), (this.active = 0), (this.legStart = null), this.changed());
+    ((this.wps = []), (this.active = 0), (this.legStart = null), (this.done = false), (this.sequenced = null), this.changed());
   }
   directTo(t, e) {
-    ((this.wps = [t]), (this.active = 0), (this.legStart = { ...e }), this.changed());
+    ((this.done = false), (this.sequenced = null), (this.wps = [t]), (this.active = 0), (this.legStart = { ...e }), this.changed());
   }
   setArrival(t, e) {
     ((this.arrival = t ? { rwy: t, end: e } : null), (this.locCap = this.gsCap = !1), this.changed());
   }
   activate(t, e) {
-    ((this.active = cm(t, 0, this.wps.length - 1)), (this.legStart = { ...e }), this.changed());
+    if (!this.wps.length) return;
+    ((this.done = false), (this.sequenced = null), (this.active = cm(t, 0, this.wps.length - 1)), (this.legStart = { ...e }), this.changed());
   }
   totalNm(t) {
+    if (this.done) return 0;
     let e = 0,
       n = t;
     for (let i = this.active; i < this.wps.length; i++)
@@ -65,6 +70,8 @@ class Navigation {
   update(t, e, n, bankDeg) {
     const i = {
       valid: !1,
+      routeComplete: !!this.done,
+      routeActive: false,
       ident: '',
       brgDeg: 0,
       distNm: 0,
@@ -78,9 +85,9 @@ class Navigation {
       gsVs: null,
     };
     if (this.wps.length) {
-      !this.legStart && this.active === 0 && (this.legStart = { lat: t.lat, lon: t.lon });
+      !this.legStart && (this.legStart = { lat: t.lat, lon: t.lon });
       const r = this.wps[this.active],
-        a = this.active > 0 ? this.wps[this.active - 1] : this.legStart || t,
+        a = this.legStart || (this.active > 0 ? this.wps[this.active - 1] : t),
         l = bearing(a.lat, a.lon, r.lat, r.lon),
         h = haversine(t.lat, t.lon, r.lat, r.lon),
         u = bearing(t.lat, t.lon, r.lat, r.lon),
@@ -93,14 +100,15 @@ class Navigation {
         g = x ? Math.abs(gT(bearing(r.lat, r.lon, x.lat, x.lon) - l)) : 0,
         _ = x ? Math.min(Math.max(1e3, y * Math.tan((Math.min(150, g) * D2R) / 2)), Math.max(300, 0.5 * Math.min(haversine(r.lat, r.lon, x.lat, x.lon), haversine(a.lat, a.lon, r.lat, r.lon)))) : 300;
       i.turnInS = x && g > 8 ? Math.max(0, (h - _) / Math.max(n, 1)) : null; i.turnDeg = x ? g : 0; i.turnRadiusNm = y / 1852;
-      h < _ || v < 0
+      !this.done && (h < _ || v < 0)
         ? x
           ? (this.active++, (this.legStart = { lat: r.lat, lon: r.lon }), this.changed(), (this.sequenced = r.name))
           : !this.done && h < 2e3 && ((this.done = !0), (this.sequenced = r.name + ' (end of route)'))
-        : (this.done = !1);
+        : null;
       const w = Math.max(25, (y / Math.max(n, 1)) * 0.6);
-      ((i.lnavHdg = (l - Math.atan2(p, n * w) / D2R + 360) % 360),
-        Object.assign(i, { valid: !0, ident: r.name, brgDeg: u, distNm: h / 1852, course: l, xtkNm: p / 1852 }));
+      // After the final fix, continue the terminal course without reviving route progress.
+      ((i.lnavHdg = this.done ? l : (l - Math.atan2(p, n * w) / D2R + 360) % 360),
+        Object.assign(i, { valid: !this.done, routeActive: !this.done, routeComplete: !!this.done, ident: r.name, brgDeg: u, distNm: this.done ? 0 : h / 1852, course: l, xtkNm: p / 1852 }));
     }
     if (this.arrival) {
       const { rwy: r, end: a } = this.arrival,

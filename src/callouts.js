@@ -21,7 +21,10 @@ export class AltCallouts {
     if (s.crashed) { this.armed = false; return null; }
     if (s.onGround) { this.groundT += dt; } else this.groundT = 0;
     if (!s.onGround && s.aglFt > ARM_FT) { this.armed = true; this.next = 0; this.retardDone = false; this.fiveDone = false; return null; }
-    if (!this.armed) return null;
+    // A positive climb is not a landing flare. Latch off after a missed approach
+    // until the next climb above ARM_FT, while preserving the ground rollout calls.
+    if (!s.onGround && s.vsFpm > 60) { this.armed = false; return null; }
+    if (!this.armed || (!s.onGround && s.vsFpm > 0)) return null;
     if (this.t < this.busyUntil) return null;
     const descending = s.onGround || s.vsFpm < -60;
     let key = null;

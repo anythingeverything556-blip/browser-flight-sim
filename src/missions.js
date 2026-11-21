@@ -26,7 +26,7 @@ class HighFast {
   update(dt, s) {
     this.t += dt;
     const ok = s.M >= 3.0 && s.alt * FT >= 70000;
-    this.hold = ok ? this.hold + dt : Math.max(0, this.hold - dt * 2);
+    this.hold = ok ? this.hold + dt : 0;
     this.best = Math.max(this.best, this.hold);
     if (this.hold >= 20 && !this.done) { this.done = true; return { event: 'done', text: `Mission complete in ${fmtTime(this.t)}` }; }
     return null;
@@ -95,25 +95,43 @@ export function scoreLanding(td) {
   const sink = band(td.sink, [[1.2, 40], [2, 32], [3, 22], [4.5, 10]]);
   const ref = td.vref || 175, dv = td.kt - ref; // speed against the weight's touchdown reference (vrefEas): slower means more nose-up, toward a tail strike
   const spd = dv >= -6 && dv <= 12 ? 20 : dv >= -12 && dv <= 22 ? 14 : dv >= -18 && dv <= 32 ? 8 : 0;
-  const off = band(td.off, [[4, 20], [8, 14], [15, 8]]);
+  const positionKnown = Number.isFinite(td.off) && Number.isFinite(td.dist);
+  const offRunway = td.onRunway === false;
+  const off = Number.isFinite(td.off) ? band(td.off, [[4, 20], [8, 14], [15, 8]]) : 0;
   const d = td.dist;
-  const dist = d == null ? 10 : d < 100 ? 0 : d <= 700 ? 20 : d <= 1200 ? 12 : d <= 2000 ? 6 : 0;
-  const total = td.belly ? 0 : sink + spd + off + dist;
+  const dist = !Number.isFinite(d) ? 0 : d < 100 ? 0 : d <= 700 ? 20 : d <= 1200 ? 12 : d <= 2000 ? 6 : 0;
+  const total = td.belly || !positionKnown || offRunway ? 0 : sink + spd + off + dist;
   const grade = total >= 90 ? 'A' : total >= 75 ? 'B' : total >= 55 ? 'C' : total >= 35 ? 'D' : 'F';
   const tips = [];
+  if (!positionKnown) tips.push('Touchdown position unavailable; landing cannot be scored. Land on the assigned runway.');
+  else if (offRunway) tips.push('Touchdown was outside the assigned runway. Land between its edges and thresholds.');
   if (td.belly) tips.push('Gear was not down. Press G well before the runway.');
   if (sink < 32) tips.push(`Sink rate ${td.sink.toFixed(1)} m/s. Flare earlier and hold the nose up, aim for under 2.`);
   if (spd < 14) tips.push(dv < 0 ? `Touched down at ${Math.round(td.kt)} kt, ${Math.round(-dv)} kt under the ${Math.round(ref)} kt reference: the nose was high enough to risk a tail strike. Keep the speed until the wheels touch.`
     : `Touched down at ${Math.round(td.kt)} kt, ${Math.round(dv)} kt fast. Bleed speed on final and idle the throttle in the flare, aim for ${Math.round(ref)}-${Math.round(ref + 10)} kt.`);
-  if (off < 14) tips.push(`${Math.round(td.off)} m off the centre line. Small corrections with A and D, early.`);
-  if (d != null && dist < 12) tips.push(d < 100 ? 'You landed short of the runway markings. Keep the glideslope.' : `Touched down ${Math.round(d)} m down the runway. Do not float, ease the throttle at the threshold.`);
+  if (Number.isFinite(td.off) && off < 14) tips.push(`${Math.round(td.off)} m off the centre line. Small corrections with A and D, early.`);
+  if (Number.isFinite(d) && dist < 12) tips.push(d < 100 ? 'You landed short of the runway markings. Keep the glideslope.' : `Touched down ${Math.round(d)} m down the runway. Do not float, ease the throttle at the threshold.`);
   return { sink, spd, off, dist, total, grade, tips };
+}
+
+// Runway-relative scoring remains available outside the ILS coverage cone.
+function landingPosition(s, arrival) {
+  if (arrival) {
+    const rwy = arrival.rwy, end = rwy?.ends?.[arrival.end];
+    if (!end || ![s.lat, s.lon, end.start.lat, end.start.lon, end.hdg, rwy.len, rwy.width].every(Number.isFinite)) return { off: null, dist: null, onRunway: false };
+    const range = haversine(end.start.lat, end.start.lon, s.lat, s.lon);
+    const angle = (bearing(end.start.lat, end.start.lon, s.lat, s.lon) - end.hdg) * Math.PI / 180;
+    const dist = range * Math.cos(angle), off = Math.abs(range * Math.sin(angle));
+    return { off, dist, onRunway: off <= rwy.width / 2 && dist >= 0 && dist <= rwy.len };
+  }
+  // Legacy callers with an actual ILS position can still score; missing values never become zero.
+  return { off: s.ilsValid && Number.isFinite(s.locXtk) ? Math.abs(s.locXtk) : null, dist: s.ilsValid && Number.isFinite(s.thrDist) ? -s.thrDist : null };
 }
 
 // Landing 1 (autopilot to minimums) and Landing 2 (hand-flown). s: { agl, vy, onGround, iasKt, gs, throttle, crashed, gearDown, chute,
 // ilsValid, gsDev (deg, + above), locXtk (m, + right of centre line), thrDist (m, negative past the threshold), apOn }
 class Landing {
-  constructor(kind) { this.kind = kind; this.phase = 'final'; this.t = 0; this.done = false; this.td = null; this.score = null; this.airborne = false; this.lastVy = 0; this.s = null; }
+  constructor(kind, start) { this.kind = kind; this.arrival = start?.arrival || null; this.phase = 'final'; this.t = 0; this.done = false; this.td = null; this.score = null; this.airborne = false; this.lastVy = 0; this.s = null; }
   update(dt, s) {
     this.s = s; this.t += dt;
     if (this.done) return null;
@@ -121,7 +139,8 @@ class Landing {
     if (!s.onGround) { this.lastVy = s.vy; if (s.agl > 6) this.airborne = true; }
     if (this.phase === 'final' && s.agl < 60) this.phase = 'flare';
     if (s.onGround && this.airborne && !this.td) {
-      this.td = { sink: Math.max(0, -this.lastVy), kt: s.iasKt, vref: s.vrefKt, off: Math.abs(s.locXtk || 0), dist: s.ilsValid ? -s.thrDist : null, belly: !s.gearDown };
+      const position = landingPosition(s, this.arrival);
+      this.td = { ...position, sink: Math.max(0, -this.lastVy), kt: s.iasKt, vref: s.vrefKt, belly: !s.gearDown };
       this.score = scoreLanding(this.td); this.phase = 'rollout';
       return { event: 'touchdown', text: `Touchdown: ${this.td.sink.toFixed(1)} m/s down at ${Math.round(this.td.kt)} kt` };
     }
@@ -195,7 +214,7 @@ class Landing {
       const c = this.score, t = this.td;
       lines.push(row('Sink', `${t.sink.toFixed(1)} m/s`, `${c.sink}/40`, c.sink >= 32));
       lines.push(row('Speed', `${Math.round(t.kt)} kt`, `${c.spd}/20`, c.spd >= 14));
-      lines.push(row('Course', `${Math.round(t.off)} m`, `${c.off}/20`, c.off >= 14));
+      lines.push(row('Course', Number.isFinite(t.off) ? `${Math.round(t.off)} m` : '-', `${c.off}/20`, c.off >= 14));
       lines.push(row('Point', t.dist == null ? '-' : `${Math.round(t.dist)} m`, `${c.dist}/20`, c.dist >= 12));
       lines.push(row('Total', `${c.total}`, `grade ${c.grade}`, c.total >= 75));
     }
@@ -205,7 +224,7 @@ class Landing {
 
 export function createMission(kind, start) {
   if (kind === 'c172guide' || kind === 'c172pattern') return new C172Lesson(start, kind === 'c172pattern');
-  if (kind === 'landassist' || kind === 'landhand') return new Landing(kind);
+  if (kind === 'landassist' || kind === 'landhand') return new Landing(kind, start);
   if (kind === 'highfast') { const m = new HighFast(); const u = m.update.bind(m); m.update = (dt, s) => { m.s = s; return u(dt, s); }; return m; }
   if (kind === 'recon') return new Recon(start.lat, start.lon, start.hdg);
   return null;

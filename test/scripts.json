@@ -18,6 +18,8 @@
   "test/fdm-test.mjs",
   "test/controls-test.mjs",
   "test/missions-test.mjs",
+  "test/ew-guidance-regressions-test.mjs",
+  "test/ew-guidance-dateline-test.mjs",
   "test/tutorial-test.mjs",
   "test/autopilot-test.mjs",
   "test/workstats-test.mjs",
@@ -104,5 +106,12 @@
   "test/test-runner-test.mjs",
   "test/telemetry-test.mjs",
   "test/controllers-test.mjs",
-  "test/hero-media-test.mjs"
+  "test/hero-media-test.mjs",
+  "test/ew-12-15-traffic-reliability-test.mjs",
+  "test/ew17-explosion-boundary-test.mjs",
+  "test/ew41-ew43-radio-regression-test.mjs",
+  "test/ew42-ew44-voice-regression-test.mjs",
+  "test/qa-flight-state-test.mjs",
+  "test/imagery-notice-test.mjs",
+  "test/qa-controls-ew-regression-test.mjs"
 ]

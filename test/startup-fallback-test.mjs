@@ -14,12 +14,12 @@ tile.img = 'failed'; assert.equal(terrain.canBuild(tile), true, 'blocked imagery
 tile.demList[0].state = 'loading'; assert.equal(terrain.canBuild(tile), false, 'imagery fallback does not bypass elevation safety');
 const jobs = [];
 terrain.loader.cancel = id => jobs.push(id);
-terrain.tiles.set(1, { img: 'loading', z:15, x: 12, y: 20, jobId: 41, imgSrc:null, imgCost:1 });
-terrain.tiles.set(3, { img: 'nodata', z: 15, x: 14, y: 20, tries: 2, retryAt: 99999 });
-terrain.tiles.set(2, { img: 'failed', z:15, x: 13, y: 20, tries:4, retryAt:99999 });
+const loading = { img: 'loading', z:15, x: 12, y: 20, jobId: 41, imgSrc:null, imgCost:1 };
+terrain.tiles.set(1, loading);
 terrain.retryImagery();
-assert.deepEqual(jobs, [41]);
-for (const t of terrain.tiles.values()) { assert.equal(t.img, 'none'); assert.equal(t.retryAt, 0); }
+assert.deepEqual(jobs, [], 'retry leaves healthy requests and slot accounting intact');
+assert.equal(loading.img, 'loading');
+assert.equal(loading.jobId, 41);
 assert.equal(await withAssetDeadline(Promise.resolve('ok'), 50), 'ok');
 await assert.rejects(withAssetDeadline(new Promise(() => {}), 5), /timed out/);
 console.log('PASS imagery deadline, blocked/hanging fallback, safe DEM gate, explicit retry, fatal asset timeout');

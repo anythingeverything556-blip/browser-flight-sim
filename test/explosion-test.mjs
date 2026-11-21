@@ -4,7 +4,14 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { Wreck, SR71_SCALE, __fx } from '../src/crash.js';
 
-const t = (n, f) => { try { f(); console.log('PASS ', n); } catch (e) { console.error('FAIL ', n, '\n', e); process.exit(1); } };
+// Fixed per-case PRNG: failures are reproducible and one test cannot perturb another.
+const t = (n, f) => {
+  const original = Math.random; let seed = 0xE017;
+  Math.random = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 2 ** 32);
+  try { f(); console.log('PASS ', n); }
+  catch (e) { console.error('FAIL ', n, '\n', e); process.exitCode = 1; }
+  finally { Math.random = original; }
+};
 const cam = new THREE.Vector3(), wind = { x: 8, z: 0 }, still = { x: 0, z: 0 };
 const run = (p, secs, w = still, each) => { for (let s = 0; s < secs; s += 1 / 60) { p.update(1 / 60, cam, w, 1, null); each && each(s); } };
 const alpha = (p, i) => p.aCol.array[i * 4 + 3];
@@ -56,7 +63,7 @@ t('a fuelled Skyhawk nose-in gets a fireball, secondary bursts and burning debri
   const w = crash(C172, 120);
   assert.ok(w.fireIntensity > 0.44, `fire intensity ${w.fireIntensity.toFixed(2)}`);
   assert.ok(w.fireRadius > 15 && w.fireRadius < 40, `fireball radius ${w.fireRadius.toFixed(1)} m`);
-  assert.ok(w.bursts.length >= 2 && w.bursts.every((b) => b.t > 0.3 && b.t < 3), `${w.bursts.length} secondary bursts`);
+  assert.ok(w.bursts.length >= 2 && w.bursts.length <= 5 && w.bursts.every((b) => b.t >= 0.35 && b.t <= 0.35 + (w.bursts.length - 1) * 0.7), `${w.bursts.length} secondary bursts`);
   assert.ok(w.fire.n > 200 && w.smoke.n > 100, `${w.fire.n} flame and ${w.smoke.n} smoke particles`);
   let trails = 0; for (let i = 0; i < w.fragments.count; i++) trails += w.fragments.trail[i]; assert.ok(trails > 3, `${trails} burning fragments`);
 });

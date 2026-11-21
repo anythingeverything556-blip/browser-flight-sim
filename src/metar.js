@@ -94,7 +94,8 @@ export async function fetchMetar(icao, base = '/') {
 // m: one record of the aviationweather.gov JSON; elevM: airport elevation (cloud bases are feet above the airport)
 export function interpretMetar(m, elevM = 0) {
   if (typeof m === 'string') m = parseMetar(m);
-  const sm = m.visib === '10+' || m.visib == null ? 10 : parseFloat(String(m.visib).replace('+', '')) || 10;
+  const visibility = m.visib == null ? NaN : parseFloat(String(m.visib).replace('+', ''));
+  const sm = Number.isFinite(visibility) && visibility >= 0 ? visibility : 10;
   const wx = String(m.wxString || ''), has = (c) => new RegExp(`(^|\\s|[-+])${c}`).test(wx);
   const layers = (m.clouds || []).filter((c) => c.cover in COVER);
   const solid = layers.filter((c) => COVER[c.cover] >= 0.8 && c.base != null);

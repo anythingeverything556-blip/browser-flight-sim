@@ -325,13 +325,12 @@ export class AircraftVisual {
   async load(url, onProgress) {
     const draco = new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
     const loader = new GLTFLoader().setDRACOLoader(draco);
-    let gltf, lodGltf = null;
-    try {
-      [gltf, lodGltf] = await Promise.all([
-        loader.loadAsync(url, (e) => e.total && onProgress && onProgress(e.loaded / e.total)),
-        loader.loadAsync(url.replace('SR71_sim', 'SR71_lod')).catch(() => null),
-      ]);
-    } finally { draco.dispose(); }
+    let gltf, lodGltf;
+    try { [gltf, lodGltf] = await Promise.all([
+      loader.loadAsync(url, (e) => e.total && onProgress && onProgress(e.loaded / e.total)),
+      this.loadOptionalLod(url),
+    ]); }
+    finally { draco.dispose(); }
     const model = gltf.scene;
     model.position.copy(CG_MODEL).negate();
     const cache = {};
@@ -526,6 +525,24 @@ export class AircraftVisual {
   registerOccluders(occ) {
     occ.addAll(this.real.interior); occ.addAll(this.real.canopy);
     for (const o of this.cockpit) occ.addAll(o);
+  }
+
+  async loadOptionalLod(url) {
+    // Bound the entire optional request/decode, not just the fetch. Separate decoder
+    // lifetime means its deadline can never dispose the still-loading primary model.
+    const abort = new AbortController(); let timer;
+    const draco = new DRACOLoader().setDecoderPath(`${import.meta.env.BASE_URL}draco/`);
+    const load = async () => {
+      const response = await fetch(url.replace('SR71_sim', 'SR71_lod'), { signal: abort.signal });
+      if (!response.ok) return null;
+      const data = await response.arrayBuffer();
+      return new GLTFLoader().setDRACOLoader(draco).parseAsync(data, url.slice(0, url.lastIndexOf('/') + 1));
+    };
+    try {
+      return await Promise.race([load().catch(() => null), new Promise(resolve => {
+        timer = setTimeout(() => { abort.abort(); resolve(null); }, 1500);
+      })]);
+    } finally { clearTimeout(timer); draco.dispose(); }
   }
 
   attachLod(model, lodScene) {

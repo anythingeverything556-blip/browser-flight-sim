@@ -227,7 +227,7 @@ body.idle:not(.sheet-open):not(.intro) #rail:hover, body.idle #rail:focus-within
 @keyframes toast-in { from { opacity: 0; transform: translateY(-8px); } }
 #flash { position: fixed; z-index: 40; inset: 0; background: radial-gradient(circle at 50% 52%, #fff4d6 0%, #ffbf70 38%, rgba(255, 140, 50, 0) 100%); opacity: 0; pointer-events: none; }
 
-#crash { position: fixed; z-index: 50; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; background: rgba(3, 5, 8, 0.72); }
+#crash { position: fixed; z-index: 50; inset: 0; display: none; align-items: center; justify-content: center; padding: 20px; background: transparent; }
 #crash .card { position: relative; width: min(440px, 100%); padding: 24px; border: 1px solid rgba(255, 123, 107, 0.45); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow); text-align: left; }
 #crash h2 { margin: 0 0 8px; font-size: 20px; }
 #crash p { margin: 0 0 8px; color: var(--muted); font-size: 14px; line-height: 1.55; user-select: text; }
@@ -471,8 +471,10 @@ body.intro #sheet-flight .card { padding: 12px 16px; }
 #sheet-flight .check { margin: 0; color: var(--muted); }
 
 /* ---------- terms dialog ---------- */
-#terms { position: fixed; z-index: 60; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(3, 5, 8, 0.72); }
-#terms[hidden] { display: none; }
+#terms { position: fixed; z-index: 60; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: transparent; }
+#terms[hidden], #terms:not([open]) { display: none; }
+#terms { width: 100%; max-width: none; height: 100%; max-height: 100dvh; margin: 0; border: 0; color: var(--text); }
+#terms::backdrop { background: rgba(3, 5, 8, 0.72); }
 .terms-card { display: flex; width: min(660px, 100%); max-height: min(86vh, 740px); flex-direction: column; overflow: hidden; border: 1px solid var(--line-strong); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow); }
 .terms-card header { display: flex; align-items: center; justify-content: space-between; padding: 16px 16px 16px 24px; border-bottom: 1px solid var(--line); }
 .terms-card h2 { font-size: 18px; }
@@ -515,7 +517,8 @@ body.intro #sheet-flight .card { padding: 12px 16px; }
   body.sheet-open #strip { display: none; }
   body.intro #hero { top: 24px; left: 16px; width: calc(100vw - 32px); transform: none; }
   #hero h1 { font-size: clamp(2.25rem, 12vw, 3.5rem); }
-  #hero p, .hero-terms { display: none !important; }
+  #hero p { display: none !important; }
+  body.intro .hero-terms { top: 4px; right: 12px; bottom: auto; left: auto; font-size: 11px; }
   body.intro #sheet-flight { top: auto; right: 8px; bottom: 8px; left: 8px; width: auto; max-height: calc(100vh - 144px); }
   .dial { grid-template-columns: 56px auto auto minmax(52px, 1fr) auto auto; }
   .dial i { display: none; }
@@ -701,7 +704,7 @@ body:has(#guide:not([hidden])) #radio { top: 64px; right: 16px; bottom: auto; le
 /* teleport: altitude, heading, speed and climb angle before the jump */
 #tp { position: fixed; z-index: 55; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(3, 5, 8, 0.6); }
 #tp[hidden] { display: none; }
-#tp .card { width: min(420px, 100%); padding: 20px 22px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow); }
+#tp .card { width: min(420px, 100%); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; padding: 20px 22px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow); }
 #tp h3 { margin: 0 0 2px; font-size: 18px; }
 #tp .tp-where { margin: 0 0 14px; color: var(--muted); font: 12px var(--mono); }
 #tp .tp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; margin-bottom: 12px; }

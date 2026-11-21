@@ -4,6 +4,7 @@
 // env:   PORT (8787), HOST (0.0.0.0), RELAY_TOKEN (optional shared secret, sent by the Pages Function as Bearer / X-API-Key), RELAY_CONTACT (put in the User-Agent, adsb.lol asks for it),
 //        RELAY_CACHE_SECONDS (15), RELAY_UPSTREAMS (comma list of adsb.lol, adsb.fi, airplanes.live; default adsb.lol,adsb.fi)
 import http from 'node:http';
+import { acquiredAt, RELAY_BUDGET_MS, withinDeadline } from '../shared/traffic-contract.js';
 import { timingSafeEqual } from 'node:crypto';
 
 const PORT = Number(process.env.PORT || 8787), HOST = process.env.HOST || '0.0.0.0';
@@ -25,27 +26,33 @@ const authorised = (req) => {
   return same(bearer, TOKEN) || same(key, TOKEN);
 };
 
-async function fetchUpstream(lat, lon, r) {
+export async function fetchUpstream(path) {
+  const deadline = Date.now() + RELAY_BUDGET_MS;
   const errors = [];
-  for (const name of order) {
+  for (const [i, name] of order.entries()) {
     if ((cooldown.get(name) || 0) > Date.now()) { errors.push(`${name} cooling down`); continue; }
     try {
-      const res = await fetch(UPSTREAMS[name](lat, lon, r), { headers: { 'user-agent': UA, accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
-      if (res.status === 429 || res.status === 403) cooldown.set(name, Date.now() + 30000);
-      if (!res.ok) { errors.push(`${name} ${res.status}`); continue; }
-      const body = await res.json(), ac = body.ac || body.aircraft;
-      if (!Array.isArray(ac)) { errors.push(`${name} bad data`); continue; }
-      return { ac, source: name };
+      const url = name === 'adsb.fi' ? `https://opendata.adsb.fi/api${path.replace(/^\/v2\/point\/([^/]+)\/([^/]+)\/([^/]+)$/, '/v2/lat/$1/lon/$2/dist/$3')}`
+        : `https://api.${name}${path}`;
+      const body = await withinDeadline(deadline, order.length - i, async (signal) => {
+        const res = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json' }, signal });
+        if (res.status === 429 || res.status === 403) cooldown.set(name, Date.now() + 30000);
+        if (!res.ok) throw new Error(String(res.status));
+        return res.json();
+      });
+      const ac = body.ac || body.aircraft, at = acquiredAt(body);
+      if (!Array.isArray(ac) || body.error || at == null) throw new Error('bad data');
+      return { ac, source: name, acquiredAt: at, stale: !!body.stale, partial: !!body.partial };
     } catch (e) { errors.push(`${name} ${e.name === 'TimeoutError' ? 'timeout' : 'failed'}`); }
   }
   throw new Error(errors.join(', ') || 'no upstream configured');
 }
 
-async function lookup(lat, lon, r) {
-  const key = `${lat}/${lon}/${r}`, hit = cache.get(key);
+async function lookup(key) {
+  const hit = cache.get(key);
   if (hit && hit.until > Date.now()) return hit.value;
   if (inflight.has(key)) return inflight.get(key);
-  const job = fetchUpstream(lat, lon, r).then((value) => { cache.set(key, { value, until: Date.now() + CACHE_MS, keep: Date.now() + 15 * 60000 }); return value; })
+  const job = fetchUpstream(key).then((value) => { if (!value.stale && !value.partial) cache.set(key, { value, until: Date.now() + CACHE_MS, keep: value.acquiredAt + 15 * 60000 }); return value; })
     .catch((e) => { if (hit && hit.keep > Date.now() && hit.value.ac.length) return { ...hit.value, stale: true }; throw e; })
     .finally(() => inflight.delete(key));
   inflight.set(key, job);
@@ -60,11 +67,16 @@ export const server = http.createServer(async (req, res) => {
   if (url.pathname === '/health') return send(200, { ok: true, upstreams: order, cached: cache.size });
   if (!authorised(req)) return send(401, { error: 'unauthorised' });
   const m = /^\/v2\/point\/(-?\d+(?:\.\d+)?)\/(-?\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/.exec(url.pathname);
-  if (req.method !== 'GET' || !m) return send(404, { error: 'use GET /v2/point/{lat}/{lon}/{radius_nm}' });
-  const lat = Math.max(-90, Math.min(90, Number(m[1]))), lon = Math.max(-180, Math.min(180, Number(m[2]))), r = Math.max(1, Math.min(100, Math.round(Number(m[3]))));
+  const listRoute = /^\/v2\/(?:mil|ladd|pia|sqk\/(?:7700|7600|7500))$/.test(url.pathname);
+  if (req.method !== 'GET' || (!m && !listRoute)) return send(404, { error: 'use GET /v2/point/{lat}/{lon}/{radius_nm} or a supported /v2 list route' });
+  let path = url.pathname;
+  if (m) {
+    const lat = Math.max(-90, Math.min(90, Number(m[1]))), lon = Math.max(-180, Math.min(180, Number(m[2]))), r = Math.max(1, Math.min(250, Math.round(Number(m[3]))));
+    path = `/v2/point/${lat.toFixed(2)}/${lon.toFixed(2)}/${r}`;
+  }
   try {
-    const out = await lookup(lat.toFixed(2), lon.toFixed(2), r);
-    send(200, { ac: out.ac, source: out.source, stale: !!out.stale });
+    const out = await lookup(path);
+    send(200, { ...out, stale: !!out.stale });
   } catch (e) { send(502, { ac: [], error: String(e.message).slice(0, 200) }); }
 });
 

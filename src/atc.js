@@ -18,9 +18,12 @@ export class Atc {
     this.timers.clear();
     try { 'speechSynthesis' in window && speechSynthesis.cancel(); } catch { /* ignore */ }
   }
+  // Browser speech bypasses the Web Audio master gain, so controls must hush it explicitly.
+  soundChanged() { if (!this.audio?.enabled || (this.audio.volume ?? 0.7) <= 0) this.hush(); }
   setHidden(hidden) { this.hidden = !!hidden; hidden && this.hush(); }
   reset() { this.hush(); this.s = { atis: false, clr: false, dep: false, app: false, land: false, down: false, goAround: false }; this.t = 0; this.quiet = 0; this.approachSample = null; this.lastAdvisoryAt = 0; }
   squelch() {
+    if (!this.audio?.enabled || (this.audio.volume ?? 0.7) <= 0 || this.hidden || this.audio.held) return;
     try {
       const shared = this.audio && this.audio.ctx, AC = window.AudioContext || window.webkitAudioContext;
       if (!shared && !AC) return;
@@ -41,10 +44,19 @@ export class Atc {
     const m = document.createElement('div'); m.className = 'rmsg' + (you ? ' you' : ''); m.innerHTML = `<b></b><span></span>`; m.firstChild.textContent = from; m.lastChild.textContent = text;
     this.el.appendChild(m); while (this.el.children.length > 3) this.el.firstChild.remove();
     setTimeout(() => m.classList.add('old'), 14000 + text.length * 40); setTimeout(() => m.remove(), 16000 + text.length * 40);
-    if (!(this.audio && this.audio.enabled) || this.hidden) return;
+    if (!this.audio?.enabled || (this.audio.volume ?? 0.7) <= 0 || this.hidden || this.audio.held) return;
     this.squelch();
     if (this.voice && 'speechSynthesis' in window && spoken) {
-      try { const u = new SpeechSynthesisUtterance(spoken); u.rate = you ? 1.12 : 1.04; u.pitch = you ? 0.85 : 0.95; u.volume = Math.min(1, (this.audio.volume ?? 0.7) * 0.9); this.later(() => speechSynthesis.speak(u), 140); } catch { /* ignore */ }
+      this.later(() => {
+        // Settings may change during the squelch delay; never send an old-volume utterance.
+        if (!this.audio?.enabled || (this.audio.volume ?? 0.7) <= 0 || this.hidden || this.audio.held || !this.voice) return;
+        try {
+          const u = new SpeechSynthesisUtterance(spoken);
+          u.rate = you ? 1.12 : 1.04; u.pitch = you ? 0.85 : 0.95;
+          u.volume = Math.min(1, (this.audio.volume ?? 0.7) * 0.9);
+          speechSynthesis.speak(u);
+        } catch { /* speech is optional */ }
+      }, 140);
     }
   }
   wxLine(c) {
@@ -78,7 +90,16 @@ export class Atc {
     }
     const n = c.nav, arr = () => (c.arrApt ? { ...c, apt: c.arrApt, rwy: c.arrRwy } : c);
     if (n && n.ilsValid && !c.onGround && n.thrDist != null) {
-      if (!s.app && n.thrDist < 24000 && n.thrDist > 8000) {
+      // A missed approach is latched until a distinct inbound, descending re-entry.
+      // Keep the outbound high-water sample: reversing a few metres cannot re-clear it.
+      if (s.goAround) {
+        const prev = this.approachSample;
+        if (!prev || n.thrDist > prev.distance) this.approachSample = { distance: n.thrDist, agl: c.agl };
+        else if (n.thrDist < 24000 && n.thrDist > 8000 && n.thrDist < prev.distance - 500 && c.agl < prev.agl - 100) {
+          s.goAround = false; s.app = false;
+        }
+      }
+      if (!s.app && !s.goAround && n.thrDist < 24000 && n.thrDist > 8000) {
         s.app = true;
         s.goAround = false;
         this.approachSample = { distance: n.thrDist, agl: c.agl };
@@ -88,11 +109,12 @@ export class Atc {
         if (n.thrDist < this.approachSample.distance) {
           this.approachSample = { distance: n.thrDist, agl: c.agl };
         } else if (n.thrDist > this.approachSample.distance + 500 && c.agl > this.approachSample.agl + 100 && c.agl < 5000) {
+          this.hush(); // obsolete clearance readbacks must not follow the missed approach
           this.sendPhase('approach', arr(), { goAround: true });
-          s.goAround = true; s.land = false; this.approachSample = null;
+          s.goAround = true; s.land = false; this.approachSample = { distance: n.thrDist, agl: c.agl };
         }
       }
-      if (!s.land && n.thrDist < 9500 && n.thrDist > 600) {
+      if (!s.goAround && !s.land && n.thrDist < 9500 && n.thrDist > 600) {
         s.land = true;
         this.sendPhase('landing', arr());
       }
@@ -175,7 +197,7 @@ export function buildAtis({ metar, information = 'A', region = 'ICAO', runways =
 
 const PHASE_STATIONS = {
   parked: 'Clearance', taxi: 'Ground', 'hold-short': 'Tower', takeoff: 'Tower', climb: 'Departure', cruise: 'Centre',
-  descent: 'Centre', approach: 'Approach', landing: 'Tower', landed: 'Tower',
+  descent: 'Centre', approach: 'Approach', goAround: 'Approach', landing: 'Tower', landed: 'Tower',
 };
 
 /** Pure phase call builder for clearance, ground, tower and handoffs. */
@@ -201,6 +223,7 @@ export function buildPhaseMessage(phase, context = {}) {
 
 /** Small phase-keyed state machine; duplicate phase updates emit no duplicate radio call. */
 export function advanceAtcPhase(state, phase, context = {}) {
+  if (context.goAround || context.missedApproach) phase = 'goAround';
   const previous = state?.phase;
   if (previous === phase && !context.goAround && !context.missedApproach) return null;
   const message = buildPhaseMessage(phase, context);

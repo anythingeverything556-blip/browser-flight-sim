@@ -48,7 +48,13 @@ export function mountKeymap({ root, help, leverHint, controls, settings, save, t
     if (!b.classList.contains('km-add')) listening = null;
     if (b.classList.contains('km-add')) { listening = { id: b.dataset.id, shift: false }; render(); return; }
     if (b.classList.contains('km-del')) { table[b.dataset.id] = table[b.dataset.id].filter((k) => k !== b.dataset.key); apply(); return; }
-    if (b.classList.contains('km-reset')) { table[b.dataset.id] = [...resolveKeys(null)[b.dataset.id]]; apply(); return; }
+    if (b.classList.contains('km-reset')) {
+      const id = b.dataset.id, moved = new Set(); table[id] = [];
+      for (const key of resolveKeys(null)[id]) for (const other of assignKey(table, id, key).moved) moved.add(other);
+      apply();
+      toast(`${KEY_ACTIONS.find(a => a.id === id).label} back to defaults${moved.size ? ' (keys taken from ' + [...moved].map(id => KEY_ACTIONS.find(a => a.id === id).label).join(', ') + ')' : ''}`, !!moved.size);
+      return;
+    }
     if (b.id === 'km-reset-all') { table = resolveKeys(null); listening = null; apply(); toast('All keys back to the defaults'); }
   });
   // while listening the key goes to the editor only (capture phase, before the game and the Esc-closes-menu handler)

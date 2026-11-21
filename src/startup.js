@@ -10,7 +10,7 @@ export function showStartupError(text) {
   document.body.classList.add('startup-failed');
   const el = document.getElementById('loadmsg');
   if (el) { el.textContent = text; el.classList.add('err'); }
-  document.querySelectorAll('#start-btn, #home-go, #just-fly, #resume-flight').forEach(b => { b.disabled = true; });
+  document.querySelectorAll('#start-btn, #home-go, #just-fly, #resume-flight, #sheet-flight input, #sheet-flight select, #sheet-flight button:not(.js-terms):not(#startup-retry), #ac-cards button').forEach(b => { b.disabled = true; });
   const ls = document.getElementById('loadscreen'); if (ls) ls.hidden = true;
   const retry = document.getElementById('startup-retry');
   if (retry) { retry.hidden = false; retry.onclick = () => location.reload(); }

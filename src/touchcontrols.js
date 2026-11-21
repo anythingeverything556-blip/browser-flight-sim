@@ -19,6 +19,16 @@ export function mountTouchControls(controls, parent = document.body) {
   stick.addEventListener('pointermove', move);
   for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) stick.addEventListener(event, releaseStick);
   const throttle = root.querySelector('.touch-throttle');
+  let throttlePointer = null;
+  const syncThrottle = (value = controls.throttle) => {
+    if (throttlePointer !== null) return; // never fight the user's active drag
+    throttle.value = String(Math.round(Math.max(0, Math.min(1, value)) * 100));
+  };
+  throttle.addEventListener('pointerdown', e => { if (active()) { throttlePointer = e.pointerId; throttle.setPointerCapture(e.pointerId); } });
+  const releaseThrottle = e => { if (!e || e.pointerId === throttlePointer) { throttlePointer = null; syncThrottle(); } };
+  for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) throttle.addEventListener(event, releaseThrottle);
+  throttle.addEventListener('blur', () => releaseThrottle());
+  syncThrottle();
   throttle.addEventListener('input', () => { if (active()) { controls.throttle = +throttle.value / 100; controls.touched = true; } });
   const rudder = root.querySelector('.touch-rudder');
   rudder.addEventListener('input', () => { if (active()) controls.touch.yaw = +rudder.value / 100; });
@@ -36,9 +46,9 @@ export function mountTouchControls(controls, parent = document.body) {
     input.addEventListener('input', () => { if (active()) controls.touch[input.dataset.axis] = +input.value / 100; });
     for (const event of ['pointerup', 'pointercancel', 'blur']) input.addEventListener(event, () => { controls.touch[input.dataset.axis] = null; input.value = '0'; });
   }
-  const reset = () => { releaseStick(); releaseBrake(); resetRudder(); for (const input of root.querySelectorAll('[data-axis]')) { controls.touch[input.dataset.axis] = null; input.value = '0'; } };
+  const reset = () => { releaseThrottle(); releaseStick(); releaseBrake(); resetRudder(); for (const input of root.querySelectorAll('[data-axis]')) { controls.touch[input.dataset.axis] = null; input.value = '0'; } };
   window.addEventListener('blur', reset);
   document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
   new MutationObserver(() => { if (document.body.classList.contains('sheet-open') || document.body.classList.contains('intro')) reset(); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  return { root, reset };
+  return { root, reset, syncThrottle };
 }

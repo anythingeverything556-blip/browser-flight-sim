@@ -354,7 +354,7 @@ Scenery © Esri, Maxar, Earthstar Geographics (and Esri World Imagery Wayback), 
 ## Videos, streams and screenshots
 
 Gameplay videos, live streams, reviews, tutorials and screenshots are welcome, including on monetised channels.
-Please name **Earthwing** and link to the [official copy](https://earthwing.pages.dev) [Try] or this repository.
+Please name **Earthwing** and link to the [official copy](https://earthwing.pages.dev) or this repository.
 (The old address, `sr71-blackbird.pages.dev`, serves the same game.)
 Don't re-upload or host the simulator itself. Section 4 of `LICENSE` has the exact terms.
 

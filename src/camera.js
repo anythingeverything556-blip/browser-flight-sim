@@ -131,7 +131,7 @@ class CameraRig {
       }
       (u.copy(this.flyPos), (f = h));
       const p = u.distanceTo(h);
-      ((a.fov = THREE.MathUtils.clamp((2 * Math.atan(45 / p) * 180) / Math.PI, 2, 60)), (a.near = 1));
+      ((a.fov = THREE.MathUtils.clamp((2 * Math.atan(45 / p) * 180) / Math.PI * (this.fov.other / 55), 2, 70)), (a.near = 1));
     }
     if (this.view !== 'cockpit' && this.view !== 'wing') {
       const p = n(u.x, u.z);

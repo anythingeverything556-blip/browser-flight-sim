@@ -5,6 +5,16 @@ import { LiveAdsb } from './adsbmap.js';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
+// Keep each adjacent point in the nearest world copy, including a leg across ±180°.
+export function unwrapMapPath(points, centerLon = 0) {
+  let previous = Number.isFinite(centerLon) ? centerLon : 0;
+  return points.map(([lat, lon]) => {
+    const unwrapped = lon + 360 * Math.round((previous - lon) / 360);
+    previous = unwrapped;
+    return [lat, unwrapped];
+  });
+}
+
 const Ue = L,
   zl = (s) => `https://services.arcgisonline.com/ArcGIS/rest/services/${s}/MapServer/tile/{z}/{y}/{x}`,
   ru = (s) => `https://tiles.arcgis.com/tiles/ssFJjBXIUyZDrSYZ/arcgis/rest/services/${s}/MapServer/tile/{z}/{y}/{x}`;
@@ -60,8 +70,16 @@ class MapPanel {
       )),
       (this.follow = !0),
       this.map.on('dragstart', () => this.setFollow(!1)),
-      this.map.on('moveend zoomend', () => this.drawAirports()),
+      this.map.on('moveend zoomend', () => {
+        this.drawAirports(); this.drawRoute();
+        if (this.pos) { this.applyMarker(); this.trail.setLatLngs(this.segs.map((s) => this.overlayPath(s))); }
+      }),
       this.map.on('click', (l) => { if (this.live && this.live.click(l.containerPoint)) return; this.mapClick(l.latlng); }));
+    this.map.getContainer().addEventListener('keydown', e => {
+      if (e.target !== this.map.getContainer() || e.altKey || e.ctrlKey || e.metaKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+      this.setFollow(false);
+      if (this.live) { this.live.followSel = false; this.live.renderCard(); }
+    });
     const a = Ue.Control.extend({
       onAdd: () => {
         const l = Ue.DomUtil.create('button', 'map-follow on');
@@ -162,12 +180,13 @@ class MapPanel {
       n('Teleport here', () => this.cb.teleport(t.lat, t.lng), 'primary'),
       Ue.popup({ closeButton: !1 }).setLatLng(t).setContent(e).openOn(this.map));
   }
+  overlayPath(points) { return unwrapMapPath(points, this.map.getCenter().lng); }
   drawRoute() {
-    const t = this.nav.wps;
-    (this.routeLine.setLatLngs(t.map((e) => [e.lat, e.lon])),
+    const t = this.nav.wps, points = this.overlayPath(t.map((e) => [e.lat, e.lon]));
+    (this.routeLine.setLatLngs(points),
       this.wpLayer.clearLayers(),
       t.forEach((e, n) => {
-        const i = Ue.marker([e.lat, e.lon], {
+        const i = Ue.marker(points[n], {
           draggable: !0,
           icon: Ue.divIcon({
             className: 'wp-marker' + (n === this.nav.active ? ' active' : ''),
@@ -178,7 +197,7 @@ class MapPanel {
         });
         (i.on('dragend', () => {
           const r = i.getLatLng();
-          ((e.lat = r.lat), (e.lon = r.lng), (e.name = e.apt ? e.name : `WP${n + 1}`), this.nav.changed());
+          ((e.lat = r.lat), (e.lon = ((r.lng + 180) % 360 + 360) % 360 - 180), (e.name = e.apt ? e.name : `WP${n + 1}`), this.nav.changed());
         }),
           i.addTo(this.wpLayer));
       }));
@@ -186,7 +205,7 @@ class MapPanel {
   // Live ADS-B (src/adsbmap.js) is attached by main.js; kept out of the constructor so the map works without it (and in the Node tests).
   attachLive(opts) { this.live = new LiveAdsb(this.map, opts); return this.live; }
   applyMarker() {
-    this.marker.setLatLng(this.pos);
+    this.marker.setLatLng(this.overlayPath([this.pos])[0]);
     const a = this.marker.getElement && this.marker.getElement(), l = a && a.querySelector('.ac-rot');
     if (l) l.style.transform = `rotate(${this.heading || 0}deg)`;
   }
@@ -201,12 +220,12 @@ class MapPanel {
     }
     if (!r) return; // map closed: keep recording the trail but skip every Leaflet projection and DOM write until it is shown
     this.applyMarker();
-    if (this.trailDirty) { this.trail.setLatLngs(this.segs); this.trailDirty = false; }
+    if (this.trailDirty) { this.trail.setLatLngs(this.segs.map((s) => this.overlayPath(s))); this.trailDirty = false; }
     const h = Math.hypot(i.x, i.z),
       u = ((Math.atan2(i.x, -i.z) * 180) / Math.PI + 360) % 360;
     if (h > 5) {
       const d = destination(t, e, u, h * 120);
-      this.track.setLatLngs([this.pos, [d.lat, d.lon]]);
+      this.track.setLatLngs(this.overlayPath([this.pos, [d.lat, d.lon]]));
     } else this.track.setLatLngs([]);
     this.ringCircles
       ? this.ringCircles.forEach((d) => d.setLatLng(this.pos))
@@ -222,7 +241,7 @@ class MapPanel {
           }).addTo(this.rings),
         ));
     const f = this.nav.wps[this.nav.active];
-    (this.toActive.setLatLngs(f ? [this.pos, [f.lat, f.lon]] : []),
+    (this.toActive.setLatLngs(f && !this.nav.done ? this.overlayPath([this.pos, [f.lat, f.lon]]) : []),
       this.follow &&
         this.map.latLngToLayerPoint(this.pos).distanceTo(this.map.latLngToLayerPoint(this.map.getCenter())) > 2 &&
         this.map.panTo(this.pos, { animate: !1 }));
@@ -231,13 +250,13 @@ class MapPanel {
     (this.setFollow(!1), this.map.setView([t, e], n));
   }
   clearTrail() {
-    ((this.segs = [[]]), this.trail.setLatLngs(this.segs), (this.last = null), (this.trailDirty = !1));
+    ((this.segs = [[]]), this.trail.setLatLngs(this.segs.map((s) => this.overlayPath(s))), (this.last = null), (this.trailDirty = !1));
   }
   shown() {
     setTimeout(() => {
       (this.map.invalidateSize(),
         this.pos && this.applyMarker(),
-        this.trailDirty && (this.trail.setLatLngs(this.segs), (this.trailDirty = !1)),
+        this.trailDirty && (this.trail.setLatLngs(this.segs.map((s) => this.overlayPath(s))), (this.trailDirty = !1)),
         this.follow && this.pos && this.map.setView(this.pos, this.map.getZoom(), { animate: !1 }),
         this.drawAirports(!0),
         this.drawRoute(),

@@ -1,3 +1,4 @@
+import { mountSetupAccessibility } from './setup-accessibility.js';
 import { diagnostics, installRuntimeDiagnostics } from './telemetry.js';
 // Check for WebGL 2 (required by three.js r180) before loading the simulator, so an unsupported
 // browser gets an explanation on the start screen instead of an uncaught exception.
@@ -5,6 +6,7 @@ import { showStartupError as msg } from './startup.js';
 import { touchOnly } from './touchcontrols.js';
 import { aircraftChoice, AIRCRAFT_TYPES } from './aircrafts.js';
 
+mountSetupAccessibility(aircraftChoice(savedSettings(), location.search));
 installRuntimeDiagnostics(window);
 diagnostics.record('start_screen_viewed', 'screen');
 diagnostics.record('aircraft_chosen', aircraftChoice(savedSettings(), location.search));

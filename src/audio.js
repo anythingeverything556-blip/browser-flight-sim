@@ -250,11 +250,15 @@ export class Audio {
     if (!this.calloutsOn || !s.callout || s.paused) return;
     this._loadCallouts();
     const clips = this.calloutClips || {}, dur = (k) => (clips[k] ? clips[k].duration : 0);
-    if (this.voiceSched.speaking(t)) return; // a warning is talking: the call-out waits (the next one due replaces it)
     const key = this.callouts.step(s.callout, dt, dur);
-    if (!key || !clips[key]) return;
-    if (this.calloutSrc) { try { this.calloutSrc.stop(); } catch { /* ended */ } }
+    // Keep flight-phase tracking live during warnings, but drop routine calls due underneath them.
+    if (this.voiceSched.speaking(t) || !key || !clips[key]) return;
+    this._stopCallout();
     const src = this.ctx.createBufferSource(); src.buffer = clips[key]; src.connect(this.voiceGain); src.start(); this.calloutSrc = src;
+    src.onended = () => { if (this.calloutSrc === src) this.calloutSrc = null; src.disconnect(); };
+  }
+  _stopCallout() {
+    if (this.calloutSrc) { try { this.calloutSrc.stop(); } catch { /* ended */ } this.calloutSrc = null; }
   }
   _voiceDuration(key) {
     const set = this.voiceClips && this.voiceClips[this.voiceStyle], buf = set && set[key];
@@ -262,9 +266,13 @@ export class Audio {
     return buf ? buf.duration : 0;
   }
   _speak(key) {
+    // All warning speech owns the same voice path as routine altitude calls.
+    this._stopCallout();
+    if (this.voiceSrc) { try { this.voiceSrc.stop(); } catch { /* ended */ } }
     const buf = this.voiceClips[this.voiceStyle][key], s = this.ctx.createBufferSource();
     s.buffer = buf; s.connect(this.voiceGain); s.start();
     this.voiceSrc = s;
+    s.onended = () => { if (this.voiceSrc === s) this.voiceSrc = null; s.disconnect(); };
   }
   _stopVoice() {
     if (this.voiceSrc) { try { this.voiceSrc.stop(); } catch { /* already ended */ } this.voiceSrc = null; }
@@ -297,7 +305,7 @@ export class Audio {
   }
   resetForSpawn() {
     if (this.voiceSrc || this.voiceSched.playing) this._stopVoice();
-    this.callouts.reset(); if (this.calloutSrc) { try { this.calloutSrc.stop(); } catch { /* ended */ } this.calloutSrc = null; }
+    this.callouts.reset(); this._stopCallout();
     this.wreckFadeUntil = this.wreckScrapeUntil = this.wreckFireUntil = 0; this.wreckLevel = this.wreckScrapeLevel = this.wreckFireLevel = 0;
     if (!this.ctx) return;
     const C = this.ctx, t = C.currentTime;
@@ -600,7 +608,7 @@ export class Audio {
     if (s.crashed || !this.voiceOn) { if (this.voiceSrc || this.voiceSched.playing) this._stopVoice(); }
     else if (!s.paused) {
       const pick = this.voiceSched.step(s.warn, t, (k) => this._voiceDuration(k));
-      if (pick) { if (pick.interrupt && this.voiceSrc) { try { this.voiceSrc.stop(); } catch { /* ended */ } } this._speak(pick.key); }
+      if (pick) this._speak(pick.key);
     }
     if (s.crashed) this.callouts.reset(); else this._calloutStep(s, t, Math.max(0, Math.min(0.25, t - (this._coT || t)))); this._coT = t;
     const speaking = this.voiceOn && this.voiceSched.speaking(t);

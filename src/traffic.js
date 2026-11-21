@@ -1,3 +1,4 @@
+import { acquiredAt, observationAge, CLIENT_BUDGET_MS, TRAFFIC_KEEP_SECONDS } from '../shared/traffic-contract.js';
 import * as THREE from 'three';
 import { trafficGeometry } from './trafficmodels.js';
 
@@ -25,7 +26,7 @@ export function trafficCacheSeconds(cacheControl, fallback = 15) {
   return Math.max(15, Math.min(120, Number.isFinite(seconds) ? seconds : fallback));
 }
 
-export const TRAFFIC_BACKOFF_CAP = 300, TRAFFIC_STALE_SECONDS = 90;
+export const TRAFFIC_BACKOFF_CAP = 300, TRAFFIC_STALE_SECONDS = TRAFFIC_KEEP_SECONDS;
 // every failure (403/429/5xx, 404, an HTML page, a timeout) doubles the wait: 30, 60, 120, 240, then 300 s; the status no longer shortens it
 export function trafficBackoffSeconds(failures) {
   return Math.min(TRAFFIC_BACKOFF_CAP, 15 * 2 ** Math.min(Math.max(1, failures), 5));
@@ -55,7 +56,7 @@ export class Traffic {
       const sources = [`${this.base}api/traffic?${q}`]; // the Pages function tries every provider; a direct call from the browser is blocked by CORS
       let j = null, cacheSeconds = 15, errors = [];
       for (const url of sources) {
-        const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 9000);
+        const controller = new AbortController(), timer = setTimeout(() => controller.abort(), CLIENT_BUDGET_MS);
         try {
           const response = await fetch(url, { cache: 'no-store', signal: controller.signal });
           if (!response.ok) throw Object.assign(new Error(`traffic source answered ${response.status}`), { status: response.status });
@@ -66,18 +67,23 @@ export class Traffic {
         finally { clearTimeout(timer); }
       }
       if (!j) throw new Error(errors.join('; ') || 'traffic sources unavailable');
+      const at = acquiredAt(j), age = at == null ? Infinity : Math.max(0, (Date.now() - at) / 1000);
+      if (j.error || age > TRAFFIC_STALE_SECONDS) throw new Error('traffic observations expired');
+      // Keep a short, explicitly stale fallback, but never count it as a recovery.
       const now = performance.now() / 1000, seen = new Set();
       for (const a of (j.ac || j.aircraft || []).slice(0, 60)) {
         const alt = a.alt_geom ?? a.alt_baro;
+        if (age + observationAge(a) > TRAFFIC_STALE_SECONDS) continue;
         if (!a.hex || a.lat == null || a.lon == null || alt == null || alt === 'ground' || a.alt_baro === 'ground') continue;
         seen.add(a.hex);
         const e = this.list.get(a.hex) || { icao: a.hex, mesh: null };
         const aircraftClass = classifyAircraftType(a.t || a.type);
-        Object.assign(e, { call: (a.flight || '').trim(), type: a.t || a.type || '', typeClass: aircraftClass.class, typeSize: aircraftClass.size, lat: a.lat, lon: a.lon, alt: alt * 0.3048, vel: (a.gs || 0) * 0.514444, trk: a.track || 0, vr: (a.baro_rate ?? a.geom_rate ?? 0) * 0.00508, at: now - Math.min(40, a.seen_pos || 0) });
+        Object.assign(e, { call: (a.flight || '').trim(), type: a.t || a.type || '', typeClass: aircraftClass.class, typeSize: aircraftClass.size, lat: a.lat, lon: a.lon, alt: alt * 0.3048, vel: (a.gs || 0) * 0.514444, trk: a.track || 0, vr: (a.baro_rate ?? a.geom_rate ?? 0) * 0.00508, at: now - age - observationAge(a) });
         this.list.set(a.hex, e);
       }
       for (const [k, e] of this.list) if (!seen.has(k)) { if (e.mesh) this.group.remove(e.mesh); this.list.delete(k); }
-      this.err = null; this.fails = 0; this.warned = false; this.nextPollSeconds = cacheSeconds; this.lastOk = now;
+      if (j.stale || j.partial) throw new Error(j.partial ? 'traffic data partial' : 'traffic data stale');
+      this.err = null; this.fails = 0; this.warned = false; this.nextPollSeconds = cacheSeconds; this.lastOk = now - age;
     } catch (e) {
       this.err = e.message; this.fails++;
       this.nextPollSeconds = trafficBackoffSeconds(this.fails);
@@ -94,7 +100,8 @@ export class Traffic {
     if (!this.busy && this.t >= this.nextPollSeconds && (this.t > 3 || Math.abs(lat - this.last.lat) > 0.5 || Math.abs(lon - this.last.lon) > 0.7)) { this.t = 0; this.last = { lat, lon }; this.poll(lat, lon); }
     const now = performance.now() / 1000; let n = 0;
     if (this.list.size && now - this.lastOk > TRAFFIC_STALE_SECONDS) this.clear(); // no good answer for 90 s: the dead-reckoned aircraft would only hang frozen on the map
-    for (const e of this.list.values()) {
+    for (const [key, e] of this.list) {
+      if (now - e.at > TRAFFIC_STALE_SECONDS) { if (e.mesh) this.group.remove(e.mesh); this.list.delete(key); continue; }
       const dtp = Math.min(40, now - e.at), th = e.trk * Math.PI / 180, m = e.vel * dtp;
       const la = e.lat + (Math.cos(th) * m) / 111320, lo = e.lon + (Math.sin(th) * m) / (111320 * Math.max(0.2, Math.cos(e.lat * Math.PI / 180)));
       const p = this.geo.toXZ(la, lo), y = e.alt + e.vr * dtp;

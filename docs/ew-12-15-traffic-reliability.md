@@ -1,0 +1,14 @@
+# EW-12–15 simulator traffic reliability contract
+
+This patch changes only the simulator's optional traffic display pipeline, not aircraft operations. It was verified offline with mocked providers/statuses/timestamps and a loopback relay; no artificial production traffic, deployment, authentication access, or GitHub writes were performed.
+
+- **EW-12:** Worldwide failure returns `502` with `error` and `Cache-Control: no-store`, distinct from a valid empty `200`. Emergency categories run concurrently. Incomplete category results include `partial: true` and `missing` paths, are not edge-cached, and do not clear the map's prior picture or claim “No emergency squawks now.”
+- **EW-13:** Relay, Pages, and clients share `acquiredAt` (Unix milliseconds), `stale`, and `partial`. Upstream `now`/OpenSky `time` are converted when provided; a fresh response without a provider timestamp is stamped at acquisition. A stale response without a valid timestamp is rejected. Stale fallback never renews either cache. Clients compute report age as snapshot age plus uncapped `seen_pos`/`seen`, drop reports older than 90 seconds, and never reset that age on replay. A stale 3-D result does not reset the failure streak or `lastOk`. The map displays acquisition age and partial/stale status.
+- **EW-14:** Relay upstream work has a shared 3-second budget; Pages provider work has a shared 6.5-second budget; both clients allow 9 seconds. Attempts fairly share the remaining budget. The timeout covers fetch and body parsing, and races cancellation-ignoring providers. Emergency categories share a concurrent Pages budget rather than serial per-category deadlines. Client/edge network and platform scheduling overhead is not simulated or guaranteed.
+- **EW-15:** The optional authenticated relay forwards radii up to 250 NM and supports `/v2/mil`, `/v2/ladd`, `/v2/pia`, and `/v2/sqk/{7700,7600,7500}` as well as area requests. Pages sends configured credentials to the configured primary for lists and area requests only, never fallback providers. Health remains intentionally unauthenticated.
+
+## Regression coverage
+
+`node test/ew-12-15-traffic-reliability-test.mjs` (included in `npm test`) covers total provider failures, successful empty lists, malformed lists, partial emergency lists, retained map data/status wording, invalid/unknown timestamps, relay-to-edge freshness, edge cache stale fallback, repeated stale deliveries, per-report expiry, area fallback through both clients and hung emergency categories with virtual time, and all list routes/radius/auth/cache-age behavior through the real loopback relay.
+
+Existing traffic, API-proxy, map-traffic and relay suites plus a Vite production build also passed. These fixtures exercise the real poll/handler methods, with map/scene drawing stubbed; physical browser rendering, actual Cloudflare cache behavior, network/provider availability, deployed configuration, and real-device timing remain unverified.

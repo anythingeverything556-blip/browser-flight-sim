@@ -54,7 +54,7 @@ export class Guide {
   update(dt) {
     if (!this.active || this.i < 0 || this.i >= STEPS.length) return;
     const st = STEPS[this.i], c = this.ctx();
-    if (c.crashed || c.started === false) return; // a wreck, a respawn or a pause neither passes nor fails a step
+    if (c.crashed || c.started === false || c.paused || c.pending) { this.done = 0; return; } // a wreck, a respawn or a pause neither passes nor fails a step
     for (const k of this.el.querySelectorAll('.g-key')) { const codes = k.dataset.c.split(','), down = codes.some((x) => this.controls.keys.has(x)); k.classList.toggle('down', down); }
     this.q('g-live').textContent = st.live ? st.live(c) : '';
     if (st.done(c, this.s)) { this.done += dt; if (this.done > 0.8) this.next(); } else this.done = 0;

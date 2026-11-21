@@ -114,6 +114,7 @@ class Loader {
 class Tile {
   constructor(key, z, x, y) {
     this.key = key; this.z = z; this.x = x; this.y = y;
+    this.imgIssue = false; // unresolved base-image failure; survives retries until real recovery
     this.img = 'none'; this.jobId = 0; this.tries = 0; this.retryAt = 0; this.bmp = null; this.tex = null; this.texBytes = 0; this.built = false; this.ready = false; this.mesh = null; this.demList = []; this.demEpoch = -1;
     this.mk = 'none'; this.mkJob = 0; this.mkTries = 0; this.mkAt = 0; this.water = 0; this.waterGrid = null; this.maskTex = null; this.pendingMask = null; this.pendingTex = null; this.queued = false; this.disposed = false;
     this.wantedAt = 0; this.score = 0; this.frame = -1; this.d = 0; this.inView = true; this.hMid = null; this.flags = -1; this.drawFrame = -1; this.splitFrame = -9; this.reshape = false; this.refit = false; this.usedFallback = false; this.geoVersion = -1; this.cosB = 1;
@@ -176,6 +177,43 @@ export class Terrain {
     for (const t of this.drawn) if (t.d < radius && t.inView) { n++; if (t.tex && !t.pendingTex) ok++; }
     for (const t of this.tiles.values()) if (t.drawFrame !== this.frame && t.wantedAt === this.now && t.d < radius && t.inView && t.z >= 12 && !t.ready) n++;
     return n ? ok / n : 0;
+  }
+
+  // Startup sharpness (sceneryProgress/levelAt) is not imagery health: queued children
+  // may still sharpen a fully textured parent. Only current, uncovered base-image
+  // failures count, never lifetime imgFail/imgNodata totals or optional hi-res work.
+  get imageryActive() { return this.stats.imgActive + Object.values(this.srcActive).reduce((n, v) => n + v, 0); }
+  imageryRelevant(t, lat, lon, radius = 3000) {
+    const x = Math.floor(lon2tx(wrapLon(lon), t.z)), y = Math.floor(lat2ty(lat, t.z));
+    const underAircraft = t.x === x && t.y === y;
+    // Reject cached metrics immediately after a teleport, before update() runs.
+    const nearCamera = Math.hypot(wrapLon(lon - this.cam.lon) * Math.cos(lat * D2R), lat - this.cam.lat) * D2R * R_EARTH < radius;
+    return underAircraft || (nearCamera && t.inView && t.d < radius);
+  }
+  imageryGap(t, lat = this.cam.lat, lon = this.cam.lon, radius = 3000) {
+    let relevantLeaves = 0;
+    // Drawn leaves partition each root. A textured parent covers queued children;
+    // conversely, do not blame an old parent for gaps only in offscreen children.
+    for (const d of this.drawn) if (!d.disposed && related(t, d)) {
+      if (d.z <= t.z) return !d.tex;
+      if (this.imageryRelevant(d, lat, lon, radius)) {
+        if (!d.tex) return true;
+        relevantLeaves++;
+      }
+    }
+    return relevantLeaves === 0;
+  }
+  imageryHealth(lat, lon, radius = 3000) {
+    let failed = false, n = 0, ok = 0, aircraftCovered = false;
+    for (const d of this.drawn) if (this.imageryRelevant(d, lat, lon, radius)) {
+      n++; if (d.tex) ok++;
+      if (d.tex && d.x === Math.floor(lon2tx(wrapLon(lon), d.z)) && d.y === Math.floor(lat2ty(lat, d.z))) aircraftCovered = true;
+    }
+    for (const t of this.tiles.values()) {
+      if (t.disposed || t.wantedAt !== this.now || !(t.imgIssue || t.img === 'failed' || t.img === 'nodata')) continue;
+      if (this.imageryRelevant(t, lat, lon, radius) && this.imageryGap(t, lat, lon, radius)) { failed = true; break; }
+    }
+    return { failed, covered: n > 0 && ok === n && aircraftCovered };
   }
 
   // ---------- elevation ----------
@@ -395,10 +433,11 @@ export class Terrain {
       this.pumpImg();
       if (t.disposed) { if (m.bmp) m.bmp.close(); return; }
       if (m.bmp) {
-        t.bmp = m.bmp; t.img = 'ready'; t.low = m.low; this.stats.imgOk++;
+        t.bmp = m.bmp; t.img = 'ready'; t.imgIssue = false; t.low = m.low; this.stats.imgOk++;
         if (t.built) this.applyTexture(t);
         return;
       }
+      t.imgIssue = true;
       if (m.nodata || m.status === 404 || m.status === 410) {
         t.img = 'nodata'; this.stats.imgNodata++;
         if (t.z > ROOT_Z) this.noSplit.add(tkey(t.z - 1, t.x >> 1, t.y >> 1)); // no imagery this deep here: parent stays a leaf
@@ -473,10 +512,14 @@ export class Terrain {
       if (t.built && !t.pendingTex && (tex || t.tex)) t.ready = true;
     }
   }
-  retryImagery() {
+  retryImagery(lat = this.cam.lat, lon = this.cam.lon, { automatic = false } = {}) {
     for (const t of this.tiles.values()) {
-      if (t.img === 'loading') this.cancelImage(t);
-      if (t.img !== 'ready') { t.img = 'none'; t.tries = 0; t.retryAt = 0; this.noSplit.delete(tkey(t.z - 1, t.x >> 1, t.y >> 1)); }
+      if (t.disposed || t.wantedAt !== this.now || !this.imageryRelevant(t, lat, lon) || !this.imageryGap(t, lat, lon)) continue;
+      // Never cancel healthy/queued work, reset backoff, or retry a legitimate
+      // detail limit above textured coverage. Transient failures retry themselves.
+      if (t.img !== 'nodata' && !(t.img === 'failed' && !automatic)) continue;
+      t.imgIssue = true; t.img = 'none'; t.retryAt = 0;
+      this.noSplit.delete(tkey(t.z - 1, t.x >> 1, t.y >> 1));
     }
     this.pumpImg();
   }

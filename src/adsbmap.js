@@ -1,3 +1,4 @@
+import { acquiredAt, observationAge, CLIENT_BUDGET_MS, TRAFFIC_KEEP_SECONDS } from '../shared/traffic-contract.js';
 // Live ADS-B on the flight map: real aircraft wherever the map looks, anywhere in the world, plus the providers' worldwide lists
 // (military, emergency squawks). One canvas draws every aircraft (hundreds of DOM markers made the map stutter), dead-reckoned between polls.
 // Data comes through the Pages function (functions/api/traffic.js): the providers do not allow browser calls (no CORS).
@@ -6,7 +7,7 @@ import { esc } from './esc.js';
 import { classifyAircraftType } from './traffic.js';
 
 const NM = 1852, D2R = Math.PI / 180, MAX_NM = 250, MIN_NM = 20;
-const POLL_S = 12, LIST_POLL_S = 30, KEEP_S = 90, TRAIL_MAX = 160;
+const POLL_S = 12, LIST_POLL_S = 30, KEEP_S = TRAFFIC_KEEP_SECONDS, TRAIL_MAX = 160;
 // while the map is shut the area round the aircraft keeps loading at this pace, so opening the map shows traffic at once
 const BG_POLL_S = 30, BG_NM = 150, MIN_GAP_S = 1;
 export const MODES = { area: 'Map area', mil: 'Military', emergency: 'Emergency' };
@@ -41,7 +42,7 @@ export function normalize(a, nowS) {
     cls: cls.class, lat: +a.lat, lon: +a.lon, alt: alt == null ? null : +alt, ground, gs: +(a.gs || 0), trk: +(a.track ?? a.true_heading ?? 0),
     vr: +(a.baro_rate ?? a.geom_rate ?? 0), squawk: a.squawk || '', emerg: emergencyOf(a.squawk, a.emergency), cat: a.category || '',
     src: SOURCE[a.type] || '', mil: !!(a.dbFlags & 1), selAlt: a.nav_altitude_mcp ?? null, mach: a.mach ?? null,
-    at: nowS - Math.min(60, +(a.seen_pos ?? a.seen ?? 0)),
+    at: nowS - observationAge(a),
   };
 }
 
@@ -150,22 +151,25 @@ export class LiveAdsb {
   }
   async poll(at) {
     if (this.busy) return; this.busy = true; this.lastPoll = performance.now() / 1000;
-    const q = this.url(at), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), 12000);
+    const q = this.url(at), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), CLIENT_BUDGET_MS);
     try {
       const res = await fetch(q.url, { cache: 'no-store', signal: ctl.signal });
       if (!res.ok) throw new Error(res.status === 502 ? 'providers unavailable' : `error ${res.status}`);
       const j = await res.json(), arr = j.aircraft || j.ac;
-      if (!Array.isArray(arr)) throw new Error('bad data');
+      if (!Array.isArray(arr) || j.error) throw new Error(j.error || 'bad data');
+      const stamp = acquiredAt(j), age = stamp == null ? Infinity : Math.max(0, (Date.now() - stamp) / 1000);
+      if (age > KEEP_S) throw new Error('observations expired');
       const now = performance.now() / 1000;
-      if (this.mode !== 'area') this.list.clear(); // a worldwide list replaces the picture; the area view keeps what panning has shown for KEEP_S
+      if (this.mode !== 'area' && !j.partial && !j.stale) this.list.clear(); // a worldwide list replaces the picture; the area view keeps what panning has shown for KEEP_S
       for (const a of arr) {
-        const e = normalize(a, now); if (!e) continue;
+        const e = normalize(a, now - age); if (!e || now - e.at > KEEP_S) continue;
+        const previous = this.list.get(e.hex); if (previous && previous.at > e.at) continue;
         this.list.set(e.hex, e);
         let tr = this.trails.get(e.hex); if (!tr) this.trails.set(e.hex, (tr = []));
         const last = tr[tr.length - 1]; if (!last || last[0] !== e.lat || last[1] !== e.lon) { tr.push([e.lat, e.lon, e.alt]); if (tr.length > TRAIL_MAX) tr.shift(); }
       }
       this.coverage = q.c ? { c: q.c, r: q.r } : null;
-      this.fails = 0; this.status = { n: arr.length, src: String(j.source || '').replace(/^api\./, ''), at: Date.now(), err: '', stale: !!j.stale };
+      this.fails = 0; this.status = { n: arr.length, src: String(j.source || '').replace(/^api\./, ''), at: stamp, err: '', stale: !!j.stale, partial: !!j.partial };
       this.next = now + (this.mode === 'area' ? POLL_S : LIST_POLL_S);
     } catch (e) {
       // a first failure retries in 3 s, not 15: one slow answer should not leave the map empty
@@ -179,7 +183,7 @@ export class LiveAdsb {
   }
   prune() {
     const now = performance.now() / 1000;
-    for (const [k, e] of this.list) if (now - e.at > KEEP_S + 60 || (this.mode === 'area' && now - e.at > KEEP_S)) { this.list.delete(k); this.trails.delete(k); }
+    for (const [k, e] of this.list) if (now - e.at > KEEP_S) { this.list.delete(k); this.trails.delete(k); }
     if (this.sel && !this.list.has(this.sel)) { this.sel = null; this.followSel = false; }
   }
   moved() {
@@ -194,7 +198,7 @@ export class LiveAdsb {
     const now = performance.now() / 1000;
     if (this.viewOk && now >= this.next && !this.busy && (this.lastPoll == null || now - this.lastPoll >= MIN_GAP_S)) this.poll();
     if (this.followSel && this.sel) { const e = this.list.get(this.sel); if (e) this.map.panTo(project(e, now), { animate: false }); }
-    this.layer.draw();
+    this.prune(); this.layer.draw();
     if (now - (this.uiAt || 0) > 1) { this.uiAt = now; this.renderUi(); }
     setTimeout(() => requestAnimationFrame(() => { this._tick = true; this.loop(); }), 150); // ~6 redraws a second is plenty for aircraft moving a few pixels
   }
@@ -322,8 +326,8 @@ export class LiveAdsb {
     else if (!s.at) t = 'Loading…';
     else {
       const n = this.mode === 'area' ? this.inView ?? this.list.size : this.list.size;
-      t = `${n.toLocaleString()} ${this.mode === 'area' ? 'in view' : this.mode === 'mil' ? 'military worldwide' : 'squawking'} · ${age}s ago${s.stale || s.err ? ' · stale' : ''}`;
-      if (this.mode === 'emergency' && !n) t = 'No emergency squawks now';
+      t = `${n.toLocaleString()} ${this.mode === 'area' ? 'in view' : this.mode === 'mil' ? 'military worldwide' : 'squawking'} · ${age}s ago${s.stale || s.err ? ' · stale' : ''}${s.partial ? ' · partial' : ''}`;
+      if (this.mode === 'emergency' && !n && !s.partial && !s.stale && !s.err) t = 'No emergency squawks now';
     }
     this.stat.textContent = t; this.stat.title = s.src ? `Source: ${s.src}` : '';
     if (this.query) { let n = 0; for (const e of this.list.values()) if (matches(e, this.query)) n++; this.hits.textContent = `${n}`; } else this.hits.textContent = '';
@@ -331,7 +335,7 @@ export class LiveAdsb {
   }
   renderCard(live) {
     const e = this.sel && this.list.get(this.sel), c = this.card;
-    if (!e) { c.hidden = true; c.innerHTML = ''; return; }
+    if (!e) { c.hidden = true; c.innerHTML = ''; delete c.dataset.hex; delete c.dataset.html; return; }
     const now = performance.now() / 1000, own = this.o.ownship && this.o.ownship(), pos = project(e, now);
     const rel = own ? `${Math.round(L.latLng(own.lat, own.lon).distanceTo(pos) / NM).toLocaleString()} NM ${String(Math.round(bearing(own.lat, own.lon, pos[0], pos[1])) % 360).padStart(3, '0')}°` : '—';
     const vr = Math.round(e.vr / 50) * 50, vrs = Math.abs(vr) < 100 ? 'Level' : `${vr > 0 ? '↑' : '↓'} ${Math.abs(vr).toLocaleString()} fpm`;
@@ -341,12 +345,26 @@ export class LiveAdsb {
     if (e.selAlt != null) rows.splice(2, 0, ['Selected alt', `${Math.round(e.selAlt / 100) * 100} ft`]);
     const html = `<div class="ac-head"><div><b>${esc(e.call || e.reg || e.hex.toUpperCase())}</b><span>${esc([e.reg && e.reg !== e.call ? e.reg : '', e.type].filter(Boolean).join(' · '))}</span></div>
       <button type="button" class="x" data-a="close" aria-label="Close aircraft details"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button></div>
-      ${e.desc || e.op ? `<div class="ac-desc">${esc([e.desc, e.op].filter(Boolean).join(' · '))}</div>` : ''}
-      ${e.emerg ? `<div class="ac-emerg">${esc(e.emerg)}${e.squawk ? ` · squawk ${esc(e.squawk)}` : ''}</div>` : ''}
+      <div class="ac-desc" ${e.desc || e.op ? '' : 'hidden'}>${esc([e.desc, e.op].filter(Boolean).join(' · '))}</div>
+      <div class="ac-emerg" ${e.emerg ? '' : 'hidden'}>${esc(e.emerg || '')}${e.emerg && e.squawk ? ` · squawk ${esc(e.squawk)}` : ''}</div>
       <dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${esc(String(v))}</dd>`).join('')}</dl>
       <div class="ac-btns"><button type="button" data-a="follow" class="${this.followSel ? 'on' : ''}" aria-pressed="${this.followSel}">Follow</button>${this.o.canFlyTo && this.o.canFlyTo() && !e.ground ? '<button type="button" data-a="fly" class="primary">Fly alongside</button>' : ''}</div>`;
     if (live && c.dataset.hex === e.hex && c.dataset.html === html) return;
-    c.dataset.hex = e.hex; c.dataset.html = html; c.innerHTML = html; c.hidden = false;
+    if (c.dataset.hex === e.hex) {
+      // Polling changes signal age and position, not the focused action buttons.
+      const template = document.createElement('template'); template.innerHTML = html;
+      for (const selector of ['.ac-head b', '.ac-head span', '.ac-desc', '.ac-emerg', 'dl']) {
+        const old = c.querySelector(selector), next = template.content.querySelector(selector);
+        if (old.innerHTML !== next.innerHTML) old.innerHTML = next.innerHTML;
+        old.hidden = next.hidden;
+      }
+      const follow = c.querySelector('[data-a=follow]');
+      follow.classList.toggle('on', this.followSel); follow.setAttribute('aria-pressed', String(this.followSel));
+      const fly = c.querySelector('[data-a=fly]'), nextFly = template.content.querySelector('[data-a=fly]');
+      if (fly && !nextFly) fly.remove();
+      else if (!fly && nextFly) c.querySelector('.ac-btns').append(nextFly);
+    } else c.innerHTML = html;
+    c.dataset.hex = e.hex; c.dataset.html = html; c.hidden = false;
     c.querySelector('[data-a=close]').onclick = () => this.select(null);
     c.querySelector('[data-a=follow]').onclick = () => { this.followSel = !this.followSel; if (this.followSel && this.o.onFollowStop) this.o.onFollowStop(); this.renderCard(); };
     const fly = c.querySelector('[data-a=fly]'); if (fly) fly.onclick = () => this.o.onFlyAlongside && this.o.onFlyAlongside({ ...e, lat: pos[0], lon: pos[1] });

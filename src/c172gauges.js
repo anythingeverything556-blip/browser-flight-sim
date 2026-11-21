@@ -107,7 +107,7 @@ export class C172Gauges {
     this.ticks(x, 0, 9.8, 0.2, 10, 3, ang); this.ticks(x, 0, 9, 1, 22, 5, ang);
     for (let k = 0; k <= 9; k++) this.label(x, String(k), ang(k), PX_R - 46, 26);
     this.caption(x, 'ALT', -30); this.caption(x, '29.92', 34, 14);
-    this.needle(x, ang(((a / 10000) % 1) * 10), PX_R - 10, 3, '#f4f4f0', 0);    // 10,000 ft pointer
+    this.needle(x, ang((a / 10000) % 10), PX_R - 10, 3, '#f4f4f0', 0);    // 10,000 ft pointer
     this.needle(x, ang(((a / 1000) % 10)), PX_R - 62, 11);                       // 1,000 ft hand
     this.needle(x, ang(((a / 100) % 10)), PX_R - 16, 7);                         // 100 ft hand
   }

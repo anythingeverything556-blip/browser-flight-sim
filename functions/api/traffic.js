@@ -1,3 +1,4 @@
+import { acquiredAt, PAGES_BUDGET_MS, withinDeadline } from '../../shared/traffic-contract.js';
 // Live ADS-B traffic proxy for Cloudflare Pages.
 //
 // The single upstream (adsb.lol) answers 429 to Cloudflare's shared egress addresses, so most players saw "Live traffic unavailable". This version
@@ -50,7 +51,7 @@ export function fromOpenSky(data) {
   for (const s of (data && data.states) || []) {
     const lon = s[5], lat = s[6], alt = s[13] ?? s[7];
     if (lat == null || lon == null) continue;
-    out.push({ hex: s[0], flight: (s[1] || '').trim(), lat, lon, alt_baro: s[8] ? 'ground' : alt == null ? null : alt / 0.3048, gs: (s[9] || 0) / 0.514444, track: s[10] || 0, baro_rate: (s[11] || 0) / 0.00508, t: OPENSKY_TYPE[s[17]] || '', squawk: s[14], seen_pos: s[3] ? Math.max(0, Math.min(40, Date.now() / 1000 - s[3])) : 0 });
+    out.push({ hex: s[0], flight: (s[1] || '').trim(), lat, lon, alt_baro: s[8] ? 'ground' : alt == null ? null : alt / 0.3048, gs: (s[9] || 0) / 0.514444, track: s[10] || 0, baro_rate: (s[11] || 0) / 0.00508, t: OPENSKY_TYPE[s[17]] || '', squawk: s[14], seen_pos: s[3] ? Math.max(0, (data.time || Date.now() / 1000) - s[3]) : 0 });
   }
   return out;
 }
@@ -63,30 +64,54 @@ export function providers(lat, lon, dist, primary) {
     list.push({ name: 'adsb.fi', url: new URL(`https://opendata.adsb.fi/api/v2/lat/${lat.toFixed(2)}/lon/${lon.toFixed(2)}/dist/${dist}`), parse: (j) => j.ac || j.aircraft });
     const d = Math.min(1.8, dist / 60), dl = d / Math.max(0.2, Math.cos((lat * Math.PI) / 180));
     const q = `lamin=${(lat - d).toFixed(3)}&lomin=${(lon - dl).toFixed(3)}&lamax=${(lat + d).toFixed(3)}&lomax=${(lon + dl).toFixed(3)}`;
-    list.push({ name: 'opensky', url: new URL(`https://opensky-network.org/api/states/all?${q}`), parse: fromOpenSky });
+    list.push({ name: 'opensky', url: new URL(`https://opensky-network.org/api/states/all?${q}`), parse: (j) => Array.isArray(j.states) || j.states === null ? fromOpenSky(j) : null });
   }
   return list;
 }
 
+const baseHeaders = { accept: 'application/json', 'user-agent': 'blackbird-sr71-sim/1.0 (live aircraft traffic)' };
+const headersFor = (url, primary, env) => (env.TRAFFIC_API_KEY && url.hostname === primary.hostname
+  ? { ...baseHeaders, authorization: `Bearer ${env.TRAFFIC_API_KEY}`, 'x-api-key': env.TRAFFIC_API_KEY } : baseHeaders);
+const unavailable = (error) => new Response(JSON.stringify({ aircraft: [], error }), {
+  status: 502, headers: { ...jsonHeaders, 'cache-control': 'no-store' },
+});
 async function worldList(name, { env, waitUntil, primary }) {
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const key = new Request(`https://traffic-cache.invalid/list/${name}`);
+  const key = new Request(`https://traffic-cache.invalid/v3/${primary.hostname}/list/${name}`);
   if (cache) { const hit = await cache.match(key).catch(() => null); if (hit) return hit; }
-  const seconds = 30, headers = { accept: 'application/json', 'user-agent': 'blackbird-sr71-sim/1.0 (live aircraft traffic)' };
-  const get = async (url) => {
-    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 6000);
-    try { const r = await fetch(url, { headers, signal: controller.signal }); if (!r.ok) throw new Error(String(r.status)); const j = await r.json(); const l = j.ac || j.aircraft; if (!Array.isArray(l)) throw new Error('bad data'); return l; }
-    finally { clearTimeout(timer); }
-  };
-  const seen = new Set(), out = []; let source = primary.hostname;
-  for (const path of LISTS[name]) {
-    let l = null;
-    try { l = await get(new URL(path, primary.href)); }
-    catch { const fb = LIST_FALLBACK[primary.hostname]; if (fb) { try { l = await get(fb(path)); source = 'adsb.fi'; } catch { /* next path */ } } }
-    for (const a of l || []) if (a && a.hex && !seen.has(a.hex)) { seen.add(a.hex); out.push(a); }
+  const deadline = Date.now() + PAGES_BUDGET_MS;
+  // Independent categories run concurrently under one budget, not three serial budgets.
+  const parts = await Promise.all(LISTS[name].map(async (path) => {
+    const urls = [new URL(path, primary.href)];
+    if (LIST_FALLBACK[primary.hostname]) urls.push(new URL(LIST_FALLBACK[primary.hostname](path)));
+    for (const [i, url] of urls.entries()) {
+      try {
+        const j = await withinDeadline(deadline, urls.length - i, async (signal) => {
+          const r = await fetch(url, { headers: headersFor(url, primary, env), signal });
+          if (!r.ok) throw new Error(String(r.status));
+          return r.json();
+        });
+        const list = j.ac || j.aircraft, at = acquiredAt(j);
+        if (!Array.isArray(list) || j.error || at == null) throw new Error('bad data');
+        return { list, at, stale: !!j.stale, partial: !!j.partial, source: url.hostname === primary.hostname ? primary.hostname : 'adsb.fi' };
+      } catch { /* use remaining provider budget */ }
+    }
+    return null;
+  }));
+  const good = parts.filter(Boolean);
+  if (!good.length) return unavailable('Traffic list providers unavailable');
+  const seen = new Set(), out = [], at = Math.max(...good.map((p) => p.at));
+  // Rebase each report age to the newest component acquisition, preserving
+  // its actual observation time when snapshots from different caches are merged.
+  for (const part of good) for (const a of part.list) if (a && a.hex && !seen.has(a.hex)) {
+    seen.add(a.hex); out.push({ ...a, seen_pos: Math.max(0, Number(a.seen_pos ?? a.seen ?? 0) + (at - part.at) / 1000) });
   }
-  const res = new Response(JSON.stringify({ aircraft: slim(out), source, list: name }), { status: 200, headers: { ...jsonHeaders, 'cache-control': `public, max-age=${seconds}, s-maxage=${seconds}`, 'x-traffic-source': source } });
-  if (cache) { const put = cache.put(key, res.clone()).catch(() => {}); if (waitUntil) waitUntil(put); }
+  const partial = good.length !== parts.length || good.some((p) => p.partial), stale = good.some((p) => p.stale);
+  const source = [...new Set(good.map((p) => p.source))].join(', ');
+  const res = new Response(JSON.stringify({ aircraft: slim(out), source, list: name, acquiredAt: at, stale, partial,
+    missing: LISTS[name].filter((_, i) => !parts[i]) }), { status: 200, headers: { ...jsonHeaders,
+    'cache-control': partial || stale ? 'no-store' : 'public, max-age=30, s-maxage=30', 'x-traffic-source': source } });
+  if (cache && !partial && !stale) { const put = cache.put(key, res.clone()).catch(() => {}); if (waitUntil) waitUntil(put); }
   return res;
 }
 
@@ -115,37 +140,38 @@ export async function onRequestGet({ request, env = {}, waitUntil }) {
   catch { return new Response(JSON.stringify({ aircraft: [], error: 'Traffic upstream is not configured safely' }), { status: 502, headers: jsonHeaders }); }
 
   const cache = typeof caches !== 'undefined' ? caches.default : null;
-  const key = new Request(`https://traffic-cache.invalid/v2/${lat.toFixed(2)}/${lon.toFixed(2)}/${cellDist}`);
+  const key = new Request(`https://traffic-cache.invalid/v3/${primary.hostname}/${lat.toFixed(2)}/${lon.toFixed(2)}/${cellDist}`);
   const staleKey = new Request(key.url + '/stale');
   const respond = (body, source, extra = {}) => new Response(JSON.stringify({ aircraft: body, source, ...extra }), {
-    status: 200, headers: { ...jsonHeaders, 'cache-control': `public, max-age=${extra.stale ? 15 : cacheSeconds}, s-maxage=${extra.stale ? 15 : cacheSeconds}`, 'x-traffic-source': source },
+    status: 200, headers: { ...jsonHeaders, 'cache-control': extra.stale || extra.partial ? 'no-store' : `public, max-age=${cacheSeconds}, s-maxage=${cacheSeconds}`, 'x-traffic-source': source },
   });
   if (cache) { const hit = await cache.match(key).catch(() => null); if (hit) return hit; }
 
-  const baseHeaders = { accept: 'application/json', 'user-agent': 'blackbird-sr71-sim/1.0 (live aircraft traffic)' };
-  const headersFor = (prov) => (env.TRAFFIC_API_KEY && prov.url.hostname === primary.hostname ? { ...baseHeaders, authorization: `Bearer ${env.TRAFFIC_API_KEY}`, 'x-api-key': env.TRAFFIC_API_KEY } : baseHeaders); // the key goes to the configured primary/relay only, never to the fallback providers
-  const errors = [];
-  for (const prov of providers(lat, lon, cellDist, primary.href)) {
-    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 4500);
+  const errors = [], chain = providers(lat, lon, cellDist, primary.href), deadline = Date.now() + PAGES_BUDGET_MS;
+  for (const [i, prov] of chain.entries()) {
     try {
-      const response = await fetch(prov.url, { headers: headersFor(prov), signal: controller.signal, cf: { cacheTtl: cacheSeconds, cacheTtlByStatus: { '200-299': cacheSeconds, '400-599': 0 }, cacheEverything: true } });
-      if (!response.ok) { errors.push(`${prov.name} ${response.status}`); continue; }
-      const list = prov.parse(await response.json());
-      if (!Array.isArray(list)) { errors.push(`${prov.name} bad data`); continue; }
-      const res = respond(slim(list), prov.name);
-      if (cache) {
+      const j = await withinDeadline(deadline, chain.length - i, async (signal) => {
+        const response = await fetch(prov.url, { headers: headersFor(prov.url, primary, env), signal,
+          cf: { cacheTtl: cacheSeconds, cacheTtlByStatus: { '200-299': cacheSeconds, '400-599': 0 }, cacheEverything: true } });
+        if (!response.ok) throw new Error(String(response.status));
+        return response.json();
+      });
+      const list = prov.parse(j), at = acquiredAt(j);
+      if (!Array.isArray(list) || j.error || at == null) throw new Error('bad data');
+      const res = respond(slim(list), prov.name, { acquiredAt: at, stale: !!j.stale, partial: !!j.partial });
+      // A stale relay response must not renew either edge cache's lifetime.
+      if (cache && !j.stale && !j.partial) {
         const put = [cache.put(key, res.clone())];
         if (list.length) put.push(cache.put(staleKey, new Response(res.clone().body, { headers: { ...jsonHeaders, 'cache-control': `public, max-age=${STALE_SECONDS}`, 'x-traffic-source': prov.name } })));
         const all = Promise.all(put).catch(() => {});
         if (waitUntil) waitUntil(all);
       }
       return res;
-    } catch (error) { errors.push(`${prov.name} ${error && error.name === 'AbortError' ? 'timeout' : 'failed'}`); }
-    finally { clearTimeout(timer); }
+    } catch (error) { errors.push(`${prov.name} ${error.message || 'failed'}`); }
   }
   if (cache) {
     const old = await cache.match(staleKey).catch(() => null);
-    if (old) { try { const j = await old.json(); if (Array.isArray(j.aircraft)) return respond(j.aircraft, `${j.source || 'cache'} (stale)`, { stale: true }); } catch { /* fall through */ } }
+    if (old) { try { const j = await old.json(); if (Array.isArray(j.aircraft) && acquiredAt(j) != null) return respond(j.aircraft, `${j.source || 'cache'} (stale)`, { stale: true, acquiredAt: j.acquiredAt }); } catch { /* fall through */ } }
   }
   return new Response(JSON.stringify({ aircraft: [], error: `Traffic upstreams unavailable: ${errors.join(', ')}` }), { status: 502, headers: { ...jsonHeaders, 'cache-control': 'no-store' } });
 }

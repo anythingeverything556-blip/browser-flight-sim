@@ -72,7 +72,7 @@ const pad = (axes, pressed = [], over = {}) => ({ index: 0, connected: true, map
   pads = [pad([1, 0, 0, 0])]; run(c, 0.1);
   check('pad: dead zone is rescaled so the stick still reaches 1', Math.abs(c.axes.roll - 1) < 1e-9);
   c = iso(); pads = [pad([0, 0, -1, 0])]; run(c, 0.5);
-  check('pad: axis resting at -1 (trigger) gives no rudder', c.axes.yaw === 0);
+  check('pad: known standard right stick at -1 gives full rudder immediately', c.axes.yaw === -1);
   pads = [pad([0, 0, -0.2, 0])]; run(c, 0.1);
   check('pad: the same axis works once it has moved', c.axes.yaw < 0, c.axes.yaw.toFixed(2));
   c = iso(); c.on('gear', () => gear++); gear = 0; pads = [pad([0, 0, 0.8, 0], [0, 7], { mapping: '' })]; run(c, 0.5);

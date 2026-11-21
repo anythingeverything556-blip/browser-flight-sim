@@ -1,11 +1,6 @@
 const Kr = (s, t, e) => Math.min(e, Math.max(t, s)),
   M2 = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', ' ', 'Home', 'End', 'F1'],
-  w2 = (s) =>
-    s &&
-    (s.isContentEditable ||
-      s.tagName === 'TEXTAREA' ||
-      s.tagName === 'SELECT' ||
-      (s.tagName === 'INPUT' && !['range', 'checkbox', 'radio', 'button'].includes(s.type)));
+  w2 = (s) => s && (s.isContentEditable || s.closest?.('input, textarea, select, button, a[href], [role="slider"], [role="radio"], [role="combobox"], .leaflet-container') || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(s.tagName));
 // ---------- key bindings (Settings → Keyboard controls) ----------
 // Each action has a list of keys: a KeyboardEvent.code ('KeyG', 'ArrowUp'), 'Shift+<code>' for a chord, or 'Shift' alone (held actions only).
 // hold: read every frame while down; otherwise fired once on the key press. ctx: keys only conflict within one context (slew mode reuses keys).
@@ -136,6 +131,7 @@ class Controls {
           !this.keys.has(t.code) && this.enabled && this.fire(t),
           this.keys.add(t.code));
       }),
+      window.addEventListener('focusin', (t) => { if (w2(t.target)) { this.keys.clear(); this.chordKeys.clear(); this.releaseAll(); this.centerMouse(); } }),
       window.addEventListener('keyup', (t) => { this.keys.delete(t.code); this.chordKeys.delete(t.code); if (t.code === 'ShiftLeft' || t.code === 'ShiftRight') this.pbChord = false; }),
       window.addEventListener('blur', () => { this.keys.clear(); this.chordKeys.clear(); this.pbChord = false; this.centerMouse(); }),
       window.addEventListener('mouseout', (t) => { t.relatedTarget || this.centerMouse(); }),
@@ -264,9 +260,8 @@ class Controls {
         turn: l || kD ? 1 : a || kA ? -1 : 0,
         up: this.held('slewUp') ? 1 : this.held('slewDown') ? -1 : 0,
       }));
-    const f = navigator.getGamepads ? navigator.getGamepads() : [];
-    for (const d of f) {
-      if (!d || d.connected === false) continue;
+    const d = this.selectedPad();
+    if (d) {
       const std = d.mapping === 'standard',
         ax = (k) => this.padAxis(d, k),
         v = ax(0),
@@ -287,20 +282,34 @@ class Controls {
           w(3) && !b[3] && this.handlers.nextView && this.handlers.nextView());
         this.padPrev = { 0: w(0), 3: w(3) };
       }
-      break;
     }
   }
-  // axis with a dead zone (rescaled so it still reaches 1); an axis that first reads -1 is an unpressed trigger and counts as 0 until it moves
+  // Known standard sticks are valid at both endpoints immediately; only ambiguous nonstandard axes need trigger initialization.
   padAxis(d, k) {
     const raw = d.axes[k] || 0, id = d.index + ':' + k;
+    if (d.mapping === 'standard') return Math.abs(raw) < PAD_DEAD ? 0 : Math.sign(raw) * (Math.abs(raw) - PAD_DEAD) / (1 - PAD_DEAD);
     if (this.padLive[id] === undefined) this.padLive[id] = raw > -0.95;
     if (!this.padLive[id]) { if (raw > -0.9) this.padLive[id] = true; else return 0; }
     return Math.abs(raw) < PAD_DEAD ? 0 : Math.sign(raw) * (Math.abs(raw) - PAD_DEAD) / (1 - PAD_DEAD);
   }
-  // keep the button edge state current while the controls are off, so a button held across a resume does not fire
+  // Optional hardware access may be denied by browser policy. Keyboard/touch must still run.
+  selectedPad() {
+    let pads;
+    try { pads = Array.from(navigator.getGamepads?.() || []).filter(d => d && d.connected !== false); }
+    catch { pads = []; }
+    // Prefer a supported standard mapping. Among supported devices, an actively
+    // used controller keeps ownership until it is idle (idle slot zero cannot mask it).
+    const standard = pads.filter(d => d.mapping === 'standard'), supported = standard.length ? standard : pads;
+    const active = supported.filter(d => (d.axes || []).some((v, i) => (d.mapping === 'standard' || i < 2 && v > -0.95) && Math.abs(v) > PAD_DEAD) || (d.buttons || []).some(b => b.pressed || b.value > 0.1));
+    const d = active.find(d => d.index === this.padIndex) || active[0] || supported.find(d => d.index === this.padIndex) || supported[0];
+    const index = d ? d.index : null;
+    if (index !== this.padIndex) { this.padPrev = {}; this.padLive = {}; this.padIndex = index; }
+    return d;
+  }
+  // Keep button edges current while off, so a button held across resume does not fire.
   padEdges() {
-    const f = navigator.getGamepads ? navigator.getGamepads() : [];
-    for (const d of f) { if (!d || d.connected === false) continue; if (d.mapping === 'standard') this.padPrev = { 0: !!(d.buttons[0] && d.buttons[0].pressed), 3: !!(d.buttons[3] && d.buttons[3].pressed) }; break; }
+    const d = this.selectedPad();
+    if (d?.mapping === 'standard') this.padPrev = { 0: !!d.buttons[0]?.pressed, 3: !!d.buttons[3]?.pressed };
   }
 }
 
