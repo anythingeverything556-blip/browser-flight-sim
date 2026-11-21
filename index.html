@@ -60,7 +60,8 @@
   <div id="hero" aria-label="Earthwing flight simulator">
     <div class="h-kicker"><svg class="h-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z"/></svg>Flight simulator in your browser</div>
     <h1>Earthwing</h1>
-    <p>Fly the SR-71, a Cessna 172, the Vision Jet or the Il-76 from 8,200+ real airports, over satellite imagery and terrain at full scale.</p>
+    <p>Your first take-off, a quiet local circuit, or the edge of space. Fly four very different aircraft over the real world — no account, no install.</p>
+    <p class="hero-caption">Actual Earthwing capture · SR-71 at Mach 3 over the Grand Canyon</p>
     <div class="hero-loader">
       <div class="hero-loader-head"><span>Starting up</span><span id="loadmsg" aria-live="polite">Loading aircraft…</span></div>
       <button type="button" id="startup-retry" hidden>Retry loading</button>
@@ -86,10 +87,10 @@
       <div id="ac-slot"><div id="ac-pick">
         <div class="lbl">Aircraft</div>
         <div class="ac-cards" id="ac-cards" role="radiogroup" aria-label="Aircraft">
-        <button type="button" class="ac-card" data-v="sr71" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z"/></svg><span class="ac-name"><b>Lockheed SR-71A Blackbird</b><small>Strategic reconnaissance jet</small></span><span class="ac-specs"><span>Mach 3.2</span><span>85,000 ft</span><span>2 × J58</span></span></button>
-        <button type="button" class="ac-card" data-v="c172" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M24 5h16v2H24zM30 8h4l1 4v6h25v8H35l-1.2 22H44v5H33.5L33 58h-2l-.5-5H20v-5h10.2L29 26H4v-8h25v-6Z"/></svg><span class="ac-name"><b>Cessna 172SP Skyhawk</b><small>Four-seat trainer</small></span><span class="ac-specs"><span>122 KTAS</span><span>180 hp</span><span>4 seats</span></span></button>
-        <button type="button" class="ac-card" data-v="sf50" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 5c1.6 0 2.8 2.5 3.2 7l.4 12L58 31v3.5L36 34l-.4 10L44 53v3l-9-2.5-1 4.5h-4l-1-4.5-9 2.5v-3l8.4-9L28 34 6 34.5V31l22.4-7 .4-12c.4-4.5 1.6-7 3.2-7Z"/></svg><span class="ac-name"><b>Cirrus Vision Jet SF50 G3</b><small>Single-engine personal jet</small></span><span class="ac-specs"><span>311 KTAS</span><span>FL310</span><span>FJ33-5A</span></span></button>
-        <button type="button" class="ac-card" data-v="il76" role="radio" aria-checked="false"><svg class="ac-icon" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4c1.4 0 2.4 2 2.6 5l.4 17 24 14v4.5l-24-6-.3 11 6 5v3.2l-6.5-1.6-1 3.4h-2.4l-1-3.4-6.5 1.6v-3.2l6-5-.3-11-24 6v-4.5l24-14 .4-17c.2-3 1.2-5 2.6-5ZM21 27h3v7h-3zM13 31.5h3v7h-3zM40 27h3v7h-3zM48 31.5h3v7h-3z"/></svg><span class="ac-name"><b>Ilyushin Il-76MD-90A</b><small>Four-engine heavy transport</small></span><span class="ac-specs"><span>770 km/h</span><span>60 t payload</span><span>4 × PS-90A-76</span></span></button>
+        <button type="button" class="ac-card" data-v="sr71" role="radio" aria-checked="false"><img class="ac-icon ac-render" src="/images/aircraft-sr71.webp" alt="" width="480" height="270" /><span class="ac-name"><b>Lockheed SR-71A Blackbird</b><small>Strategic reconnaissance jet</small></span><span class="ac-specs"><span>Mach 3.2</span><span>85,000 ft</span><span>2 × J58</span></span></button>
+        <button type="button" class="ac-card" data-v="c172" role="radio" aria-checked="false"><img class="ac-icon ac-render" src="/images/aircraft-c172.webp" alt="" width="480" height="270" /><span class="ac-name"><b>Cessna 172SP Skyhawk</b><small>Four-seat trainer</small></span><span class="ac-specs"><span>122 KTAS</span><span>180 hp</span><span>4 seats</span></span></button>
+        <button type="button" class="ac-card" data-v="sf50" role="radio" aria-checked="false"><img class="ac-icon ac-render" src="/images/aircraft-sf50.webp" alt="" width="480" height="270" /><span class="ac-name"><b>Cirrus Vision Jet SF50 G3</b><small>Single-engine personal jet</small></span><span class="ac-specs"><span>311 KTAS</span><span>FL310</span><span>FJ33-5A</span></span></button>
+        <button type="button" class="ac-card" data-v="il76" role="radio" aria-checked="false"><img class="ac-icon ac-render" src="/images/aircraft-il76.webp" alt="" width="480" height="270" /><span class="ac-name"><b>Ilyushin Il-76MD-90A</b><small>Four-engine heavy transport</small></span><span class="ac-specs"><span>770 km/h</span><span>60 t payload</span><span>4 × PS-90A-76</span></span></button>
         </div>
         <div class="sub" id="ac-note"></div>
       </div></div>
