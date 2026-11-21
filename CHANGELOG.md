@@ -4,6 +4,8 @@
 
 Local only, based on P1 `d085612656ca991f5f102e30879d10cfa4a705b4`; no push/deploy/PR/ZIP. Evidence under `/home/earthwing-evidence/p2/`.
 
+- **17 — Fixed (local, deployment pending):** strict DENY/none on ordinary routes for both builds; separate `/embed/` Function is fail-closed, disabled without explicit server-owned exact-HTTPS allowlist. No origins enabled. CSP and other headers retained, header line-length regressions retained, `/api` untouched. Local safe `.example` Chrome iframe fixture and policy tests cover deny, allow and unrelated denial; `frame-policy.json`, `17-test.log`, `17-build.log`. Owner chooses hosting/domains. Initial policy regression caught URL accepting a wildcard hostname; explicitly rejected wildcard/whitespace and reran complete suite (`17-test-rerun.log`, `17-build-rerun.log`).
+
 - **16 — Fixed:** four static, script-independent aircraft pages with unique copy/title/description, canonical links, social metadata, VideoGame JSON-LD, visible cross-links and explicit aircraft Play now links. Reuses verified P1 Three.js model renders (`public/images/aircraft-*.webp`), no stock assets or collection. Sitemap covers all five canonical routes. Chrome before/after and full checks: `discovery-before.json`, `landing-after.json`, `landing-*.png`, `16-test.log`, `16-build.log`.
 
 - **15 — Fixed:** static robots, canonical sitemap, web manifest/icon, complete social metadata and top-level Pages `404.html` disable SPA fallback on both hosts. Root query deep links remain valid; existing `/api/*` functions unchanged. Vite preview is not a Pages routing emulator; production status must be verified after a separately authorized dual-host deployment. Full checks: `15-test.log`, `15-build.log`.

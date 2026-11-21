@@ -365,3 +365,28 @@ If you enjoy flying, a star helps other people find the project.
 
 Personal-use only, source-available. Gameplay videos, streams and screenshots are allowed (see section 4);
 redistributing or re-hosting the software is not. See `LICENSE` and `NOTICE.md`. This is not an open-source licence.
+
+## Framing policy (both Pages hosts)
+
+All ordinary routes use `X-Frame-Options: DENY` and CSP `frame-ancestors 'none'`.
+Embedding is disabled by default, including same-origin frames. `/embed/` is a
+separate Pages Function and returns 403 unless a maintainer deliberately sets
+`EARTHWING_EMBED_ORIGINS` to a JSON array of exact HTTPS origins (up to 10).
+No domains are enabled here. Paths, wildcards, credentials, HTTP and malformed
+lists fail closed as a whole. Query parameters never select trusted origins.
+Only `/embed/` omits XFO (which cannot express an allowlist); its CSP allows only
+that exact ancestor list and keeps every other CSP directive/security header.
+Existing `/api/` Functions and root aircraft query links are unchanged.
+
+The owner must choose hosting and trusted domains, then apply any environment
+setting separately on **both** Pages projects through an authorized operation.
+Keep the normal root unframeable; do not weaken the global policy. Disabling the
+setting closes embeds again. Keep `_headers` and `functions/_lib/embed-policy.js`
+security constants in sync (`embed-policy-test` enforces parity).
+
+Local safe verification: `node test/embed-policy-test.mjs`; Chrome fixture proof
+is under `p2/frame-policy.json`. It intercepts HTTPS `.example` origins locally
+and invokes the real response helper; it does not publish or trust a real site.
+After separately authorized deployment, check headers on `/`, an aircraft page,
+`/embed/` and an unknown route on each host; test a frame from an explicitly
+allowed origin and a disallowed origin. No live headers were changed here.
