@@ -15,6 +15,7 @@ tile.demList[0].state = 'loading'; assert.equal(terrain.canBuild(tile), false, '
 const jobs = [];
 terrain.loader.cancel = id => jobs.push(id);
 terrain.tiles.set(1, { img: 'loading', z:15, x: 12, y: 20, jobId: 41, imgSrc:null, imgCost:1 });
+terrain.tiles.set(3, { img: 'nodata', z: 15, x: 14, y: 20, tries: 2, retryAt: 99999 });
 terrain.tiles.set(2, { img: 'failed', z:15, x: 13, y: 20, tries:4, retryAt:99999 });
 terrain.retryImagery();
 assert.deepEqual(jobs, [41]);

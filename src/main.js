@@ -157,7 +157,7 @@ if (IS_SF50) { configureCameraAircraft({ eye: SF50_EYE, wing: new THREE.Vector3(
 // Il-76: the captain's eye (left seat, over the yoke), a wing camera behind the left wing's inboard trailing edge, chase and orbit for a 50 m aircraft
 if (IS_IL76) { configureCameraAircraft({ eye: IL76_EYE, wing: new THREE.Vector3(-10, 5.6, -12).sub(IL76_CG), look: 14, minDist: 30, chase: 62 }); rig.orbit.dist = 70; }
 const controls = new Controls();
-const touchControls = mountTouchControls(controls);
+mountTouchControls(controls);
 controls.enabled = false; // until a flight is started from the setup screen
 const ap = new Autopilot(IS_SF50 ? SF50_AP : IS_IL76 ? IL76_AP : undefined), autoland = new SF50Autoland();
 // the autopilot's airspeed: equivalent for the Blackbird (its limits are KEAS), calibrated for the Vision Jet (VMO and the PFD are KCAS)
@@ -290,7 +290,7 @@ function groundStatus(s) {
 // physics waits until the elevation under the aircraft is known so it never spawns underground
 function finishPending() {
   const s = state.pending, waited = performance.now() - s.t0;
-  if (waited >= IMAGERY_DEADLINE_MS && !groundStatus(s).ok) { terrain.imageryFallback = true; $('imagery-notice').hidden = false; }
+  if (waited >= IMAGERY_DEADLINE_MS && !terrain.imageryFallback && !groundStatus(s).ok) { terrain.imageryFallback = true; imageryRetryAt = performance.now() + 30000; $('imagery-notice').hidden = false; }
   // wait for the fine elevation tile; after 15 s settle for any loaded level. Never reuse the previous place's ground
   // height: that put the jet under the dirt at a higher airport or inside mountains after a teleport.
   let h = terrain.heightAt(s.lat, s.lon);
@@ -1833,9 +1833,11 @@ function cueFor(n) {
   if (ap.on && ap.modes.nav && n.valid) { navCue.mode = 'LNAV'; navCue.lateral = clampN(-n.xtkNm, 2); navCue.vertical = NaN; return navCue; }
   return null;
 }
-$('imagery-retry').addEventListener('click', () => { terrain.retryImagery(); $('imagery-status').textContent = 'Imagery unavailable, retrying. Flying with shaded terrain.'; });
+let imageryRetryAt = 0;
+function retryImagery() { terrain.retryImagery(); imageryRetryAt = performance.now() + 30000; }
+$('imagery-retry').addEventListener('click', retryImagery);
 function frameBody(now) {
-  if (terrain.imageryFallback && !state.pending && state.lastSpawn && groundStatus(state.lastSpawn).ok) { terrain.imageryFallback = false; $('imagery-notice').hidden = true; }
+  if (terrain.imageryFallback && now >= imageryRetryAt) retryImagery();
   if ((rig.view === 'cockpit') !== state.cabRes) { state.cabRes = rig.view === 'cockpit'; setRenderScale(); } // re-apply the cockpit's resolution floor
   perf.begin(now);
   // 0.1 s, not 0.05: below 20 fps the game ran in slow motion (a quarter of real time at 5 fps). Physics still steps at 240 Hz inside it.
@@ -1845,6 +1847,7 @@ function frameBody(now) {
   controls.onGround = fdm.onGround;
   controls.update(dt);
   const ll = aircraftLatLon();
+  if (terrain.imageryFallback && !state.pending && terrain.sceneryProgress(3000) >= 0.9 && terrain.levelAt(ll.lat, ll.lon) >= 11) { terrain.imageryFallback = false; $('imagery-notice').hidden = true; }
   state.navOut = nav.update(ll, fdm.pos.y, fdm.vel.length());
   if (nav.sequenced) { toast(`Waypoint ${nav.sequenced}`); nav.sequenced = null; }
   if (state.pending) finishPending();

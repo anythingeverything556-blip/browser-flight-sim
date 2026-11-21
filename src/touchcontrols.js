@@ -9,6 +9,8 @@ export function mountTouchControls(controls, parent = document.body) {
     <div class="touch-access"><label>Pitch<input aria-label="Touch pitch" data-axis="pitch" type="range" min="-100" max="100" value="0"></label><label>Roll<input aria-label="Touch roll" data-axis="roll" type="range" min="-100" max="100" value="0"></label></div>`;
   parent.append(root);
   document.body.classList.add('touch-mode');
+  // Native sliders and buttons retain their own keyboard semantics without also flying the aircraft.
+  for (const event of ['keydown', 'keyup']) root.addEventListener(event, e => { if (e.target.matches('input, button')) e.stopPropagation(); });
   const active = () => controls.enabled && !controls.locked;
   const stick = root.querySelector('.touch-stick'); let pointer = null;
   const move = e => { if (pointer !== e.pointerId || !active()) return; const r = stick.getBoundingClientRect(); const x = clamp((e.clientX - r.left - r.width / 2) / (r.width * .4)), y = clamp((e.clientY - r.top - r.height / 2) / (r.height * .4)); controls.touch.roll = x; controls.touch.pitch = y; stick.style.setProperty('--stick-x', x * 32 + 'px'); stick.style.setProperty('--stick-y', y * 32 + 'px'); };
