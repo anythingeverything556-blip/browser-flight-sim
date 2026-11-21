@@ -3,7 +3,7 @@ const clamp = n => Math.max(-1, Math.min(1, n));
 export function mountTouchControls(controls, parent = document.body) {
   if (!touchOnly()) return null;
   const root = document.createElement('section'); root.id = 'touch-controls'; root.setAttribute('aria-label', 'Touch flight controls');
-  root.innerHTML = `<div class="touch-stick" aria-label="Pitch and roll: drag down to pull up, sideways to roll" role="group"><span aria-hidden="true">Stick</span><i aria-hidden="true"></i></div>
+  root.innerHTML = `<p class="touch-hint">Drag stick down to climb · sideways to roll · release to centre</p><div class="touch-stick" aria-label="Pitch and roll: drag down to pull up, sideways to roll" role="group"><span aria-hidden="true">Stick</span><i aria-hidden="true"></i></div>
     <div class="touch-levers"><label>Throttle<input class="touch-throttle" aria-label="Touch throttle" type="range" min="0" max="100" value="0"></label><label>Rudder<input class="touch-rudder" aria-label="Touch rudder; release to centre" type="range" min="-100" max="100" value="0"></label></div>
     <div class="touch-buttons"><button type="button" data-action="gear">Gear</button><button type="button" data-action="flapsDown">Flaps +</button><button type="button" data-action="flapsUp">Flaps −</button><button type="button" class="touch-brake">Brakes</button><button type="button" data-action="nextView">Camera</button></div>
     <div class="touch-access"><label>Pitch<input aria-label="Touch pitch" data-axis="pitch" type="range" min="-100" max="100" value="0"></label><label>Roll<input aria-label="Touch roll" data-axis="roll" type="range" min="-100" max="100" value="0"></label></div>`;
