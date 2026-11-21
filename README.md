@@ -17,7 +17,7 @@ over satellite imagery and terrain at full scale. No install, no account.
 
 </div>
 
-Earthwing began as an SR-71 simulator called *Blackbird*. It now flies three very different aircraft
+Earthwing began as an SR-71 simulator called *Blackbird*. It now flies four very different aircraft
 over the whole planet, so it has a new name; the Blackbird is still here, and still the fastest way to
 see the world.
 
@@ -27,14 +27,14 @@ see the world.
   Mach 3.2 at 85,000 ft and watch the curvature of the Earth.
 - **A real flight model.** Six degrees of freedom at 240 Hz, per-aircraft engines and systems, fuel,
   turbulence, wind shear and crash physics.
-- **Nothing to install.** Open the link in a desktop browser with WebGL 2 and press *Start flight*.
+- **Nothing to install.** Open the link in a desktop browser with WebGL 2 and press **Just fly** for clear-sky free flight from your saved home (KBAB on first use), or customize **Start flight**. No location sharing is required.
 
 ## Aircraft
 
 | Aircraft | Performance | What it's like to fly |
 | --- | --- | --- |
-| **Lockheed SR-71A Blackbird** | Mach 3.2 cruise, 85,000 ft, 2 × J58 | Afterburners, inlet unstarts, drag chute and air-to-air refuelling. Full autopilot with SPD and MACH holds; every mission and the tutorial are built around it. |
-| **Cessna 172SP Skyhawk** | 122 KTAS, 180 hp, 4 seats | A trainer you fly by hand: live six-pack instruments, flaps, trim and nose-wheel steering. No autopilot fitted. |
+| **Lockheed SR-71A Blackbird** | Mach 3.2 cruise, 85,000 ft, 2 × J58 | Afterburners, inlet unstarts, drag chute and air-to-air refuelling. Full autopilot with SPD and MACH holds; the original missions and tutorial remain available. |
+| **Cessna 172SP Skyhawk** | 122 KTAS, 180 hp, 4 seats | A trainer you fly by hand: live six-pack instruments, flaps, trim and nose-wheel steering. No autopilot fitted. A short guided flight and a hand-flown traffic-pattern lesson are available. |
 | **Cirrus Vision Jet SF50 G3** | 311 KTAS, FL310, FJ33-5A | Glass PFD and MFD, NAV/APPR autopilot with autoland, go-around and a *Safe Return* landing at the nearest suitable airport. |
 | **Ilyushin Il-76MD-90A** | 770 km/h cruise, 12,200 m ceiling, 210 t, 4 × PS-90A-76 | Il-76: a heavy four-engine transport with slats, triple-slotted flaps, spoilers, thrust reversers, 20 wheels that fold into the fuselage, and a cargo ramp, clamshell doors and paratroop doors that open. |
 
@@ -42,11 +42,11 @@ Pick the aircraft on the start screen, or open the simulator with `?aircraft=sr7
 The Vision Jet model is unofficial and not affiliated with Cirrus, and the Il-76 model is unofficial and not affiliated with Ilyushin or United Aircraft Corporation (see `NOTICE.md`).
 The Il-76's flight model uses published figures where they exist and labelled estimates elsewhere (see the comment block at the top of `src/il76.js`); it is not a certified reproduction.
 
-<img src="public/social-preview.png" alt="Earthwing start screen: choose the SR-71A Blackbird, Cessna 172SP Skyhawk or Cirrus Vision Jet, then a departure airport" width="900">
+<img src="public/social-preview.png" alt="Earlier Earthwing start screen; the current release also includes the Il-76 and Just fly" width="900">
 
 ## Missions and training
 
-Choose one under **Mission** on the start sheet (missions are flown in the SR-71; the Skyhawk, Vision Jet and Il-76 fly free flights).
+Choose one under **Mission** on the start sheet. The SR-71 retains its original missions below. The C172 now offers **Guided flight** (power, take-off, climb, turn, trim) and **Take-off, pattern & landing** (a simple left-hand circuit back to the departure runway). You fly; coaching does not operate the controls. The Vision Jet and Il-76 retain free flight.
 
 - **Tutorial:** you fly, it coaches, in eleven steps from the take-off roll to the autopilot.
 - **Landing 1 and 2:** ILS approaches from a 10 NM or 5 NM final, scored on sink rate, speed, centreline and touchdown point.
@@ -55,6 +55,17 @@ Choose one under **Mission** on the start sheet (missions are flown in the SR-71
 - **Watch demo:** the jet takes off, climbs and engages the autopilot by itself, then hands over.
 
 Every aircraft has **Easy**, **Medium** and **Realistic** flying modes with adjustable assists.
+
+**Start quickly or resume.** Just fly is an explicit SR-71/C172 clear-sky free-flight choice; **Start flight** keeps your custom aircraft and conditions. **Resume last flight setup** restores aircraft, airport/runway, start profile, weather, time and mission, not airborne position. No account or location sharing is required. Saved aircraft preferences are not silently replaced by a deep link.
+
+**Local logbook.** The start sheet shows up to 50 completed landings, including aircraft, departure, nearby arrival (or Unknown), simulated duration and approximate sink-rate quality. One entry is recorded per flight setup, not each wheel bounce. It stays in this browser only; clearing site data removes it. Storage that is missing, corrupt or full does not stop flight.
+
+## Model performance status
+
+The selected aircraft alone is downloaded; selecting a different card reloads its model. The SR-71 loads its own LOD only when selected.
+A conservative texture-only pass reduces the SF50 GLB from 1,771,000 to 1,481,076 bytes and the Il-76 from 2,016,464 to 2,007,968 bytes.
+Geometry, moving-node pivots, extras and display wiring are unchanged: **403,431 SF50 / 368,929 Il-76 triangles**, so the ~200k geometry/draw-call target is **not done**.
+Instrument atlases and fine livery were retained where downsampling risked readability. Software Chrome checks verify functionality, not hardware frame rate. See [Changelog](CHANGELOG.md).
 
 ## Features
 
@@ -298,7 +309,7 @@ checkerboard: a clean fine grid means the page maps 1:1 to the screen, wide band
 
 F3 also splits GPU time by pass (shadow maps, scene, AO, glass, clouds, composite, bloom, SMAA) where the browser exposes timer queries, and shows
 done/skipped counts for each shadow cascade. **F5-F9** switch world shadows, AO, volumetric clouds, SMAA and bloom off one at a time: if a flicker or
-a slowdown goes away when one is switched off, that is the pass to look at. The render-resolution slider defaults to 200 % (75-250 %).
+a slowdown goes away when one is switched off, that is the pass to look at. The render-resolution slider defaults to **100%** (75–250%); **adaptive resolution is on** by default and does not reduce below the screen’s native pixels. A saved user choice is retained after the existing one-time migrations. Settings → Reset flight, sound and display defaults applies Medium assists, recommended graphics, 100%, adaptive on and 70% volume live; aircraft, home, weather, logbook and custom keys stay intact. Time & weather has a separate clear-skies/15:00 reset.
 
 **Cockpit frame cost.** The renderer uses a logarithmic depth buffer, so every material writes its own depth and the GPU cannot skip a hidden fragment
 before running its shader. In the cockpit that meant the heavy exterior-skin shader ran for the inside of the fuselage, and the terrain and sky shaders for

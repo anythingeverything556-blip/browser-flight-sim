@@ -2,13 +2,20 @@
 // browser gets an explanation on the start screen instead of an uncaught exception.
 import { showStartupError as msg } from './startup.js';
 import { touchOnly } from './touchcontrols.js';
+import { aircraftChoice, AIRCRAFT_TYPES } from './aircrafts.js';
+
+// Name the explicit quick-start aircraft before enabling the early-click queue.
+let savedChoice = {}; try { savedChoice = JSON.parse(localStorage.getItem('sr71sim.settings') || '{}'); } catch { /* private/corrupt storage */ }
+const quickChoice = aircraftChoice(savedChoice, location.search) === 'c172' ? 'c172' : 'sr71';
+const quickButton = document.getElementById('just-fly');
+if (quickButton) { quickButton.textContent = `Just fly · ${AIRCRAFT_TYPES[quickChoice].short}`; quickButton.disabled = false; }
 
 // Start flight answers the first click even while the simulator is still loading: the loading screen opens at once and main.js replays the
 // click when it is ready (window.__simReady). The buttons used to stay disabled for the first 10-30 s, so early clicks did nothing.
 window.__startQueued = null;
 document.addEventListener('click', (e) => {
   if (window.__simReady) return;
-  const b = e.target instanceof Element && e.target.closest('#start-btn, #home-go, #just-fly');
+  const b = e.target instanceof Element && e.target.closest('#start-btn, #home-go, #just-fly, #resume-flight');
   if (!b || b.disabled) return;
   e.stopImmediatePropagation(); e.preventDefault();
   window.__startQueued = b.id;

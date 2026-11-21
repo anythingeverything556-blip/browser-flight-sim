@@ -78,7 +78,7 @@
     </header>
     <div class="body">
       <section class="grp quick-start" aria-label="Quick start">
-        <button type="button" id="just-fly" class="cta">Just fly</button>
+        <button type="button" id="just-fly" class="cta" disabled>Just fly · SR-71A</button>
         <p class="sub" id="quick-description">Clear skies · free flight · home runway (KBAB on first use). Your saved preferences stay unchanged.</p>
         <p class="sub">Want the aircraft and conditions you selected? Use Start flight below.</p>
       </section>
@@ -260,9 +260,9 @@
       <p class="note">Choosing a voice plays its pull-up call-out. Russian uses the Su-27 style phrases, e.g. "Опасная высота! Выводи!" (dangerous altitude, pull out).</p>
       <div class="lbl">Graphics quality</div>
       <div class="seg" id="detail" role="group" aria-label="Graphics quality"><button type="button" data-v="low">Low</button><button type="button" data-v="normal">Normal</button><button type="button" data-v="high" class="on">High</button><button type="button" data-v="ultra">Ultra</button></div>
-      <p class="note quality-note">Choose a preset for your device; adaptive resolution can smooth frame pacing.</p>
+      <p class="note quality-note">Defaults: 100% native resolution, adaptive on. Choose a preset for your device; adaptive resolution can smooth frame pacing.</p>
       <label class="lbl" for="rscale">Render resolution <span id="rscale-l" class="val"></span></label>
-      <input type="range" id="rscale" min="0.75" max="2.5" step="0.05" value="2" aria-label="Render resolution (supersampling)" />
+      <input type="range" id="rscale" min="0.75" max="2.5" step="0.05" value="1" aria-label="Render resolution (supersampling)" />
       <p class="note quality-note">100% is your screen's native pixels. Above 100% renders more pixels than the screen has and scales down, which is sharper and smoother but costs frame rate.</p>
       <div class="lbl">Flying mode</div>
       <div class="seg" id="fly-mode" role="group" aria-label="Flying mode"><button type="button" data-v="easy">Easy</button><button type="button" data-v="medium" class="on">Medium</button><button type="button" data-v="realistic">Realistic</button></div>
@@ -278,8 +278,8 @@
         <label class="check"><input type="checkbox" id="opt-autotrim" checked /> <span>Auto-trim<small>Holds the attitude you left when you let go of the stick</small></span></label>
         <label class="check"><input type="checkbox" id="opt-landaid" /> <span>Landing aid<small>Gear down, below 150 ft: eases the sink rate for the flare. Touch the pitch keys to flare yourself</small></span></label>
         <label class="check"><input type="checkbox" id="opt-shake" /> <span>Camera shake<small>Buffet, touchdown, afterburner</small></span></label>
-        <label class="check"><input type="checkbox" id="opt-traffic" checked /> <span>Live air traffic<small>Real ADS-B aircraft; uses a public relay when needed</small></span></label>
-        <label class="check"><input type="checkbox" id="opt-dynres" /> <span>Adaptive resolution<small>Holds about 60 fps by lowering the render resolution, never below your screen's own pixels</small></span></label>
+        <label class="check"><input type="checkbox" id="opt-traffic" /> <span>Live air traffic<small>Real ADS-B aircraft; uses a public relay when needed</small></span></label>
+        <label class="check"><input type="checkbox" id="opt-dynres" checked /> <span>Adaptive resolution<small>Holds about 60 fps by lowering the render resolution, never below your screen's own pixels</small></span></label>
         <label class="check"><input type="checkbox" id="opt-hud" /> <span>Cockpit HUD overlay<small>The real jet has none</small></span></label>
         <label class="check"><input type="checkbox" id="opt-mouse" /> <span>Fly with the mouse<small>The stick follows the cursor</small></span></label>
         <label class="check"><input type="checkbox" id="opt-crash" checked /> <span>Crashes and over-g damage</span></label>

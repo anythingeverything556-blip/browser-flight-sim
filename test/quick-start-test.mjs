@@ -7,3 +7,5 @@ assert.match(quick, /applyWeather\('clear', false\)/);
 assert.match(quick, /homeAirport\(\)/); assert.doesNotMatch(quick, /saveSettings\(|navigator.geolocation/);
 assert.match(quick, /searchParams.set\('aircraft', quickAircraft\)/);
 console.log('Quick start: explicit choice, home runway, transient clear weather');
+
+const boot=fs.readFileSync('src/boot.js','utf8');assert.match(boot,/quickButton.textContent = `Just fly/);assert.match(boot,/#resume-flight/);

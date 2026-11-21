@@ -518,7 +518,7 @@ acWide.addEventListener('change', placeAircraftPicker); placeAircraftPicker();
     });
   }
   if (IS_C172) {
-    // the Skyhawk flies free flights from the runway, a final or 8,000 ft; the missions and tutorial are written for the Blackbird
+    // Skyhawk free flights plus its own short guide and traffic pattern; the original missions/tutorial stay SR-71-only.
     const cruise = document.querySelector('#start-mode [data-v="cruise"]'); if (cruise) cruise.textContent = '8,000 ft cruise';
     document.querySelectorAll('#mission-mode button').forEach((b) => { b.hidden = !['free', 'c172guide', 'c172pattern'].includes(b.dataset.v); });
     const h = $('help-heading'); if (h) h.textContent = 'Flying the Skyhawk';
@@ -752,7 +752,11 @@ function maybeStartGuide() {
   if (IS_GA || IS_IL76 || Guide.seen() || guide.active || tutorial.active || tour.active || (missionKind && missionKind !== 'free' && missionKind !== 'none') || !fdm.onGround) return;
   guide.start();
 }
-$('guide-replay').addEventListener('click', () => { openSheet(null); guide.start(); });
+if (IS_C172) $('guide-replay').textContent = 'Start C172 guided flight';
+$('guide-replay').addEventListener('click', () => {
+  if (IS_C172) { missionKind = 'c172guide'; missionKindSet(missionKind); dep.mode = 'runway'; $('start-btn').click(); return; }
+  openSheet(null); guide.start();
+});
 const atc = new Atc($('radio'), audio);
 function atcCtx() {
   const m = state.lastSpawn && state.lastSpawn.meta, rw = m && m.rwy, a = rw && rw.ap, n = state.navOut || {};
