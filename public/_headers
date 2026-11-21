@@ -1,4 +1,5 @@
-# Cloudflare Pages response headers. Hashed build files never change under the same name; the big static assets rarely do.
+# Cloudflare Pages response headers. Hashed build files never change under the same name.
+# Models keep fixed filenames, so revalidate their bytes (ETag) on every load.
 # Security headers for every response. The CSP lists exactly the hosts the game fetches (imagery, DEM, buildings, trees, weather, Leaflet map tiles); blob: workers and wasm are for Draco.
 # Cloudflare Web Analytics (enabled on the Pages project): its beacon script and its reporting endpoint.
 # Enforced: checked with the production build in Chrome (boot, flight, map, Germany and Japan teleports, all worker fetches): no violations (sr71-tools/verify/csp-check.mjs).
@@ -12,7 +13,7 @@
 /assets/*
   Cache-Control: public, max-age=31536000, immutable
 /models/*
-  Cache-Control: public, max-age=604800, stale-while-revalidate=86400
+  Cache-Control: public, max-age=0, must-revalidate
 /draco/*
   Cache-Control: public, max-age=2592000
 /fonts/*
