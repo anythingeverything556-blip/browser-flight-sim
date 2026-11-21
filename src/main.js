@@ -512,7 +512,7 @@ acWide.addEventListener('change', placeAircraftPicker); placeAircraftPicker();
   if (IS_C172) {
     // the Skyhawk flies free flights from the runway, a final or 8,000 ft; the missions and tutorial are written for the Blackbird
     const cruise = document.querySelector('#start-mode [data-v="cruise"]'); if (cruise) cruise.textContent = '8,000 ft cruise';
-    document.querySelectorAll('#mission-mode button').forEach((b) => { if (b.dataset.v !== 'free') b.hidden = true; });
+    document.querySelectorAll('#mission-mode button').forEach((b) => { b.hidden = !['free', 'c172guide', 'c172pattern'].includes(b.dataset.v); });
     const h = $('help-heading'); if (h) h.textContent = 'Flying the Skyhawk';
     // the sortie and cockpit text in index.html is the Blackbird's (J58s, afterburners, chute): the Skyhawk gets its own
     $('help-sortie').innerHTML = ['Full throttle (<b>E</b>; the first push releases the parking brake), keep the centreline with <b>A</b>/<b>D</b> (nose-wheel steering).',
@@ -569,7 +569,7 @@ $('start-btn').addEventListener('click', () => {
   if (state.pending && state.started) return;
   const a = dep.apt || (db.ready && homeAirport()); if (!a) return;
   if ($('make-home').checked) setHome(a, dep.rwy, dep.end);
-  const mode = missionKind === 'tutorial' || missionKind === 'tour' ? 'runway' : missionKind === 'landassist' ? 'approach' : missionKind === 'landhand' ? 'final' : dep.mode;
+  const mode = ['tutorial', 'tour', 'c172guide', 'c172pattern'].includes(missionKind) ? 'runway' : missionKind === 'landassist' ? 'approach' : missionKind === 'landhand' ? 'final' : dep.mode;
   startWarm(); spawnAt(a, dep.rwy, dep.end, mode);
   if (mode !== 'runway') { fdm.gearDown = mode === 'approach' || mode === 'final'; fdm.gearPos = fdm.gearDown ? 1 : 0; }
   beginFlight();

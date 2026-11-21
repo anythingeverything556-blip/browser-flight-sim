@@ -2,6 +2,8 @@
 
 ## Unreleased (P1 experience and performance — 21 November 2026)
 
+- **7 — Fixed:** C172-only short guided flight and left-hand take-off/pattern/landing lesson reuse the existing mission HUD/coach, with live speed/height and ordered progression. No physics or SR-71 tutorial changes. Completion requires stopping near departure; this is introductory coaching, not certified training or a precision landing score. Baseline C172 mission buttons were all hidden except free flight (source at P0). `test/c172-lesson-test.mjs` exercises both sequences and crash guard. Full checks: `p1/7-test.log`, `7-build.log`.
+
 - **6 — Fixed:** top-of-sheet Just fly explicitly chooses SR-71 (or current C172), home/default KBAB runway, clear noon-afternoon weather and free flight. Custom Start flight remains available for deep links/selected aircraft. No geolocation, saved preference writes or aircraft replacement without a labelled choice.
   Baseline Chrome: `p1/baseline.json`, `start-before.png`: no quick start. Regression `test/quick-start-test.mjs`. Initial regression incorrectly matched the explanatory comment; narrowed to `navigator.geolocation` and reran the full suite. Full checks: `/home/earthwing-evidence/p1/6-test.log`, `6-build.log` (commands `npm test`, `npm run build`).
 
