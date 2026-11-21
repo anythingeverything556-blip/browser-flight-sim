@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — responsive in-flight HUD (21 November 2026)
+
+- Fixed the reported 1535×683 layout where the wide toolbar obscured the first 56 px of ATIS and radio calls. The log now starts 12 px beyond the toolbar and stays readable alongside maps, sheets, coaches, and touch controls. Long radio logs can be scrolled with keyboard or pointer and keep live announcements.
+- Instruments and status wrap within the viewport. The map and other overlays use the measured instrument-strip height; short windows keep the toolbar scrollable and the throttle inside the viewport.
+- In Chrome, 65 of 100 controlled HUD layout cases failed before and none after. The Il-76 runway fixture showed clear HUD elements at 1535×683, 1280×720 and 1920×1080; it uses injected radio messages and synthetic terrain, not a flown production sortie. The separate top/bottom cropping in the supplied image was not reproduced. No flight-model changes.
+
 ## Unreleased — final film pose verification (21 November 2026)
 
 The first moving render exposed a capture-only race: one queued simulator frame restored the parked landing gear after the initial still. Re-rendered all 144 native 3840×2160 frames with the presentation pose asserted on every render; the final film keeps gear stowed throughout. No runtime aircraft/model/physics behavior changed. Final files: 4K 1,353,562 bytes; 1080p 341,529 bytes, six seconds / 24 fps / no audio. Final decoded-frame hashes and strict-header browser motion checks are in the visual follow-up evidence folder. Playback failures are latched for the page lifetime so ordinary menu/idle class changes cannot repeatedly re-download a failed decorative movie. Source render attempts and the rejected gear-down pass remain there; no upscaling or image-pan substitution was used.
