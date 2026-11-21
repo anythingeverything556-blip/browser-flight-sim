@@ -8,7 +8,7 @@ for (const name of Object.keys(shadow.mat.uniforms)) assert.match(glsl, new RegE
 for (const file of readdirSync('src').filter(f => f.endsWith('.js'))) {
   const source = readFileSync('src/' + file, 'utf8');
   for (const template of source.matchAll(/`([^`]*\b(?:uniform|gl_FragColor|gl_Position)\b[^`]*)`/g)) {
-    assert.doesNotMatch(template[1], /\/\/[^\n]*;\s*(?:uniform|varying|attribute)\s+\w+\s+\w+\s*[;,]/, file + ': swallowed GLSL declaration');
+    assert.doesNotMatch(template[1], /\/\/[^\n]*\b(?:uniform|varying|attribute)\s+(?:float|int|bool|[biu]?vec[234]|mat[234]|sampler\w+)\s+\w+\s*[;,]/, file + ': swallowed GLSL declaration');
   }
 }
 shadow.rt.dispose(); shadow.rtOld.dispose(); shadow.mat.dispose(); shadow.quad.geometry.dispose();

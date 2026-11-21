@@ -1,5 +1,55 @@
 # Changelog
 
+## Unreleased (P0 reliability and touch controls — 21 November 2026)
+
+Targeted fixes only; the flight models, aircraft geometry and existing keyboard/gamepad features are unchanged.
+
+- **Cloud shadows:** restored the GLSL uniform declaration that an inline `//` comment swallowed. The new
+  `cloudshadow-glsl-test` checks every shadow uniform and audits GLSL-bearing source strings for the same mistake.
+- **Imagery startup:** satellite imagery stops holding the spawn after 12 seconds. Missing photographs render as
+  plain shaded terrain, retaining the elevation safety checks and continuing the existing request retries.
+  A persistent accessible **“Imagery unavailable, retrying”** notice includes **Retry imagery**; an additional
+  30-second retry also revisits no-data responses. The notice clears when imagery around the current aircraft recovers.
+  Elevation availability and shader compilation are separate prerequisites, so this is not a 12-second total boot guarantee.
+- **Required asset errors:** aircraft/airport loading has a 30-second deadline and an actionable **Retry loading**
+  button. A failed module or unavailable WebGL also exposes the retry instead of leaving a covered loading screen.
+- **Touch-only devices:** before loading the simulator or preloading flight assets, explain that desktop is recommended
+  and basic touch controls do not replace every cockpit tool. **Continue with touch controls** explicitly starts loading.
+  Hybrid devices with a fine pointer and ordinary desktops are not gated.
+- **Touch flight controls:** a two-axis stick, throttle, centring rudder, hold brakes, gear, flaps up/down and camera.
+  Independent pointers support stick plus brakes/levers, with cancellation, lost capture, blur and hidden-page release.
+  Native labelled range controls provide accessible pitch/roll alternatives; their keyboard events stay in the form.
+  The controls are absent on normal desktops and stay hidden while the setup or a sheet is open. No new animation.
+- **Moving map:** docks 16 pixels above the measured instrument strip, including when the strip grows, rather than
+  using a fixed 108-pixel offset. Enlarged maps also account for the strip in their available viewport height.
+- **Fixed-name GLB caching:** `/models/*` now uses `public, max-age=0, must-revalidate`, without a stale grace period.
+  Hashed `/assets/*` keep their one-year immutable policy. Browsers with a previously fresh seven-day model response
+  can retain that old response until it expires; this release does not change any GLB bytes.
+
+**Verification (local, not a deployment receipt).** Clean `npm ci` passed (25 packages; audit reported 0 vulnerabilities).
+Baseline: 87 test scripts, 887 `PASS` lines, 0 failures; build passed. Full `npm test` and `npm run build` passed
+following each of the five items; final suite: 91 scripts, 891 `PASS` lines, 0 failures. One initial imagery-phase run
+hit the pre-existing stochastic `explosion-test` secondary-burst timing assertion; its isolated rerun and the complete
+rerun passed, without modifying explosion code or its test.
+
+Real Chrome with SwiftShader WebGL reproduced the cloud shader's undeclared-uniform error and all-zero shadow map;
+after the fix the map rendered values 38–255 with no shader error. Full C172 flights with ArcGIS requests rejected
+and indefinitely delayed both entered shaded flight, showed the notice, and accepted retry, with no page/frame errors.
+The production-build blocked-imagery smoke reached flight in about 14.4 seconds after boot (including the loader fade).
+Touch emulation at 390×844 made zero flight-asset requests before Continue, then tested simultaneous stick/brakes,
+pointer cancellation, throttle/rudder and all action buttons. Ordinary desktop detection showed no gate or touch UI.
+At 1280×720 and 1920×1080 the map/strip gap changed from 7.2 pixels (or 48 pixels of overlap with a 140-pixel-tall strip)
+to 16–16.2 pixels in both cases. The built `_headers` matches the source policy.
+
+**Reproduce:** `npm ci && npm test && npm run build`. Focused checks:
+`node test/cloudshadow-glsl-test.mjs`, `node test/startup-fallback-test.mjs`,
+`node test/touch-controls-test.mjs`, `node test/models-cache-test.mjs`.
+Browser checks use real Chrome plus `puppeteer-core`; the release evidence folder retains the fault-injection,
+multitouch and viewport scripts, JSON measurements, bounded logs and screenshots. SwiftShader proves compilation,
+rendering and interaction correctness, not hardware-GPU frame rate. Physical-phone ergonomics and real-GPU
+performance remain unverified. A general SR-71 software-renderer start attempt timed out; the smaller C172 completed
+both provider-failure smoke cases. Production CSP, deployment and both live URLs must be verified separately.
+
 ## Unreleased (controls for every aircraft; Il-76 model and warnings)
 - **Throttle is no longer on Shift.** Shift alone got in the way of the Shift chords; use **E** / **Q** (or + −, PgUp PgDn, ] [). Saved key maps drop it.
 - **Rudder setting:** numpad **4** / **6** move a held rudder setting 5 % left / right, **5** centres it. The rudder keys (Z X , .) now ease in over about a second instead of going to full travel.
