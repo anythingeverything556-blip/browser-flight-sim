@@ -423,3 +423,26 @@ consent policy before any remote reporting is implemented. Existing external
 world-data requests are not telemetry. A previously enabled Cloudflare Pages
 beacon is a separate hosting decision: this local change neither enables it nor
 changes the projects; decide whether to disable it on both hosts.
+
+## Automated Chrome smoke
+
+After `npm ci && npm run build`, run `npm run test:smoke` and
+`npm run test:smoke:negative`. Requires installed Google Chrome/Chromium; set
+`CHROME_PATH` if not `/usr/bin/google-chrome`. Puppeteer Core is pinned as a
+dev dependency, does not download a browser, and never uses a browser sign-in.
+Ubuntu hosted CI uses its preinstalled Google Chrome. Missing Chrome fails with
+an actionable launch error, not a skipped pass. `SMOKE_OUTPUT_DIR` selects logs
+and screenshots (default `/tmp/earthwing-smoke`).
+
+This starts a loopback-only static Pages-convention fixture on a random port,
+boots the actual production C172 model, clicks Just fly, reaches the cockpit,
+and requires actual WebGL 2 draw calls and shader programs on ANGLE SwiftShader.
+Traffic/weather API responses are local empty-success fixtures. World tiles are synthetic local zero-elevation/red-image fixtures: this tests
+engine/asset startup, not live imagery, GPU performance or physical flight accuracy.
+External page requests are intercepted; worker world-data requests are fulfilled
+in memory. No production services are contacted by the fixture. It fails on
+**every** console error/page error/request failure and on Three shader/program
+errors; there is no broad network-error/console-error ignore filter. The negative
+control uses an actual invalid GLSL program plus console and thrown page errors,
+and verifies exit 1 with all three categories detected. Raw test errors stay in
+local test evidence, never in the sanitized telemetry buffer or a remote provider.

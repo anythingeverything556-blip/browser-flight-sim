@@ -22,3 +22,11 @@ jobs:
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Chrome WebGL smoke (software rendering)
+        run: npm run test:smoke
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - name: Verify smoke rejects controlled failures
+        run: npm run test:smoke:negative
+        env:
+          CHROME_PATH: /usr/bin/google-chrome

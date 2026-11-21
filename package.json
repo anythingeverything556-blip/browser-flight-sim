@@ -8,7 +8,9 @@
     "build": "vite build",
     "deploy": "bash tools/deploy.sh",
     "preview": "vite preview --host 0.0.0.0 --port 4173",
-    "test": "node tools/test-runner.mjs"
+    "test": "node tools/test-runner.mjs",
+    "test:smoke": "node tools/browser-smoke.mjs",
+    "test:smoke:negative": "node tools/browser-smoke-negative.mjs"
   },
   "dependencies": {
     "@mapbox/vector-tile": "^3.0.0",
@@ -19,6 +21,7 @@
     "three": "^0.180.0"
   },
   "devDependencies": {
+    "puppeteer-core": "25.18.1",
     "vite": "^7.3.7"
   }
 }
