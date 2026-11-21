@@ -71,11 +71,7 @@
     <p>Your first take-off, a quiet local circuit, or the edge of space. Fly four very different aircraft over the real world — no account, no install.</p>
     <nav aria-label="Explore aircraft"><a href="/aircraft/sr71/">SR-71</a> · <a href="/aircraft/c172/">C172</a> · <a href="/aircraft/sf50/">Vision Jet</a> · <a href="/aircraft/il76/">Il-76</a></nav>
     <p class="hero-caption">SR-71 model film · rendered for Earthwing</p>
-    <div class="hero-loader">
-      <div class="hero-loader-head"><span>Starting up</span><span id="loadmsg" aria-live="polite">Loading aircraft…</span></div>
-      <button type="button" id="startup-retry" hidden>Retry loading</button>
-      <div id="loadline"><div id="loadbar"></div></div>
-    </div>
+
   </div>
 
   <div id="hero-ac"></div>
@@ -87,6 +83,11 @@
       <span class="hint">Choose aircraft, departure and start</span>
       <button type="button" class="x" data-close aria-label="Close flight setup"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
+    <div class="hero-loader">
+      <div class="hero-loader-head"><span>Starting up</span><span id="loadmsg" aria-live="polite">Loading aircraft…</span></div>
+      <button type="button" id="startup-retry" hidden>Retry loading</button>
+      <div id="loadline"><div id="loadbar"></div></div>
+    </div>
     <div class="body">
       <section class="grp quick-start" aria-label="Quick start">
         <button type="button" id="just-fly" class="cta" disabled>Just fly · SR-71A</button>

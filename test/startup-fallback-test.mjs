@@ -23,3 +23,17 @@ for (const t of terrain.tiles.values()) { assert.equal(t.img, 'none'); assert.eq
 assert.equal(await withAssetDeadline(Promise.resolve('ok'), 50), 'ok');
 await assert.rejects(withAssetDeadline(new Promise(() => {}), 5), /timed out/);
 console.log('PASS imagery deadline, blocked/hanging fallback, safe DEM gate, explicit retry, fatal asset timeout');
+
+// Fatal startup errors must be actionable on narrow layouts and must not leave
+// the early quick-start queue enabled when there is no simulator to answer it.
+const { showStartupError } = await import('../src/startup.js');
+const buttons = Array.from({length:4},()=>({disabled:false}));
+const nodes = {loadmsg:{textContent:'',classList:{add(){}}},loadscreen:{hidden:false},'startup-retry':{hidden:true}};
+const bodyClasses=new Set();let selector='';
+globalThis.document={body:{classList:{add:x=>bodyClasses.add(x)}},getElementById:id=>nodes[id],querySelectorAll:q=>{selector=q;return buttons}};
+showStartupError('Graphics unavailable — try another browser.');
+assert.ok(bodyClasses.has('startup-failed'));
+assert.ok(buttons.every(b=>b.disabled));assert.match(selector,/#just-fly/);assert.match(selector,/#resume-flight/);
+assert.equal(nodes.loadscreen.hidden,true);assert.equal(nodes['startup-retry'].hidden,false);assert.equal(typeof nodes['startup-retry'].onclick,'function');
+assert.match(nodes.loadmsg.textContent,/Graphics unavailable/);delete globalThis.document;
+console.log('PASS visible fatal-startup state, all early launch actions disabled, loader closed and retry available');

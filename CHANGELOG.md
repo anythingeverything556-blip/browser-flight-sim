@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — startup recovery and compact layout (21 November 2026)
+
+- Reproduced: at 390×844 the WebGL error/retry lived in a hidden hero loader, while Just fly remained enabled and could queue a flight forever. Moved status/retry into the setup panel at every viewport, allow long errors to wrap, force fatal status visible even if a ready class existed, and disable all four launch paths on fatal startup. Retry remains the existing explicit reload; no flight-model change.
+- Removed the first group’s redundant divider and roughly 80 px of empty space above Just fly. Reduced narrow-screen setup padding, let long aircraft names wrap instead of truncating, and retained the scrolling setup body and fixed Start flight footer.
+- Evidence: `before-startup-errors.json` records hidden mobile error and enabled dead quick-start; `flow-browser.json`, `after-{390,1280,1920}.png` and `webgl-error-{390,1280}.png` record the corrected states. Local Chrome/software rendering only; no real-device or deployment claim. Full suite/build and hosted-like positive/controlled-negative smoke logs are in the visual follow-up evidence folder.
+
 ## Unreleased — native 4K model film and sharper aircraft art (21 November 2026)
 
 Local follow-up to deployed source `44b50f7e131d491bd02f50f2a0ec228a3d6539f4`; this entry does not claim a deployment.

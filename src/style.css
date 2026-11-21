@@ -515,7 +515,7 @@ body.intro #sheet-flight .card { padding: 12px 16px; }
   body.sheet-open #strip { display: none; }
   body.intro #hero { top: 24px; left: 16px; width: calc(100vw - 32px); transform: none; }
   #hero h1 { font-size: clamp(2.25rem, 12vw, 3.5rem); }
-  #hero p, .hero-loader, .hero-terms { display: none !important; }
+  #hero p, .hero-terms { display: none !important; }
   body.intro #sheet-flight { top: auto; right: 8px; bottom: 8px; left: 8px; width: auto; max-height: calc(100vh - 144px); }
   .dial { grid-template-columns: 56px auto auto minmax(52px, 1fr) auto auto; }
   .dial i { display: none; }
@@ -789,4 +789,20 @@ body:not(.intro) #hero-media, body:not(.intro) #hero-motion { display: none; }
 @media (min-width: 1180px) and (max-height: 800px) {
   #hero-ac .ac-card { padding: 10px; gap: 6px; }
   #hero-ac .ac-specs { display: none; }
+}
+
+/* Loader and recovery belong to the setup panel on every viewport. */
+#sheet-flight > .hero-loader { flex: 0 0 auto; max-width: none; margin: 14px 24px 0; }
+.hero-loader-head { flex-wrap: wrap; justify-content: flex-start; gap: 4px 12px; line-height: 1.5; }
+#loadmsg { min-width: 0; overflow-wrap: anywhere; }
+#loadmsg.err { flex-basis: 100%; color: var(--red); }
+body.startup-failed #sheet-flight > .hero-loader { display: block; }
+#startup-retry { margin: 6px 0 10px; }
+#sheet-flight .quick-start { margin-top: 0; padding-top: 0; border-top: 0; }
+#sheet-flight .quick-start .cta { margin-top: 0; }
+@media (max-width: 760px) {
+  #sheet-flight > .hero-loader { margin: 10px 16px 0; font-size: 12px; }
+  #sheet-flight .body { padding: 16px; }
+  #sheet-flight header, #sheet-flight .sheet-foot { padding: 12px 16px; }
+  .ac-card .ac-name b { white-space: normal; }
 }

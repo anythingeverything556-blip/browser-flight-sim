@@ -7,9 +7,10 @@ export function withAssetDeadline(promise, ms = 30000) {
 }
 export function showStartupError(text) {
   diagnostics.record('load_failure', 'startup');
+  document.body.classList.add('startup-failed');
   const el = document.getElementById('loadmsg');
   if (el) { el.textContent = text; el.classList.add('err'); }
-  document.querySelectorAll('#start-btn, #home-go').forEach(b => { b.disabled = true; });
+  document.querySelectorAll('#start-btn, #home-go, #just-fly, #resume-flight').forEach(b => { b.disabled = true; });
   const ls = document.getElementById('loadscreen'); if (ls) ls.hidden = true;
   const retry = document.getElementById('startup-retry');
   if (retry) { retry.hidden = false; retry.onclick = () => location.reload(); }
