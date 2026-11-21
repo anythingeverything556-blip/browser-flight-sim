@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased (P1 experience and performance — 21 November 2026)
+
+- **6 — Fixed:** top-of-sheet Just fly explicitly chooses SR-71 (or current C172), home/default KBAB runway, clear noon-afternoon weather and free flight. Custom Start flight remains available for deep links/selected aircraft. No geolocation, saved preference writes or aircraft replacement without a labelled choice.
+  Baseline Chrome: `p1/baseline.json`, `start-before.png`: no quick start. Regression `test/quick-start-test.mjs`. Initial regression incorrectly matched the explanatory comment; narrowed to `navigator.geolocation` and reran the full suite. Full checks: `/home/earthwing-evidence/p1/6-test.log`, `6-build.log` (commands `npm test`, `npm run build`).
+
 ## Unreleased (P0 reliability and touch controls — 21 November 2026)
 
 Targeted fixes only; the flight models, aircraft geometry and existing keyboard/gamepad features are unchanged.

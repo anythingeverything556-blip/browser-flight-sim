@@ -8,7 +8,7 @@ import { touchOnly } from './touchcontrols.js';
 window.__startQueued = null;
 document.addEventListener('click', (e) => {
   if (window.__simReady) return;
-  const b = e.target instanceof Element && e.target.closest('#start-btn, #home-go');
+  const b = e.target instanceof Element && e.target.closest('#start-btn, #home-go, #just-fly');
   if (!b || b.disabled) return;
   e.stopImmediatePropagation(); e.preventDefault();
   window.__startQueued = b.id;

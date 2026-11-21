@@ -555,10 +555,10 @@ weather.resize(innerWidth, innerHeight); addEventListener('resize', () => weathe
 const setIntroWx = seg('intro-wx', (v) => applyWeather(v));
 const setWxPreset = seg('wx-presets', (v) => applyWeather(v));
 // a preset sets cloud cover, wind, turbulence and visibility together, and starts its rain, gloom, fog and lightning
-function applyWeather(id) {
+function applyWeather(id, persist = true) {
   const p = WEATHER[id]; if (!p) return;
   settings.weather = id; settings.clouds = p.clouds; settings.windSpd = p.wind / KT; settings.turb = p.turb; settings.vis = p.vis;
-  weather.set(p); setIntroWx(id); setWxPreset(id); syncEnvUi(); saveSettings();
+  weather.set(p); setIntroWx(id); setWxPreset(id); syncEnvUi(); if (persist) saveSettings();
 }
 // live weather survives a reload whole: it came back as Fair rain/fog under the saved METAR clouds and wind
 const bootMetar = settings.weather === 'metar' && settings.metarWx;
@@ -577,6 +577,21 @@ $('start-btn').addEventListener('click', () => {
   if (settings.metarAuto) loadMetar(a, true);
   freeOrbitBehind();
   startMission();
+});
+// Explicit quick-start choice never changes the saved aircraft or requests geolocation.
+const quickAircraft = IS_C172 ? 'c172' : 'sr71';
+$('just-fly').textContent = `Just fly · ${AIRCRAFT_TYPES[quickAircraft].short}`;
+$('just-fly').addEventListener('click', () => {
+  if (AIRCRAFT !== quickAircraft) {
+    const u = new URL(location.href); u.searchParams.set('aircraft', quickAircraft); u.searchParams.set('quick', '1'); location.assign(u); return;
+  }
+  if (!window.__simReady) return;
+  if (state.pending && state.started) return;
+  const a = homeAirport(); if (!a) return;
+  missionKind = 'free'; missionKindSet('free'); dep.mode = 'runway';
+  applyWeather('clear', false); env.hour = 15; settings.metarAuto = false;
+  startWarm(); spawnAt(a, Math.min(home.rwy, a.runways.length - 1), home.end === 1 ? 1 : 0, 'runway');
+  beginFlight(); if (state.pending) showLoadUi(); freeOrbitBehind(); startMission();
 });
 const missionKindSet = seg('mission-mode', (v) => { missionKind = v; $('mission-blurb').textContent = MISSIONS[v].blurb; });
 
@@ -2196,6 +2211,7 @@ function prewarmCrash() { startWarm(); }
   spawn(a.runways[dep.rwy].spawn(dep.end, 'runway'), { rwy: a.runways[dep.rwy], end: dep.end });
   $('start-btn').disabled = false; $('home-go').disabled = false;
   window.__simReady = true;
+  if (new URLSearchParams(location.search).get('quick') === '1') { const u = new URL(location.href); u.searchParams.delete('quick'); history.replaceState(null, '', u); window.__startQueued = 'just-fly'; }
   if (window.__startQueued) { const id = window.__startQueued; window.__startQueued = null; $(id).click(); } // clicked while loading: start now
   setView('orbit'); rig.orbit.az = 0.9; rig.orbit.el = 0.14; rig.orbit.dist = IS_C172 ? 16 : IS_SF50 ? 18 : IS_IL76 ? 66 : 46;
   bar(1, 'Preparing graphics…');
