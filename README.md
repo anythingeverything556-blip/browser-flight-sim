@@ -390,3 +390,11 @@ and invokes the real response helper; it does not publish or trust a real site.
 After separately authorized deployment, check headers on `/`, an aircraft page,
 `/embed/` and an unknown route on each host; test a frame from an explicitly
 allowed origin and a disallowed origin. No live headers were changed here.
+
+## Continuous checks
+
+`.github/workflows/ci.yml` runs on every push and pull request with read-only
+repository permission: Node 24 LTS, clean `npm ci`, full tests and production
+build. Official checkout/setup-node v6 actions are pinned to verified commit
+SHAs. No deployment, tokens or secrets are used. Local tests/build are verified;
+a hosted Actions run requires a separately authorized push and is not claimed.
