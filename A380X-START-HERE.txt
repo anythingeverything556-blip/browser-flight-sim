@@ -1,0 +1,12 @@
+ARCHIVAL ONLY — HISTORICAL A380X PREVIEW
+
+The current DA40 edition does not select or build A380X. The instructions below describe a historical preview; do not run its staging step over the current build or deployment.
+
+This ZIP contains source code, not the 1.84 GB A380 model pack.
+From the project root, run:
+  npm ci
+  node tools/fetch-a380x-lossless.mjs
+  node tools/a380-stage-lossless.mjs .a380x-gzip
+Preview the resulting dist/ with npm run preview. The downloader checks every SHA-256 from the immutable deployed build.
+The raw 4.22 GB model can still be obtained separately with tools/fetch-a380x-assets.mjs, if you want the uncompressed development/test assets.
+For licensing see public/models/a380x/ATTRIBUTION.md.

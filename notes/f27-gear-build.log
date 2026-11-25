@@ -1,0 +1,21 @@
+
+> earthwing@1.0.0 build
+> vite build
+
+vite v7.3.7 building client environment for production...
+transforming...
+✓ 163 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/assets/cloud-noise-worker-DORiSPT6.js      1.63 kB
+dist/assets/trees-worker-BYb7Jx1G.js           23.71 kB
+dist/assets/terrain-worker-BVyTkrgw.js         32.17 kB
+dist/assets/buildings-worker-BBxdb-4F.js       38.73 kB
+dist/index.html                                54.57 kB │ gzip:  15.43 kB
+dist/assets/main-CsYYIwu1.css                   8.47 kB │ gzip:   2.14 kB
+dist/assets/vendor-CIGW-MKW.css                15.61 kB │ gzip:   6.46 kB
+dist/assets/index-ByfueDKM.css                 58.89 kB │ gzip:  12.06 kB
+dist/assets/index-rVBl3YCk.js                  15.61 kB │ gzip:   6.21 kB
+dist/assets/vendor-BXhs-cQ2.js              1,038.96 kB │ gzip: 300.20 kB
+dist/assets/main-QW4Jva1b.js                1,088.08 kB │ gzip: 403.98 kB
+✓ built in 3.79s

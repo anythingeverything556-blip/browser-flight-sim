@@ -1,0 +1,1682 @@
+{
+  "origin": "https://207fdafc.earthwing.pages.dev/",
+  "prefix": "/models/a380x/gzip-v1-3b92d0a7/",
+  "files": {
+    "a380_cockpit-000.bin.gz": {
+      "sha256": "acb0ab8fb5a4676dc080df6fb7a142b15f8029e616540494f6d8368a02035aea",
+      "size": 6965116
+    },
+    "a380_cockpit-001.bin.gz": {
+      "sha256": "aac0bb48d7624f7d2b890d955d7b04274efd3c34bf6e98616bc16ca91799c68a",
+      "size": 6764401
+    },
+    "a380_cockpit-002.bin.gz": {
+      "sha256": "dbd2a531c0afeabe208f018d5a7d8f22db510a1956af2909ed5b000fb510136f",
+      "size": 6338250
+    },
+    "a380_cockpit-003.bin.gz": {
+      "sha256": "0efb341c0e82a1d40fefc21b73735e227b5978a18fdc58b8413bce36c123de4f",
+      "size": 6093966
+    },
+    "a380_cockpit-004.bin.gz": {
+      "sha256": "766012a9b048e344f404201dde27e191c41a3bcd21a5e571de488265f2514987",
+      "size": 6717456
+    },
+    "a380_cockpit-005.bin.gz": {
+      "sha256": "69e54a4ec089ae72761ea1bc09247448bfed5e42bf0b9e9039664e20a057b6f5",
+      "size": 6548260
+    },
+    "a380_cockpit-006.bin.gz": {
+      "sha256": "611da304d1a4ac4d67b7831f24e0a51b9817ae9006f0826ce08ae508b27e10cd",
+      "size": 5891527
+    },
+    "a380_cockpit-007.bin.gz": {
+      "sha256": "3cf7f7641b650d10ff5b9dd30bbb3d5ffc409336046022937ebaf97d923bfb10",
+      "size": 6999716
+    },
+    "a380_cockpit-008.bin.gz": {
+      "sha256": "97b4692ad81f3764c7f067ef1c8042f717862650dee0e0a68c0c85b79e825bd1",
+      "size": 5815450
+    },
+    "a380_cockpit-009.bin.gz": {
+      "sha256": "b9bc6deee8aff32517d6688e12d886527466e98d9541a208c9a2bc5b468055a9",
+      "size": 4455168
+    },
+    "a380_cockpit-010.bin.gz": {
+      "sha256": "58ab435376a1eb353d00735b3d4ce088572b8ca88e2e41ef0f53b8309a5bb83c",
+      "size": 3998901
+    },
+    "a380_cockpit-011.bin.gz": {
+      "sha256": "47cdac99736ba5bd11973a62f4ea6971543cd132e246cd9da0d20361fd3cb613",
+      "size": 4745622
+    },
+    "a380_cockpit-012.bin.gz": {
+      "sha256": "aecc5a2916db1b6e2982b58bf874881950d0e33764c1a9938b7e2fc7527907a7",
+      "size": 6404164
+    },
+    "a380_cockpit-013.bin.gz": {
+      "sha256": "d07c14b30635bc5eb2d8a3a17e9c309e1292c6a44ec4109f16b0b0792a2e8b1e",
+      "size": 6735772
+    },
+    "a380_cockpit-014.bin.gz": {
+      "sha256": "06645e2ccade28dbbe9ed0475cf0671ec1225bf571a1290183ba3b34fadb23b3",
+      "size": 4931208
+    },
+    "a380_cockpit-015.bin.gz": {
+      "sha256": "8239c62ce11cefaf9b113bf125b1c42baea299d32a45c29b0fc9a37563839cbb",
+      "size": 4669840
+    },
+    "a380_cockpit-016.bin.gz": {
+      "sha256": "bf330c4441740be379ffb288afea222fc38014ecb2c120fde9ecf48ea6311842",
+      "size": 4462903
+    },
+    "a380_cockpit-017.bin.gz": {
+      "sha256": "809b990a1e3d3934a4fae357b88bc01f33f218df93d295107971436aa4e96cc7",
+      "size": 6600800
+    },
+    "a380_cockpit-018.bin.gz": {
+      "sha256": "e09a1b7a0f1dc64b517e92a29f0bd69edb9232dda086340c5277a8aacf13ba70",
+      "size": 5122556
+    },
+    "a380_cockpit-019.bin.gz": {
+      "sha256": "764fd6b8e65f59d4be41a5a86bd55556d99cae0a1e7e1f0c74bf579dfd451e0f",
+      "size": 5206927
+    },
+    "a380_cockpit-020.bin.gz": {
+      "sha256": "b80d90796dd1ccfe71010ce5c60a83d475ca3d2c0770bf1a8e00501d923cc78f",
+      "size": 102050
+    },
+    "a380_cockpit.gltf.gz": {
+      "sha256": "19cb66fb94f65d0079e510f85f25a95e286fd187ae2db652946da4fd8996f477",
+      "size": 1403892
+    },
+    "a380_cockpit.native.gltf.gz": {
+      "sha256": "19cb66fb94f65d0079e510f85f25a95e286fd187ae2db652946da4fd8996f477",
+      "size": 1403892
+    },
+    "a380_exterior-000.bin.gz": {
+      "sha256": "86ee90e203218849de92ee7867580d1ab34da0f7b07b5abc90f8f5b31f87bab5",
+      "size": 6272793
+    },
+    "a380_exterior-001.bin.gz": {
+      "sha256": "dd4dba56aca2cd0c54c7cc1f27baad952648b09925d44519adde9a2910bc956e",
+      "size": 6437146
+    },
+    "a380_exterior-002.bin.gz": {
+      "sha256": "9dc286d7db65b285c94ab3d1d41242cd11f43608e2cd464dca8f895782f48d18",
+      "size": 6180059
+    },
+    "a380_exterior-003.bin.gz": {
+      "sha256": "920269fcb121332e03f160dbcb9f474b46c1ba7fc769610fad3ed4deeb9665b1",
+      "size": 6287267
+    },
+    "a380_exterior-004.bin.gz": {
+      "sha256": "1a3a4f64b36151f2aa7679ba991a3327197cd72ab5c43214f9342b0b561d3663",
+      "size": 6414543
+    },
+    "a380_exterior-005.bin.gz": {
+      "sha256": "30c7b0b4521cc83ea8e8064769decc72c2194cb7cfb4057e2ccb5172b3e7256a",
+      "size": 6971642
+    },
+    "a380_exterior-006.bin.gz": {
+      "sha256": "c9c06ac02511caa1abe0a2c4b17f4f0cf3823cc38c9a128a26d9ffb6710dc055",
+      "size": 7121490
+    },
+    "a380_exterior-007.bin.gz": {
+      "sha256": "ba5ad37b221d39f61ca11479e3cbaddad8e7456b642d205f7bca557830faa0c4",
+      "size": 4515117
+    },
+    "a380_exterior-008.bin.gz": {
+      "sha256": "9358f147e42b5a6be9e5c3df4c8cccd55393415a00b3041aba66961921dc7629",
+      "size": 6028995
+    },
+    "a380_exterior.gltf.gz": {
+      "sha256": "a0ef8388862350f7f8358e9ee4ccd21916677316efcfd2cee621a1522172e7a9",
+      "size": 421367
+    },
+    "a380_exterior.native.gltf.gz": {
+      "sha256": "a0ef8388862350f7f8358e9ee4ccd21916677316efcfd2cee621a1522172e7a9",
+      "size": 421367
+    },
+    "animation-contract.json.gz": {
+      "sha256": "152378b9b50d8db75bdeda4a77ab5085525b749ba53627ee30392d849ad1e468",
+      "size": 34398
+    },
+    "conversion-summary.json.gz": {
+      "sha256": "92e82d2c82539e20a5a2cf33cff1ffe7cc4f763b4b4188ded1f86ad74738b570",
+      "size": 259
+    },
+    "dds/A380X_ACCESSORIES_ALBEDO.PNG.DDS.gz": {
+      "sha256": "75f613a1914c697222aa30df59dfa1ba4c3240deff9d76b8e85a6639082beded",
+      "size": 2524257
+    },
+    "dds/A380X_ACCESSORIES_EMIS.PNG.DDS.gz": {
+      "sha256": "40fad05d8c75fc71727ad24bed2aacba5fc9976b8550a7465e6c830e449a7376",
+      "size": 64
+    },
+    "dds/A380X_ACCESSORIES_METAL.PNG.DDS.gz": {
+      "sha256": "0bb275acb5965172b12a517f8161051e49a3bf8ce1574708609e8deedea8fa60",
+      "size": 2721962
+    },
+    "dds/A380X_ACCESSORIES_NORMAL.PNG.DDS.gz": {
+      "sha256": "3b598e7455639bc0c873822faf9b801924dce5b1d16982aa9454cd55a4d0bdc7",
+      "size": 757308
+    },
+    "dds/A380X_AFT_STAIRS_ALBEDO.PNG.DDS.gz": {
+      "sha256": "e5a3575c0fc790ff3d26e6e153e75593db0d50ec36cdfd393385d4dd85ee7729",
+      "size": 7767959
+    },
+    "dds/A380X_AFT_STAIRS_COMP.PNG.DDS.gz": {
+      "sha256": "47b181a4502e3211ba29709c8ac6664f7089196f4265548739457c4f654bcebc",
+      "size": 2776130
+    },
+    "dds/A380X_AFT_STAIRS_EMIS.PNG.DDS.gz": {
+      "sha256": "98d962d411a13a2856185534f94d55caf024a7f0da943905310cb37f8208d2b5",
+      "size": 335780
+    },
+    "dds/A380X_AFT_STAIRS_NORM.PNG.DDS.gz": {
+      "sha256": "2a6f9db8277f639f3da3be05b08c49df5a48aac6cc96cdfeab26886b101149f7",
+      "size": 1047746
+    },
+    "dds/A380X_BC_SEATS_ALBEDO.PNG.DDS.gz": {
+      "sha256": "8b698caa6b3918e28302648d8b95e08d3ad6953fc631619fc1d712cf037861d9",
+      "size": 8091078
+    },
+    "dds/A380X_BC_SEATS_COMP.PNG.DDS.gz": {
+      "sha256": "95cf1b50065a4ea6eb0f9d1de6d2c9e4dc7c797ac0925c3ba2606ddbebaa254c",
+      "size": 2816198
+    },
+    "dds/A380X_BC_SEATS_EMIS.PNG.DDS.gz": {
+      "sha256": "abdadfd45d08cab337fc92ac82e4ba900e1cd0aad59808591cec859d2fb0601d",
+      "size": 42953
+    },
+    "dds/A380X_BC_SEATS_NORM.PNG.DDS.gz": {
+      "sha256": "91d1bf5641a7906a97b9ac1ff73f583c237cbce4364b0446adaaa69485de78a4",
+      "size": 12934276
+    },
+    "dds/A380X_BLG_ALBEDO.PNG.DDS.gz": {
+      "sha256": "8fdce61bd8f11f4d9b7ac1a898da6c643ffd311faddc1a6029320c548645ffbc",
+      "size": 8920865
+    },
+    "dds/A380X_BLG_COMP.PNG.DDS.gz": {
+      "sha256": "f5468e1ed36f8c306f6f1e51060a97690dabd5ad219c6d62cec8360adfcf2546",
+      "size": 3262275
+    },
+    "dds/A380X_BLG_NORM.PNG.DDS.gz": {
+      "sha256": "59915633580a92423884e1e7b558c770d7eb1249e9b82b7bf32ddf7a38793f87",
+      "size": 662864
+    },
+    "dds/A380X_CABIN_NTF_COMP.PNG.DDS.gz": {
+      "sha256": "25c33b6b4e666312bd9bd14f63822195239b44ad28c4d600e41bef642bd93cc7",
+      "size": 808525
+    },
+    "dds/A380X_CAS_SEATS_CABIN_ALBEDO.PNG.DDS.gz": {
+      "sha256": "3bd0612b3b931c9a23a3c6314e04634255cc6ae78b6266dfe9ca726464aa7c88",
+      "size": 2733041
+    },
+    "dds/A380X_CAS_SEATS_CABIN_COMP.PNG.DDS.gz": {
+      "sha256": "8aa818385c78e8010e48b0dc651ff9c504acd68aa35562f2eb66fe446d7a3cc8",
+      "size": 1999345
+    },
+    "dds/A380X_CAS_SEATS_CABIN_NORM.PNG.DDS.gz": {
+      "sha256": "239818dcb72a2bca473d9acd45fc60322cd3bfaf34bf8d458fa19560a963ac00",
+      "size": 853870
+    },
+    "dds/A380X_DETAIL_CARPET_SEWING_ALBEDO.PNG.DDS.gz": {
+      "sha256": "b6771d9b92d2400422483033c80781c28d0010ff8568fa71378113feb9de7f27",
+      "size": 364689
+    },
+    "dds/A380X_DETAIL_CARPET_SEWING_COMP.PNG.DDS.gz": {
+      "sha256": "6f6062ba4a4098d1f35c984c3f11766f13ff41866c71429f41d70f435d55d94c",
+      "size": 1768088
+    },
+    "dds/A380X_DETAIL_CARPET_SEWING_NORM.PNG.DDS.gz": {
+      "sha256": "4bf4ffde7aa94b811f33e57b8b2afde2b0caff157ff8254855e20fb44b22aa4c",
+      "size": 1393708
+    },
+    "dds/A380X_EXTERIOR_WINGFENCE_ALBEDO.PNG.DDS.gz": {
+      "sha256": "2f85ace0b14bce2c473a9fcafb874418dbe7da660a9b433681c5da8f99ed9067",
+      "size": 44515
+    },
+    "dds/A380X_EXTERIOR_WINGFENCE_COMP.PNG.DDS.gz": {
+      "sha256": "c5d65e63bc5a928e9622cd8150d4067e8ac52123cc48e3b8f72b5dc313e6b5b6",
+      "size": 2288840
+    },
+    "dds/A380X_EXTERIOR_WINGFENCE_NORM.PNG.DDS.gz": {
+      "sha256": "d473ad6c8440773de6dd7d06d63f47ed4029c13a7ea947aef99a1134fe0d4a88",
+      "size": 508217
+    },
+    "dds/A380X_FUSE1_ALBEDO.PNG.DDS.gz": {
+      "sha256": "02c7bc3d159c0087b43352f908463b77e8bcafc36f1eb1e6adc81a0c5d10447c",
+      "size": 2532969
+    },
+    "dds/A380X_FUSE1_METAL.PNG.DDS.gz": {
+      "sha256": "414df1d4347dab0c6bfc6673b811b30de7713488b9f85808b886558118056330",
+      "size": 7829390
+    },
+    "dds/A380X_FUSE1_NORMAL.PNG.DDS.gz": {
+      "sha256": "516e458987762cecb982fde2585aa7a63470e5005fe7b0ded89d9885f27eee85",
+      "size": 357099
+    },
+    "dds/A380X_FUSE2_ALBEDO.PNG.DDS.gz": {
+      "sha256": "fca20d43e65d8fc56a2a4e4163e229ad848fcd2402b9218da5ddcf254348398a",
+      "size": 2344428
+    },
+    "dds/A380X_FUSE2_METAL.PNG.DDS.gz": {
+      "sha256": "d7df6814fc474a63fb33edd699233b86aea2e10995a2243cf403e123a84e59d2",
+      "size": 7081268
+    },
+    "dds/A380X_FUSE2_NORMAL.PNG.DDS.gz": {
+      "sha256": "7678078b5776a146ce6cb620f6f77e0df9c65be7406138d1c5cb1debb8a3057e",
+      "size": 290167
+    },
+    "dds/A380X_FUSE3_ALBEDO.PNG.DDS.gz": {
+      "sha256": "a9034ffbac4609153ecc3b1a904a9a3a0258470a1150a871ca7d79e694aa3caa",
+      "size": 5150125
+    },
+    "dds/A380X_FUSE3_METAL.PNG.DDS.gz": {
+      "sha256": "c2cf533228e6666c33ce85974b49cd05fe365b0db344983ecaab3e456ca551d1",
+      "size": 9086916
+    },
+    "dds/A380X_FUSE3_NORMAL.PNG.DDS.gz": {
+      "sha256": "544ab46f7aac4bf5a8eb92d37ecf8f6409339756c5a6140b3e9d3c08f67ac16f",
+      "size": 375877
+    },
+    "dds/A380X_FUSE4_ALBEDO.PNG.DDS.gz": {
+      "sha256": "93b844aa60696d1d7a4ec0938c8e2f1b8ebea61e4f360c34244fd6c27ed9a2e5",
+      "size": 10088932
+    },
+    "dds/A380X_FUSE4_METAL.PNG.DDS.gz": {
+      "sha256": "20712a9520b36326a98c90592ea244130983753976afdda1da0474a814b3235f",
+      "size": 10904895
+    },
+    "dds/A380X_FUSE4_NORMAL.PNG.DDS.gz": {
+      "sha256": "36e38248f138cf88f23b5fd54dc7003ba2ba6de9ac84efd40fc490a5470bfd86",
+      "size": 713647
+    },
+    "dds/A380X_FUSE5_ALBEDO.PNG.DDS.gz": {
+      "sha256": "fb9cee9cca25a886b103ebd3af512d1299705008de4def8cd423331ac852edae",
+      "size": 5368340
+    },
+    "dds/A380X_FUSE5_METAL.PNG.DDS.gz": {
+      "sha256": "e2e938031962330e29c3c940405ab7bf8507d4e374184551f1345870f6ac5ba0",
+      "size": 9418336
+    },
+    "dds/A380X_FUSE5_NORMAL.PNG.DDS.gz": {
+      "sha256": "364037d54dabc4923be94527900fa08de8b6930b1c02a6ac15f1fa618084784e",
+      "size": 771449
+    },
+    "dds/A380X_LG_BAY_MAIN_ALBEDO.PNG.DDS.gz": {
+      "sha256": "88c0de48cea0aa1ac1e16732b71053de9dda3f475a9cbd1b0a0032bb44aa85d7",
+      "size": 6060348
+    },
+    "dds/A380X_LG_BAY_MAIN_COMP.PNG.DDS.gz": {
+      "sha256": "e6581db28aa3bd1e333a61ba344e4869dd2d98c545f2717e9da925c245f522e7",
+      "size": 5640095
+    },
+    "dds/A380X_LG_BAY_MAIN_NORM.PNG.DDS.gz": {
+      "sha256": "13f9ca6027fc380973a7da7ccc8588622e964f47af5b9fc0b88b84ee9a2e8ab9",
+      "size": 545019
+    },
+    "dds/A380X_LIGHT_GLASS_ALBEDO.PNG.DDS.gz": {
+      "sha256": "1deca65f2f21b11c0cb281c485c5cddf7ad5b453a7e6d615af6949897af2428a",
+      "size": 1906825
+    },
+    "dds/A380X_LIGHT_GLASS_METAL.PNG.DDS.gz": {
+      "sha256": "9a3f1e3296806a03f12e21b4a552c2f6478f325e19a98dae43ee83d987196e02",
+      "size": 3884853
+    },
+    "dds/A380X_LIGHT_GLASS_NORMAL.PNG.DDS.gz": {
+      "sha256": "bb1072cfa2dbcbb27ba6d6a506270d769b8a62f98000986a43f4e1c8e02ca306",
+      "size": 260025
+    },
+    "dds/A380X_MAIN_DECK_ASSETS_ALBEDO.PNG.DDS.gz": {
+      "sha256": "7a91084d45f7f6caad76cbd25dfc1ecc556ea00d05c1f382044d57ab3d8ed500",
+      "size": 7783763
+    },
+    "dds/A380X_MAIN_DECK_ASSETS_COMP.PNG.DDS.gz": {
+      "sha256": "412457698a1243f13c2b0266f52196e828badb31634477b5c2a56a68e3937941",
+      "size": 7246074
+    },
+    "dds/A380X_MAIN_DECK_ASSETS_NORM.PNG.DDS.gz": {
+      "sha256": "168cf3bb6ce09970f907c80d260cdfafbf35e9cf61bcebb94888c36b5d26b5e8",
+      "size": 1583577
+    },
+    "dds/A380X_MAIN_DECK_CARPET_COMP.PNG.DDS.gz": {
+      "sha256": "ce0c278cd0b7b526820f3013d70451c1bb3747619aadbc1a0b37bb827c5b84ff",
+      "size": 7081171
+    },
+    "dds/A380X_MAIN_DECK_FLOOR_ALBEDO.PNG.DDS.gz": {
+      "sha256": "9fe0975e893aa9e547346dffdb22a86ba029db068892b621cd1e762e44dba00f",
+      "size": 16378
+    },
+    "dds/A380X_MAIN_DECK_FLOOR_NORM.PNG.DDS.gz": {
+      "sha256": "a3b03557c8344ecbb45fb3d68745426012566bdb4091d3b6c94d7c4406410037",
+      "size": 4142
+    },
+    "dds/A380X_MAIN_DECK_GALLEY_ALBEDO.PNG.DDS.gz": {
+      "sha256": "50a05640087b748bd5905a0cf5636950a10e47bd0b6c4c6b9b2750b1f4156324",
+      "size": 13459244
+    },
+    "dds/A380X_MAIN_DECK_GALLEY_COMP.PNG.DDS.gz": {
+      "sha256": "cda9051638018e2c40eabb25fcce028697627caa7b03f4019a8c64ac3753980d",
+      "size": 8619590
+    },
+    "dds/A380X_MAIN_DECK_GALLEY_NORM.PNG.DDS.gz": {
+      "sha256": "59ff6322fa51b17478f784b44c939e63382afc87a9899e55eef46948065574c4",
+      "size": 468457
+    },
+    "dds/A380X_MAIN_DECK_PEC_SIDEWALLS_ALBEDO.PNG.DDS.gz": {
+      "sha256": "3cd8110f691aae5ba2752ce99a9350326583b01c62ab83db33c87a0974d1dc40",
+      "size": 7707758
+    },
+    "dds/A380X_MAIN_DECK_PEC_SIDEWALLS_COMP.PNG.DDS.gz": {
+      "sha256": "b35836bca75cf18509f82a800bd0851d1ff0efd2f2c860baa722d02267803401",
+      "size": 8707676
+    },
+    "dds/A380X_MAIN_DECK_PEC_SIDEWALLS_EMIS.PNG.DDS.gz": {
+      "sha256": "1ad8c3681f9ff203588141ba7bb0234b0d9141292a437ce4f7d939676ff15c28",
+      "size": 11852
+    },
+    "dds/A380X_MAIN_DECK_PEC_SIDEWALLS_NORM.PNG.DDS.gz": {
+      "sha256": "bedd1122c55e8b62cee16ad394144b673b81e1ed969e3d83ce8b34f838bf374f",
+      "size": 928281
+    },
+    "dds/A380X_MAIN_DECK_YC_SIDEWALLS_ALBEDO.PNG.DDS.gz": {
+      "sha256": "3a0b9d9fa7552210a74fda9a4bf69e9005d4cbd54ceab1c8a1905101c6345565",
+      "size": 7025858
+    },
+    "dds/A380X_MAIN_DECK_YC_SIDEWALLS_COMP.PNG.DDS.gz": {
+      "sha256": "1e56871e5f2cd85086ca9b850f88127a0bbd9cc3ea7d1a282d82a62b7a5dae71",
+      "size": 8602792
+    },
+    "dds/A380X_MAIN_DECK_YC_SIDEWALLS_EMIS.PNG.DDS.gz": {
+      "sha256": "8b4a44d68c28b2e0f8320e25e72d0dc5573d7f0a5127a9c6dc03c00ab173c58b",
+      "size": 21497
+    },
+    "dds/A380X_MAIN_DECK_YC_SIDEWALLS_NORM.PNG.DDS.gz": {
+      "sha256": "2e60b30615de0f777eb3ee83b5d767a8271669e124d4a634e07780cebcd0f074",
+      "size": 646953
+    },
+    "dds/A380X_PAX_DOORS_ALBEDO.PNG.DDS.gz": {
+      "sha256": "93f86d5009c191815bd8c5cbb1f29a33e815b0382df04b227c36b3bdc77ae415",
+      "size": 9389929
+    },
+    "dds/A380X_PAX_DOORS_COMP.PNG.DDS.gz": {
+      "sha256": "b85d63f63a90584e59207a22aaeff0707a0e968790223341e8b291f4b6eb1a85",
+      "size": 8521438
+    },
+    "dds/A380X_PAX_DOORS_EMIS.PNG.DDS.gz": {
+      "sha256": "bc64ca098afc9a8979c0a5078b3bfbfdf3ed24f90ab22333118fb93895c75dc0",
+      "size": 44747
+    },
+    "dds/A380X_PAX_DOORS_NORM.PNG.DDS.gz": {
+      "sha256": "25545990159d5413f39d188c17314f40ec7440cbe8bb94cc0fd10543f359ff86",
+      "size": 3484039
+    },
+    "dds/A380X_PAX_INNER_WINDOW_ALBEDO.PNG.DDS.gz": {
+      "sha256": "b71850434af8ca6d6bb40f60418eb820d0b4d121f4f49d8c3c5f114c070ab2b5",
+      "size": 3902338
+    },
+    "dds/A380X_PAX_INNER_WINDOW_METAL.PNG.DDS.gz": {
+      "sha256": "057c841e2c291c43bf0444e44e0a034077894aeaf6b7cd3d5487f382cdc316b9",
+      "size": 10333987
+    },
+    "dds/A380X_PEC_SEATS_ALBEDO.PNG.DDS.gz": {
+      "sha256": "1d8361ed2fb874e3209ca954d8ce4366b24fc2803d31ed357649f32509547fd6",
+      "size": 7998764
+    },
+    "dds/A380X_PEC_SEATS_COMP.PNG.DDS.gz": {
+      "sha256": "d43d20082e883c44c283005b5329cbde31588c0fe2ab5e89a7cbd1f5f4e0087b",
+      "size": 9774061
+    },
+    "dds/A380X_PEC_SEATS_NORM.PNG.DDS.gz": {
+      "sha256": "923ce5152a38f5e400069ffdb460e1ddfe37b5bb758f1aa5f488f4595fd172e6",
+      "size": 8690308
+    },
+    "dds/A380X_REGISTRATION_ALBEDO.PNG.DDS.gz": {
+      "sha256": "9a963d79861ebcb623710c38b44c6e5d045108eefa06a1c5c7fad70ab47fcd3c",
+      "size": 37817
+    },
+    "dds/A380X_REGISTRATION_NORMAL.PNG.DDS.gz": {
+      "sha256": "dd3a3f22351ac4da98894e9a759206fb0c3de3b79dfa9dd1d1e5cba57b791231",
+      "size": 30485
+    },
+    "dds/A380X_SUITES_ALBEDO.PNG.DDS.gz": {
+      "sha256": "d0aec3e17a3bdd1f2d6f98191ca1e9995bdcc305fd564aaf1b4a390c3cae625c",
+      "size": 7155323
+    },
+    "dds/A380X_SUITES_COMP.PNG.DDS.gz": {
+      "sha256": "868067d835168e43d9fe1f76328b1bd780226ef6dab0058940d611139b247e4f",
+      "size": 9314819
+    },
+    "dds/A380X_SUITES_EMIS.PNG.DDS.gz": {
+      "sha256": "1487b6a44b4be789f684d3c6d09c96b5315d793ac61c268c6929feda318c9db8",
+      "size": 74374
+    },
+    "dds/A380X_SUITES_NORM.PNG.DDS.gz": {
+      "sha256": "155d71aaceb5b7cff8aa0b0314c0127942bb8b97a514a642d50cfdbf8d1a6e41",
+      "size": 12466056
+    },
+    "dds/A380X_SUITE_CEILING_ALBEDO.PNG.DDS.gz": {
+      "sha256": "edf47d4fdaa3ff9c93a2de4868901b6c19c495111740b0878e5884baae261c7a",
+      "size": 2329964
+    },
+    "dds/A380X_SUITE_CEILING_COMP.PNG.DDS.gz": {
+      "sha256": "77ec2f1b7bf7fe14ee3685a2450723cba3561afc61beeb73250cd8ee8629c81c",
+      "size": 6969899
+    },
+    "dds/A380X_SUITE_CEILING_EMIS.PNG.DDS.gz": {
+      "sha256": "21f899806d338aed04a935b2a2237adb36f7a5f57cb913c2a86071f81e3a5521",
+      "size": 1066293
+    },
+    "dds/A380X_SUITE_CEILING_NORM.PNG.DDS.gz": {
+      "sha256": "eba8441ec26bb7b14b74cd6172f587c69df489a00be710e473bf9e0d5362cbdd",
+      "size": 976508
+    },
+    "dds/A380X_UPPER_DECK_FLOOR_COMP.PNG.DDS.gz": {
+      "sha256": "6def5b8094742a7e52d0f32f1ede4d9ac2107173f0b920606c99bc5a43d1de1e",
+      "size": 1721193
+    },
+    "dds/A380X_WLG_ALBEDO.PNG.DDS.gz": {
+      "sha256": "2c25826e2e3de801c9a34f89d2e1e5abb78464e825f87ca9f288c7074399b1d8",
+      "size": 9710593
+    },
+    "dds/A380X_WLG_COMP.PNG.DDS.gz": {
+      "sha256": "0b9768d2deff812dbf7d76057ff5521126a00a842e2a351b3aaad31f874dcefb",
+      "size": 11242378
+    },
+    "dds/A380X_WLG_NORM.PNG.DDS.gz": {
+      "sha256": "958bb734146ac02f99a3201888d814835c8d96851e957d2d3df4fa64c116c1e4",
+      "size": 892109
+    },
+    "dds/A380X_YC_SEAT_ALBEDO.PNG.DDS.gz": {
+      "sha256": "cf8431c790cda34614f79e1d616a38fc3d23281ae0cdcccafd64e63f4c02a03c",
+      "size": 4920864
+    },
+    "dds/A380X_YC_SEAT_COMP.PNG.DDS.gz": {
+      "sha256": "c8ff1070d83f062b5aa841f938bd6d4c104a870de74d3b1b37166867e96005c8",
+      "size": 10303085
+    },
+    "dds/A380X_YC_SEAT_NORM.PNG.DDS.gz": {
+      "sha256": "fbff568022e4fe0c9d431aab3e845b9d162abfb59d561bc6304fa378aecd53d0",
+      "size": 2498471
+    },
+    "dds/A380_CABIN_CARPET_DETAIL_ALBEDO.PNG.DDS.gz": {
+      "sha256": "6d20a15dd8acbbca6fb7b81b07c7f4f672c4f0a2a6e53368c13f5e54d7c49aee",
+      "size": 200514
+    },
+    "dds/A380_CABIN_CARPET_DETAIL_COMB.PNG.DDS.gz": {
+      "sha256": "cbf4071eff75766ddd7ecca7f649b35bf3edf067c567691c89881fe8cdf36ce4",
+      "size": 762615
+    },
+    "dds/A380_CABIN_CARPET_DETAIL_NORM2.PNG.DDS.gz": {
+      "sha256": "4bf4ffde7aa94b811f33e57b8b2afde2b0caff157ff8254855e20fb44b22aa4c",
+      "size": 1393708
+    },
+    "dds/A380_CABIN_NTF_DETAIL_ALBEDO.PNG.DDS.gz": {
+      "sha256": "c9ba117fe7de9bf3039d44891af2e0a45e38b3f94559d53ae0df6477085a988f",
+      "size": 487775
+    },
+    "dds/A380_CABIN_NTF_DETAIL_COMP.PNG.DDS.gz": {
+      "sha256": "ac62008d907f58cfe9669258a8e0e26d5b93ce4ef1a194cf14bb556bbb43792d",
+      "size": 308294
+    },
+    "dds/A380_CABIN_NTF_DETAIL_NORM.PNG.DDS.gz": {
+      "sha256": "4bf4ffde7aa94b811f33e57b8b2afde2b0caff157ff8254855e20fb44b22aa4c",
+      "size": 1393708
+    },
+    "dds/A380_COCKPIT_AFT_MISC01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "4be37e2fda6d74cdee57d8bfe9634a14c72caa6cb6d1f5b49340d922baa0fe57",
+      "size": 8071951
+    },
+    "dds/A380_COCKPIT_AFT_MISC01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "024f33ef1d99abe18afa33cb15fa91add2439a907c6c80603b57378f2e30f2ac",
+      "size": 2800631
+    },
+    "dds/A380_COCKPIT_AFT_MISC01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "d7e02fb3e3fa96902dc8e8651445be5aabd8984c55eae3748dd2dc07fb2a69f4",
+      "size": 2254491
+    },
+    "dds/A380_COCKPIT_AFT_MISC02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "82e0a732bfa62de0d4410063e2f10d4d206d107c29603f8419180951727ebaae",
+      "size": 5065093
+    },
+    "dds/A380_COCKPIT_AFT_MISC02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "dc87b189d6e1aef05080d5d097771fa84a279afd9cc36781d688d981c24486d9",
+      "size": 2846296
+    },
+    "dds/A380_COCKPIT_AFT_MISC02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "7e96e092319f95a2c6ac92967474597f0ea5b8ae7caef51a6bfaddd456424edf",
+      "size": 3124308
+    },
+    "dds/A380_COCKPIT_AFT_MISC03_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "6f77a4515d76c5d00681c14b0bce9c4e6fa35ee6ce4fcf98aa7c871323ee0711",
+      "size": 3769447
+    },
+    "dds/A380_COCKPIT_AFT_MISC03_4K_COMP.PNG.DDS.gz": {
+      "sha256": "ed75415fa4c6cc678f704f494cf95f840a10ba753aca60f9395e4bb47b215396",
+      "size": 2825178
+    },
+    "dds/A380_COCKPIT_AFT_MISC03_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "ff3046031780adc0062e6fc897b1ff0da6db99fc14d73f0fbfeb8a235f129fd5",
+      "size": 4100787
+    },
+    "dds/A380_COCKPIT_AFT_MISC04_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "3a11cc6d661d7e9934949d2a55b020043d617ca77f5c7c61a738f1b8e4fed2af",
+      "size": 7799491
+    },
+    "dds/A380_COCKPIT_AFT_MISC04_4K_COMP.PNG.DDS.gz": {
+      "sha256": "d2bc95224912ea899927554d3b3510ac7fb463bc8c22abf020cee62fbab68600",
+      "size": 2758641
+    },
+    "dds/A380_COCKPIT_AFT_MISC04_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "2570c35905cb57fcdf5933b4bff784fff29246ad0f83b7ebfaf949b2c2da3ff6",
+      "size": 3437778
+    },
+    "dds/A380_COCKPIT_AFT_MISC05_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "ed6e4038b6ed96ea955092f8ed8447d45a257aead1d8567bbb458284267270e6",
+      "size": 6072742
+    },
+    "dds/A380_COCKPIT_AFT_MISC05_4K_COMP.PNG.DDS.gz": {
+      "sha256": "5b4044602dc5427e677aa683202803e739afdd59ae427c5497ce5a5cdc378fba",
+      "size": 2493833
+    },
+    "dds/A380_COCKPIT_AFT_MISC05_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "c9a0899d974fe3c6c9944b3164e21ec78621d2839d332ce1bb4d57c7e86b7510",
+      "size": 3487164
+    },
+    "dds/A380_COCKPIT_BACKWALL_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "736485f1236f3bd019811ac159986018281f90f7e9947fce60b46ba6ddf777ba",
+      "size": 4807723
+    },
+    "dds/A380_COCKPIT_BACKWALL_4K_COMP.PNG.DDS.gz": {
+      "sha256": "e83e755468d139cd22bee05686af3aa202877a4496265e8bf1f30eca55a6c912",
+      "size": 2979862
+    },
+    "dds/A380_COCKPIT_BACKWALL_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "d87a6c14783303a8418b0e26a09de786cbb3013d7a6ebf89f8d39c8368884e04",
+      "size": 3778047
+    },
+    "dds/A380_COCKPIT_CEILING01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "f4532f608fd5ae516b19da20b80c80107475f8d17cf104d1dcde38df81fed7ed",
+      "size": 5405787
+    },
+    "dds/A380_COCKPIT_CEILING01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "6c8a8c2e8e11090b0e0a89081ba45882d807c7df5d01cc9b28ed76940ef301ae",
+      "size": 2708728
+    },
+    "dds/A380_COCKPIT_CEILING01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "9dab87e430d201e514b835465eec15bbf9ad8e1d611fc319cc06695d8f8dc9f0",
+      "size": 3751899
+    },
+    "dds/A380_COCKPIT_CEILING02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "eda9de0e8669ffef361d1d7ad6ca6217fb38ee02d1b9c84e6373ad615cbe5bda",
+      "size": 3488993
+    },
+    "dds/A380_COCKPIT_CEILING02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "829edc2ba25eb3f5c59b4d5a75173da443bd40bfc63d87afffec2c4f3c20ec5f",
+      "size": 2762779
+    },
+    "dds/A380_COCKPIT_CEILING02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "3b925dbb6054f03921ac534c194d18f5f998610922cadade91dc479f8540b9f8",
+      "size": 3588109
+    },
+    "dds/A380_COCKPIT_DECAL_ALBEDO.PNG.DDS.gz": {
+      "sha256": "9f82e7e2f6fd4c194d0176e79d2c34bfd3b494850f905ef64477179ff62cd70e",
+      "size": 1208941
+    },
+    "dds/A380_COCKPIT_DECAL_COMP.PNG.DDS.gz": {
+      "sha256": "3357e9fc7c17d8b5c1e511f1a78f119db9189cef94dcb49e4555a9cda267e855",
+      "size": 2134
+    },
+    "dds/A380_COCKPIT_DECAL_EMIS.PNG.DDS.gz": {
+      "sha256": "a22259836d82221e495bd1020b3c13e2344abd435925573585083660c8decb6e",
+      "size": 4500393
+    },
+    "dds/A380_COCKPIT_DECAL_NORMAL.PNG.DDS.gz": {
+      "sha256": "c936d9bd9ca01d7618ae01ba88a167ef882b663f7c74a27464f64a3ecdfa98fe",
+      "size": 2084464
+    },
+    "dds/A380_COCKPIT_DISPLAY_ALBEDO_SET1.PNG.DDS.gz": {
+      "sha256": "09faf7076b8ffacd9419421cc5dbb2b74d41cf802905332367d2f2cc4452c3cf",
+      "size": 74
+    },
+    "dds/A380_COCKPIT_DISPLAY_ALBEDO_SET2.PNG.DDS.gz": {
+      "sha256": "09faf7076b8ffacd9419421cc5dbb2b74d41cf802905332367d2f2cc4452c3cf",
+      "size": 74
+    },
+    "dds/A380_COCKPIT_DISPLAY_ALBEDO_SET3.PNG.DDS.gz": {
+      "sha256": "09faf7076b8ffacd9419421cc5dbb2b74d41cf802905332367d2f2cc4452c3cf",
+      "size": 74
+    },
+    "dds/A380_COCKPIT_DISPLAY_COMP_SET1.PNG.DDS.gz": {
+      "sha256": "a97e8da59b0985e54b0cb86715bb9e2f6f623ed3d08ec1a4a8eceb9632e37900",
+      "size": 3413630
+    },
+    "dds/A380_COCKPIT_DISPLAY_COMP_SET2.PNG.DDS.gz": {
+      "sha256": "8aa2aa15a3ca049006bf8c5a1d5a8092ca6598158b2517701df544e97735c984",
+      "size": 3336751
+    },
+    "dds/A380_COCKPIT_DISPLAY_COMP_SET3.PNG.DDS.gz": {
+      "sha256": "8dae0800204874976f1c7e3d202598cb4b934c4869296a87aca928c1717596cf",
+      "size": 2541862
+    },
+    "dds/A380_COCKPIT_FCU_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "e07d7e82f38289fa807af454a81a687882cdde8cc1c46d81d62b7b3db7d78d61",
+      "size": 9499079
+    },
+    "dds/A380_COCKPIT_FCU_4K_COMP.PNG.DDS.gz": {
+      "sha256": "9fb59a18a20847870edde304aa222fcfc0f9f79398177ca3c12bc60b7fe327a4",
+      "size": 3315277
+    },
+    "dds/A380_COCKPIT_FCU_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "5b85bfa174f3044370478cffc185b540d91fa0bae11d3117777473fb3a801622",
+      "size": 1456888
+    },
+    "dds/A380_COCKPIT_FLOOR_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "3358d4aaa32c3c89e5c892e048059bdf810052dcd48da3fcc605971dc23d56b8",
+      "size": 7708497
+    },
+    "dds/A380_COCKPIT_FLOOR_4K_COMP.PNG.DDS.gz": {
+      "sha256": "2308db46dcc1966633831dd064ad0db09c7dcc7a30d52a9df49ddfb7bdeba424",
+      "size": 2589783
+    },
+    "dds/A380_COCKPIT_FLOOR_4K_NORM.PNG.DDS.gz": {
+      "sha256": "369ddb6f094d6cc94219127d9eb3dc40485c91a65b50240ee7a1dc83ce2384b3",
+      "size": 3471539
+    },
+    "dds/A380_COCKPIT_GLARESHIELD_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "0c9b3c23a20f88696ae29b23ba8d8fb3029ae15925023c8988bf0ebfab074751",
+      "size": 3271928
+    },
+    "dds/A380_COCKPIT_GLARESHIELD_4K_COMP.PNG.DDS.gz": {
+      "sha256": "ecd01893b60e5ccade00174878e3fb229481fb8c9fe015a9b212aef29f27bb7b",
+      "size": 3186195
+    },
+    "dds/A380_COCKPIT_GLARESHIELD_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "d4bd8f48e024b3b2c0b30d1e495e00404d1340b98afef11a2ac9cb35cd1373a0",
+      "size": 1375766
+    },
+    "dds/A380_COCKPIT_KEYBOARD_ALBEDO.PNG.DDS.gz": {
+      "sha256": "ea2b2bc7eaac393d9665829163e372d9a8ce24a85e0f37778556e8b57497fad0",
+      "size": 6651274
+    },
+    "dds/A380_COCKPIT_KEYBOARD_COMP.PNG.DDS.gz": {
+      "sha256": "5a9266a79f809b28ee23b2930ab38a9bd5275869572a7d3e006e84d6bbf7daf7",
+      "size": 3172667
+    },
+    "dds/A380_COCKPIT_KEYBOARD_NORMAL.PNG.DDS.gz": {
+      "sha256": "58dfa882243731a45a6c97e7dd004ad2ac3389b4891e0927b33791dbe1987d46",
+      "size": 13201996
+    },
+    "dds/A380_COCKPIT_LEATHER01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "d34baf3788556b4e977e2a27f0e65da5808efc480eefbc9d59ed1aa5d13a8496",
+      "size": 12790728
+    },
+    "dds/A380_COCKPIT_LEATHER01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "632dad681900eaeaaf793813897ab9693bbf7892ae412f1ca327e34c148c5cd1",
+      "size": 11367748
+    },
+    "dds/A380_COCKPIT_LEATHER01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "8035a5a2f43729dacdf3edf4f263a198437c22acfafdd4f5f889f34dfcdf0802",
+      "size": 15211044
+    },
+    "dds/A380_COCKPIT_LEATHER02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "fb3a62d74d8b6ae2fd5f34f04cae990a9b4ca4c5c5860304015c2e0d849c1f79",
+      "size": 11776516
+    },
+    "dds/A380_COCKPIT_LEATHER02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "aa26d51c7bcdb57b2c66db9c539ede6448df9c3183d1ece0a5bc8e907eab85fb",
+      "size": 10572144
+    },
+    "dds/A380_COCKPIT_LEATHER02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "b2a4aea05ab39a6c389ffe6c8aad9a3e8d8c9597abe8aaebb7d40f67e4d44cd4",
+      "size": 14188168
+    },
+    "dds/A380_COCKPIT_LEATHER03_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "ff34c3c96c717c1606dda859e570dbc783bc3a75ed8dfce90cfd15d0d9c78c9e",
+      "size": 12598828
+    },
+    "dds/A380_COCKPIT_LEATHER03_4K_COMP.PNG.DDS.gz": {
+      "sha256": "d675554a43fd678079fef8c326dad3e719ac7d642d454ff181b714d92e65f1c3",
+      "size": 11099146
+    },
+    "dds/A380_COCKPIT_LEATHER03_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "5d420cff2bb3021a70c24207d50992c75d794765da6fc27f815b526b87586301",
+      "size": 15087537
+    },
+    "dds/A380_COCKPIT_MIP01_8K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "fbeebf423d0a110858f3d71021892ee7246d3694f1741c57069d869aa905a73f",
+      "size": 1362972
+    },
+    "dds/A380_COCKPIT_MIP01_8K_COMP.PNG.DDS.gz": {
+      "sha256": "d20364146043c87a1b4a7e09ef95ec12b7bec490acf7372bf0bc8021121ac9e5",
+      "size": 2779787
+    },
+    "dds/A380_COCKPIT_MIP01_8K_NORMAL.PNG.DDS.gz": {
+      "sha256": "25e49d4d7575fb5a7c66803aecdfa06503d75ab289a9f2e8be98d9e6871c80d3",
+      "size": 14048196
+    },
+    "dds/A380_COCKPIT_MIP02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "20d775fab1acb0d678b9aaf8676eca03f2c16bd8f8fd5308586bb43f1ff7314d",
+      "size": 2796928
+    },
+    "dds/A380_COCKPIT_MIP02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "72165646dd7937f812749febed507cbc5bff463847af4077c2174cf8e436e623",
+      "size": 3413201
+    },
+    "dds/A380_COCKPIT_MIP02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "d0a4b42af0db14582ccd713278e1ddd555b91b96afb78aed522b6392048cad24",
+      "size": 3542272
+    },
+    "dds/A380_COCKPIT_MIP03_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "c63288be52da426793cb540fba6294a86db5c5155fa9029e9d33f2119f60f55b",
+      "size": 8423368
+    },
+    "dds/A380_COCKPIT_MIP03_4K_COMP.PNG.DDS.gz": {
+      "sha256": "1d7a9a96fb4c7e305a8648abe15ec30d1896687bdd482936a94bd780aa8eee1e",
+      "size": 3081680
+    },
+    "dds/A380_COCKPIT_MIP03_4K_EMMIS.PNG.DDS.gz": {
+      "sha256": "b5c3effe30345d644f2f68f4a5e3cd6020377b518cf06d446652d9edc2b93d60",
+      "size": 22139
+    },
+    "dds/A380_COCKPIT_MIP03_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "4159089e9117291177f3c69ef7028bb0b253dde1b8235af3cd738f27500a549b",
+      "size": 1144848
+    },
+    "dds/A380_COCKPIT_MIP04_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "d966dbc8808e4cbb87f9bdb801e3851f789404aab37cab97d5047773c123c4b8",
+      "size": 4807806
+    },
+    "dds/A380_COCKPIT_MIP04_4K_COMP.PNG.DDS.gz": {
+      "sha256": "344d4af6ebeaaa657aa36b7e5eb873b90f7f37cf838a486dc99533b74653d7a7",
+      "size": 3110138
+    },
+    "dds/A380_COCKPIT_MIP04_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "62a875b979e59d5919f7b5d900c9241e26ea9c42e6dea9c924342cde80812cee",
+      "size": 1462637
+    },
+    "dds/A380_COCKPIT_MIP_KNOB01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "d185e18301c9406d9ac44df32ceaf054d39fa6772d81027a8dbafdce8d6f1fe4",
+      "size": 3053199
+    },
+    "dds/A380_COCKPIT_MIP_KNOB01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "8585973bf595137822208e2f1a279dcd36d318e396d3969474b085888a2222f7",
+      "size": 3333794
+    },
+    "dds/A380_COCKPIT_MIP_KNOB01_4K_EMMIS.PNG.DDS.gz": {
+      "sha256": "9153974d5aab361d6d970de5ade98ae2b68e1c0cde335ca5b7c889341a9fc2cc",
+      "size": 147695
+    },
+    "dds/A380_COCKPIT_MIP_KNOB01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "40634321f2077f3a8862c4f53f95289f2da217546e7e1b01e9170f5163fbc7fc",
+      "size": 3353013
+    },
+    "dds/A380_COCKPIT_MIP_KNOBS_02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "a957736eb08783446d1bc26fec49bd6d01becae06ba3581c75c4ce83ad4226f5",
+      "size": 2830967
+    },
+    "dds/A380_COCKPIT_MIP_KNOBS_02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "15b2ddabd9b9ea1fc75e18a154a5b2d70fb6bcba644111c1d69b63fc52fef53b",
+      "size": 3074897
+    },
+    "dds/A380_COCKPIT_MIP_KNOBS_02_4K_EMMIS.PNG.DDS.gz": {
+      "sha256": "1fc673c6c00cd10168d33822f4c7b78c226a16bab97ea3be7542e33618a50eca",
+      "size": 35628
+    },
+    "dds/A380_COCKPIT_MIP_KNOBS_02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "91ddcfcfbe45abf091a3a745b28d2c1a700b6962d177ad9fc41fd35bf140fc11",
+      "size": 2759718
+    },
+    "dds/A380_COCKPIT_MISC01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "82e0d5bc2e71b6ca62eb72cff09f7f983fca3694694ebcbf59a004539d2a2553",
+      "size": 4722547
+    },
+    "dds/A380_COCKPIT_MISC01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "14a38a263c3749bc9271ee0a99a5d4615c6f6b7eae7cf0486467743821bb3b13",
+      "size": 3422697
+    },
+    "dds/A380_COCKPIT_MISC01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "c8aaae464ed6249367e683fba5b3fcf2a943a16eddd6188ec3b01af2d877985e",
+      "size": 1297214
+    },
+    "dds/A380_COCKPIT_MISC02_ALBEDO.PNG.DDS.gz": {
+      "sha256": "086ecea9bd933e0d712ef889fea562a01232cbf31dfb6f5aaefc4b964d815da5",
+      "size": 2930909
+    },
+    "dds/A380_COCKPIT_MISC02_COMP.PNG.DDS.gz": {
+      "sha256": "8b3cca46b97447f9f1b894a9f9e7e6465bf04682ae4848b5591e0e659c5c5d98",
+      "size": 4340732
+    },
+    "dds/A380_COCKPIT_MISC02_EMIS.PNG.DDS.gz": {
+      "sha256": "191a2dfab5a972abe6c9e61cb7c6d99d533954aab4592bf6619ac6878bbcc55b",
+      "size": 1977442
+    },
+    "dds/A380_COCKPIT_MISC02_NORMAL.PNG.DDS.gz": {
+      "sha256": "4164a538aed6782d56614326f23ff01ce8c14eac916f0e632578349c4488a4c0",
+      "size": 2006103
+    },
+    "dds/A380_COCKPIT_MISC03_ALBEDO.PNG.DDS.gz": {
+      "sha256": "74c6697a365b9f78d7f5232d83426a2ffc32ad3d1123800c388590cabbeacc6b",
+      "size": 7630401
+    },
+    "dds/A380_COCKPIT_MISC03_COMP.PNG.DDS.gz": {
+      "sha256": "876b9df708be7215af4d14167f4422d477a2abe0529f4dd5da4c9f9d2050d24d",
+      "size": 3706899
+    },
+    "dds/A380_COCKPIT_MISC03_NORMAL.PNG.DDS.gz": {
+      "sha256": "30545ba976158163bb5505bde9a1beb2c7da66beaa78df36416965d9c249cd80",
+      "size": 1634706
+    },
+    "dds/A380_COCKPIT_MISC_STUFF_ALBEDO.PNG.DDS.gz": {
+      "sha256": "b2118d9e73c2039cffa6d47ddb7125fea2437b0fecdee7bbf13de0a7de3840fb",
+      "size": 3028146
+    },
+    "dds/A380_COCKPIT_MISC_STUFF_COMP.PNG.DDS.gz": {
+      "sha256": "3d8c6e3aae7f1f6f8764d410cc3f987d77a0d99c12a9d59dd5118faa819c2904",
+      "size": 2500378
+    },
+    "dds/A380_COCKPIT_MISC_STUFF_NORMAL.PNG.DDS.gz": {
+      "sha256": "47ea98129b2e1c87408ea906f66a5554201bcbc2d21ad9cdd2c73a6904068969",
+      "size": 3281091
+    },
+    "dds/A380_COCKPIT_OVHD01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "52e9ccab052763b7720915b9707c6292b300f490a58083db10c83b5e6c183659",
+      "size": 7346573
+    },
+    "dds/A380_COCKPIT_OVHD01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "168330641538c48e6015adb6d6b2f204d398a51feb0e3474936ff5cbd4014837",
+      "size": 10516289
+    },
+    "dds/A380_COCKPIT_OVHD01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "c338358eeff811ba7ac21c55bdbb8ef8c25ef7eec66137f29be9f6641712d58b",
+      "size": 3613908
+    },
+    "dds/A380_COCKPIT_OVHD02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "bda7a5016912e408364fd9800a23e453f086809e5d54be3a9401ad9cc1a3d937",
+      "size": 5720623
+    },
+    "dds/A380_COCKPIT_OVHD02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "d92f235a7986620ddf0e1349c730f5686c26e294058e5d32b7f07b2c6cd03c7b",
+      "size": 10154833
+    },
+    "dds/A380_COCKPIT_OVHD02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "cc3da26db8ce4f6d4df1514783c8e2b486684e2d1ce70fa606c5228cb97cbeca",
+      "size": 1695330
+    },
+    "dds/A380_COCKPIT_OVHD_KNOBS_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "f20e235e5410c07182ac4b551a492ea9d61a08d74ead47e65f3e1437151bcd71",
+      "size": 5839443
+    },
+    "dds/A380_COCKPIT_OVHD_KNOBS_4K_COMP.PNG.DDS.gz": {
+      "sha256": "9f4f1bb5d0739477ca622713266256d7cd4ea6953bcb57f01c818364c2cd49ea",
+      "size": 3657471
+    },
+    "dds/A380_COCKPIT_OVHD_KNOBS_4K_EMMIS.PNG.DDS.gz": {
+      "sha256": "c68ea11fc48c482f0a8f19e733f07f1d1940e3414a59624f888768f94f65f926",
+      "size": 239048
+    },
+    "dds/A380_COCKPIT_OVHD_KNOBS_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "588d4454e68d739e4f1fbbb576341f3254a3566a9939852d9aae20f695e903f0",
+      "size": 3227877
+    },
+    "dds/A380_COCKPIT_OVHD_KNOBS_4K_NO_RED_EMMIS.PNG.DDS.gz": {
+      "sha256": "14fff484fc552fa83d85a8989ec353d53a01a073dae7be947b2577cdd1922817",
+      "size": 21392
+    },
+    "dds/A380_COCKPIT_OVHD_SCREWS_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "9f2bb3b7599eda5bed4a31a71dc95769970102fa07fa54c926bde813b4c29e53",
+      "size": 10448756
+    },
+    "dds/A380_COCKPIT_OVHD_SCREWS_4K_COMP.PNG.DDS.gz": {
+      "sha256": "f0d13685c9963b1cb3228e8b4187b0737378450f30ce05e63dd71bb16f3d7909",
+      "size": 3350294
+    },
+    "dds/A380_COCKPIT_OVHD_SCREWS_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "3882e3fb46dcb4850e1cbfcb502223ff32bf80bfef226e1652e1dd565887a1ac",
+      "size": 4045437
+    },
+    "dds/A380_COCKPIT_PEDESTAL01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "629fcd7359a370b17342d64817157f89d9a83a4b177be3106bf0ee2883679cff",
+      "size": 8460540
+    },
+    "dds/A380_COCKPIT_PEDESTAL01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "4778b9b77df56f4baea32e7519adeb271c1abd52b75087b84c864e34c444b39f",
+      "size": 13624982
+    },
+    "dds/A380_COCKPIT_PEDESTAL01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "04a6311e38a102e53f18f7f9270786458abc045c9863b04da74b7b56d4005694",
+      "size": 11107037
+    },
+    "dds/A380_COCKPIT_PEDESTAL02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "79a64e47b28d875ec937f0ed3f0f6d4d74d7410d970a3b44bd95a9c4349fc49d",
+      "size": 10833207
+    },
+    "dds/A380_COCKPIT_PEDESTAL02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "1b1532a2f28807e8f9ddf1799ecd6647e86c653a92e314956b4ae679d40a4eba",
+      "size": 13046961
+    },
+    "dds/A380_COCKPIT_PEDESTAL02_4K_EMIS.PNG.DDS.gz": {
+      "sha256": "1f05e6d07478d5071d9929cd78b8ad1b728fea5caac6fa27e88a617136a3adf4",
+      "size": 11716
+    },
+    "dds/A380_COCKPIT_PEDESTAL02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "d43f01432fb6b253d32492ce643d19364d5049a4771c190e3f20502b8f9736d6",
+      "size": 6981493
+    },
+    "dds/A380_COCKPIT_PEDESTAL03_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "d93ff72c8fc001c4d272af53d4a4b897013f0b527f7b4ffb1f9ff93aff7bb456",
+      "size": 5125786
+    },
+    "dds/A380_COCKPIT_PEDESTAL03_4K_COMP.PNG.DDS.gz": {
+      "sha256": "c1f17578c9f489eeac40601596872d0ac34c63db7a50c1145b09ef4bd0ed7bd8",
+      "size": 3019313
+    },
+    "dds/A380_COCKPIT_PEDESTAL03_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "721a64ecad158d9b724e539998ede7c724b6fd37ebcc2a25773aac5ab7b3518d",
+      "size": 3462197
+    },
+    "dds/A380_COCKPIT_PEDESTAL04_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "b11f074b51d0ed4ded88f790cb6e43394b26fd2893f9fd135ac2bd7f2ef1e474",
+      "size": 4174946
+    },
+    "dds/A380_COCKPIT_PEDESTAL04_4K_COMP.PNG.DDS.gz": {
+      "sha256": "9bb45e0dbf207ce8b60ff7e33985a97d681637b9338b3d25a3f92bace54b9c9a",
+      "size": 7726019
+    },
+    "dds/A380_COCKPIT_PEDESTAL04_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "70efaaa5ff0be4aa741c338e0e9430b3fc4472ca28b59aa4411a813b26d3472d",
+      "size": 3683188
+    },
+    "dds/A380_COCKPIT_PEDESTAL_KNOBS01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "3e8bcbf773c0ae1c73b09199534618acf546fd0e6d1e47f1125ec6c8e86ae0a3",
+      "size": 2707872
+    },
+    "dds/A380_COCKPIT_PEDESTAL_KNOBS01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "fa519d8af48a0034882b0913129bd40e1c95b7f13a199331099f3d29fe0033de",
+      "size": 3561697
+    },
+    "dds/A380_COCKPIT_PEDESTAL_KNOBS01_4K_EMMIS.PNG.DDS.gz": {
+      "sha256": "71cecf0c05033d5c6d6d9e95347884cb65cf5b7b64893b116e32fe195c4e79ab",
+      "size": 194602
+    },
+    "dds/A380_COCKPIT_PEDESTAL_KNOBS01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "1854f6a6448c6d74a1147ae746d755c65e6773d1319344f8be7a2f194011f8f2",
+      "size": 2659239
+    },
+    "dds/A380_COCKPIT_PEDESTAL_KNOBS02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "bbc19d49c43aa73789b3431a1a93c03d2143f8e2118ead8a964274a2e755e03d",
+      "size": 3381925
+    },
+    "dds/A380_COCKPIT_PEDESTAL_KNOBS02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "2e2aefa380fe8c5ab7ea1aa4ee9c60cf5444d0cbd60a0e63278b4e47c7fa153b",
+      "size": 3656219
+    },
+    "dds/A380_COCKPIT_PEDESTAL_KNOBS02_4K_EMMIS.PNG.DDS.gz": {
+      "sha256": "e374cc8a051094ea22411f8b0d44d2e78bcce102e6fdd41551a7069cf008e5bb",
+      "size": 6015
+    },
+    "dds/A380_COCKPIT_PEDESTAL_KNOBS02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "4861d1e5cbf02eac3246e3cdb60fb5916e194ca8b8e6c3dc81e1a95e2f0090c1",
+      "size": 2704518
+    },
+    "dds/A380_COCKPIT_PEDESTAL_MISC01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "af526b7635510bc034441e1602dd0ebba4d78350372ec1de793e1404bcecb427",
+      "size": 3854251
+    },
+    "dds/A380_COCKPIT_PEDESTAL_MISC01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "5b0e2126b7b7867b0c0ae0be01cba5e87dd4988aa9c7ad23549978ddcc4ed5e3",
+      "size": 3524047
+    },
+    "dds/A380_COCKPIT_PEDESTAL_MISC01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "598bd19a9c3be2fefea6ba29d7564ba3dd1b4bcafb5ffb65bf7c2c770ef376e4",
+      "size": 2473019
+    },
+    "dds/A380_COCKPIT_PEDESTAL_SCREWS_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "fa10ae6b0713742bb83a1dd9a697cb9f118b600e30654fcc23ebbeb7b0b76100",
+      "size": 7806513
+    },
+    "dds/A380_COCKPIT_PEDESTAL_SCREWS_4K_COMP.PNG.DDS.gz": {
+      "sha256": "1afb8fde75260482688915e25d37ba5e8566451e5fd26dd972cca64d2b1e45e1",
+      "size": 3342460
+    },
+    "dds/A380_COCKPIT_PEDESTAL_SCREWS_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "25d1664603e4e734ee9430d66278d0cdbd91d5951aa075dd8b75584f893f5d8d",
+      "size": 4040520
+    },
+    "dds/A380_COCKPIT_PUSHBUTTONS01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "c900297c000f60b8969f835859e94802e0bbf5e5d644368f0e203abf443028c6",
+      "size": 3304239
+    },
+    "dds/A380_COCKPIT_PUSHBUTTONS01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "01489c0ffb02ee0b3c5f3bb1b7f81e97f226e9b03cb09c04ec7921e19faf999d",
+      "size": 3393272
+    },
+    "dds/A380_COCKPIT_PUSHBUTTONS01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "f1a3c4288d0812f76b2162c6e1557bc9b34ce465b922a3be742ccadbf0055a77",
+      "size": 2247670
+    },
+    "dds/A380_COCKPIT_RUDDER_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "fad000fd58593b53b4b7deff7345c09daa1e28714082f4066eaae632922cf570",
+      "size": 5499054
+    },
+    "dds/A380_COCKPIT_RUDDER_4K_COMP.PNG.DDS.gz": {
+      "sha256": "b4751fe957829b5f6284ab1f3065c062c81da5c2dbfa5789ac5582caee827409",
+      "size": 3358429
+    },
+    "dds/A380_COCKPIT_RUDDER_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "d9c07d671d8a4697895bfbba35ddda3af361ff37fe7fd9892035ee65ff89ed31",
+      "size": 2869618
+    },
+    "dds/A380_COCKPIT_SEATS01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "34cac4303320ca33fd1a76d4bbb88362d2f20889257cf6dccdbf222969a88fb6",
+      "size": 6008835
+    },
+    "dds/A380_COCKPIT_SEATS01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "5ca095445edcf78ee6609658cdd023f21de46b3d5853be1b529dc0d2c0c13244",
+      "size": 2766586
+    },
+    "dds/A380_COCKPIT_SEATS01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "9ad83a35d149d6beac47aa0d7f01501a95217e16aa9178c6686f01a41f33a79f",
+      "size": 2448572
+    },
+    "dds/A380_COCKPIT_SEATS02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "c5400cd2ea5f85b9781d285632766ebcbdd195907afd51eb752a470642ff7504",
+      "size": 5734090
+    },
+    "dds/A380_COCKPIT_SEATS02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "4bb23b3e742f0a9e18a916b113cd0999c54ad63a0a2c4077823886bc04da31b3",
+      "size": 12184509
+    },
+    "dds/A380_COCKPIT_SEATS02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "2620efae08ba7c2de2aa7c1a767329c8da493ec08b0862ba0ae2574d7c3fa65e",
+      "size": 3503847
+    },
+    "dds/A380_COCKPIT_SEATS03_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "ec77b207f877fe2364da9e7811c2355784f39ea7b1cd7c4e943eda453b5b8dcb",
+      "size": 3477518
+    },
+    "dds/A380_COCKPIT_SEATS03_4K_COMP.PNG.DDS.gz": {
+      "sha256": "c914b3c1fcfd4ac813dbf3f80f8d00d20b0358cc85b107ef74d19971e81fdc58",
+      "size": 11742269
+    },
+    "dds/A380_COCKPIT_SEATS03_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "e11e243ffd35d2470a4214ab5180b2c453cb3f5bd216dc42d58a77b08cbf8a9e",
+      "size": 3427949
+    },
+    "dds/A380_COCKPIT_SEATSBELT_TEXTILE_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "097e60efa8be181ff9175439718e3839c2fb3caf21d29e44869d9b2fb0b11a0c",
+      "size": 1226613
+    },
+    "dds/A380_COCKPIT_SEATSBELT_TEXTILE_4K_COMP.PNG.DDS.gz": {
+      "sha256": "6947d277a1334162887a7d65cf1f20c8381c1564a92a7eb9ba51b0dc1acbbadd",
+      "size": 2715324
+    },
+    "dds/A380_COCKPIT_SEATSBELT_TEXTILE_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "896b14873e128c4cd41c70fbc997cdc5494bf5fb73aff5546585610ece28d473",
+      "size": 3908999
+    },
+    "dds/A380_COCKPIT_SEAT_TEXTILE_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "14359c925c13aa4505ee0a6efeb91ef2af1cf84a1c7bf0dd19725aa4432b2802",
+      "size": 13557014
+    },
+    "dds/A380_COCKPIT_SEAT_TEXTILE_4K_COMP.PNG.DDS.gz": {
+      "sha256": "3298b497629364748ce13f63067ef26be8ebf6729222e3602a27cbd0b618cd38",
+      "size": 2867866
+    },
+    "dds/A380_COCKPIT_SEAT_TEXTILE_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "f2f3011f07e5187a142d8a00da16679b655b883caf37c90d07e1d14e278d8c39",
+      "size": 3908530
+    },
+    "dds/A380_COCKPIT_SIDEBOARDS01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "0303e7afc84f4e6efacba821730fc803a69c533f9ca3aff87d32cd4511361b4c",
+      "size": 10134712
+    },
+    "dds/A380_COCKPIT_SIDEBOARDS01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "42a3b42a97b006c2fabe52643c565b333ee3f2a68927a127c44ede63bc1fa4b3",
+      "size": 10975231
+    },
+    "dds/A380_COCKPIT_SIDEBOARDS01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "cc96b48d4e20f51af05a4d8d38303cc46a280f677a7509d7171abc6ad1ecce6a",
+      "size": 3940050
+    },
+    "dds/A380_COCKPIT_SIDEBOARDS02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "e76ad7efb0ac17295a43a54547daeb3ca9b7d8ec019c512af505936b9253c743",
+      "size": 5090268
+    },
+    "dds/A380_COCKPIT_SIDEBOARDS02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "83842ce42111cce4990567f396e8b3ce084e4c86cd8b9c8a6c75a81fb1941cfc",
+      "size": 11737625
+    },
+    "dds/A380_COCKPIT_SIDEBOARDS02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "dadd45d339aa85466d7919ad5d57163444935cdc211a2124157000434a8082ee",
+      "size": 3319822
+    },
+    "dds/A380_COCKPIT_SIDEWALL01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "2fa66e2dd9abf54a8c28d74ddf59eda490fd51497bf941a272365ce3a1c8b7af",
+      "size": 4632259
+    },
+    "dds/A380_COCKPIT_SIDEWALL01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "39cf0844de72edc7a3712584bfc764429d89ea6020afb4a5fd90ea1e61313685",
+      "size": 12730835
+    },
+    "dds/A380_COCKPIT_SIDEWALL01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "796952cbaa1312ed780753fc5532248c800cebd9b3d31326fda97e5b7c06f5c1",
+      "size": 3502389
+    },
+    "dds/A380_COCKPIT_SIDEWALL02_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "7691cb31d4c2fd2f0eb43a2a3d8f64033bb7b35d51bd527025a1d00307d4c436",
+      "size": 1726416
+    },
+    "dds/A380_COCKPIT_SIDEWALL02_4K_COMP.PNG.DDS.gz": {
+      "sha256": "68385eae08ce48069a1b1e9438bdff1727050a816ff443d58a23452c336aee13",
+      "size": 11189267
+    },
+    "dds/A380_COCKPIT_SIDEWALL02_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "66029172e606ccb1d0bae53b67bae08529698bec4fcbbf951fce7a997a559db8",
+      "size": 3436887
+    },
+    "dds/A380_COCKPIT_SIDEWALLS_FRONTSHIELD_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "95c29985481d3aad7558f8f2688c47c8f2d477202f29da8b79a9e30abc0ca9d5",
+      "size": 7163965
+    },
+    "dds/A380_COCKPIT_SIDEWALLS_FRONTSHIELD_4K_COMP.PNG.DDS.gz": {
+      "sha256": "47845a5b9f40819bd1005d300dea4647a988eef34c892ebb5aff03351a99af9c",
+      "size": 11389993
+    },
+    "dds/A380_COCKPIT_SIDEWALLS_FRONTSHIELD_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "c112b083d791d96ddf467017d1581df1968dc479492ae330bae4075be47edc32",
+      "size": 3350831
+    },
+    "dds/A380_COCKPIT_SIDEWALL_ISOLATIONS_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "5096e9104fccfd57d66be2ab1069368fe25b6f9bb7082395fbe46c01a0d38be7",
+      "size": 2953849
+    },
+    "dds/A380_COCKPIT_SIDEWALL_ISOLATIONS_4K_COMP.PNG.DDS.gz": {
+      "sha256": "0c89eaa167a3125e3612ff1fea9a71fd7b2eb33a76578beafc571c2a40ed4884",
+      "size": 3394202
+    },
+    "dds/A380_COCKPIT_SIDEWALL_ISOLATIONS_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "3f8ec9b8e9a694985a2609658d21acffa333ab61804042705fd9759204582aa3",
+      "size": 3904713
+    },
+    "dds/A380_COCKPIT_SIDEWALL_MISC01_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "e9b2113f3ab08395383946264689fe716ad2706377a393ab1c49c3db7ebc7cf6",
+      "size": 1940397
+    },
+    "dds/A380_COCKPIT_SIDEWALL_MISC01_4K_COMP.PNG.DDS.gz": {
+      "sha256": "98985cabffe0aa7cb8eb1006379fb702ead463c0fbdcf1d85c88f048ce6e6d3c",
+      "size": 3063659
+    },
+    "dds/A380_COCKPIT_SIDEWALL_MISC01_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "d90a5cf7c45fe72350491b739e7b908c008fc56fd9706904a5e0f051d3cde067",
+      "size": 2186269
+    },
+    "dds/A380_COCKPIT_STICKER_8K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "596a19e0eccabcb0b3e9f0bb31f1f9bba81d25f2c9933ea7d6669938b9650fbe",
+      "size": 1507989
+    },
+    "dds/A380_COCKPIT_STICKER_8K_COMP.PNG.DDS.gz": {
+      "sha256": "db2ba2dba87aa4de5ea56f403591332c626811e07360c1358450643e0fb26f0c",
+      "size": 2448245
+    },
+    "dds/A380_COCKPIT_STICKER_8K_NORMAL.PNG.DDS.gz": {
+      "sha256": "481925ad42adb4a138f0fda5119529aab36f7eea25858cd9683e064234b379fe",
+      "size": 3271437
+    },
+    "dds/A380_COCKPIT_WINDOW_STRUCTURE_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "cade16f03dc94424942b5f3404008d7c10b28f232e2ea8cfbf34494b0ee1eb80",
+      "size": 6897653
+    },
+    "dds/A380_COCKPIT_WINDOW_STRUCTURE_4K_COMP.PNG.DDS.gz": {
+      "sha256": "74b903d2b04a64ff39137a2466097ee8756c19a276064acabcde887809445055",
+      "size": 13737586
+    },
+    "dds/A380_COCKPIT_WINDOW_STRUCTURE_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "4c996e86af4bffdf7ba4753e758128e149b5cf5512f56fded152f7bb9ff80e3b",
+      "size": 1316219
+    },
+    "dds/A380_COCKPIT_WINDSHIELD_FRAME_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "67ca8c502ba096cf1860955da78215d0023c32ed20d0bed06641787c1396d00d",
+      "size": 2036788
+    },
+    "dds/A380_COCKPIT_WINDSHIELD_FRAME_4K_COMP.PNG.DDS.gz": {
+      "sha256": "242d938534e991e9b9ab2d87d281b7c395cba619ff0a79cf9a5cb594975ea699",
+      "size": 9978670
+    },
+    "dds/A380_COCKPIT_WINDSHIELD_FRAME_4K_EMMIS.PNG.DDS.gz": {
+      "sha256": "1bcde4aa9e251dd0f8bc2308006895b5732172755cfae60c5b462f1c4dd978ed",
+      "size": 17197
+    },
+    "dds/A380_COCKPIT_WINDSHIELD_FRAME_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "d3f3419c7f41ec70c53334265500e6d84bb2691cee04149e859bae2627dae598",
+      "size": 2912821
+    },
+    "dds/A380_DECAL_DOOR_ALBEDO.PNG.DDS.gz": {
+      "sha256": "301aba665ffffa691be14da161b1e2755a05eb49261aaaed90c8e66617ae364d",
+      "size": 97433
+    },
+    "dds/A380_DECAL_DOOR_NORM.PNG.DDS.gz": {
+      "sha256": "ac1006734909b5272a5b6bdd5757cb722ccb4a19cccf40e3279b276ce999f664",
+      "size": 204469
+    },
+    "dds/A380_DETAIL_RIBBON01_ALBEDO.PNG.DDS.gz": {
+      "sha256": "75fa9554935aaeea1c0b859ef9de6e70c3bdc6c73f3cbe26556d1dff385b578f",
+      "size": 1207346
+    },
+    "dds/A380_DETAIL_RIBBON01_COMP.PNG.DDS.gz": {
+      "sha256": "e5858b408266bb82a7748b5d023bdbd078bda105f402f9b343ee76360a77da56",
+      "size": 2134
+    },
+    "dds/A380_DETAIL_RIBBON01_NORMAL.PNG.DDS.gz": {
+      "sha256": "b1be3fa30ac21e57da015981924e3f9db7ab6f0cda807cb768b6d24250da46d5",
+      "size": 1294486
+    },
+    "dds/A380_EXTERIOR_ENG_CORES_LH_ALBEDO.PNG.DDS.gz": {
+      "sha256": "455bb665546d4aef31d366bbc0bb9370b8f66453aa1e3c7bf1797e218799fe95",
+      "size": 6328947
+    },
+    "dds/A380_EXTERIOR_ENG_CORES_LH_COMP.PNG.DDS.gz": {
+      "sha256": "ddd8fb2fd794a3245d3431cb015820ce3b304b616f8d26f8176f530600531b08",
+      "size": 2569410
+    },
+    "dds/A380_EXTERIOR_ENG_CORES_LH_NORM.PNG.DDS.gz": {
+      "sha256": "8aef1d9ca90d113de3d5a4023fb83806c6358f3d93e1476c8dcfafc7053e4f23",
+      "size": 3109476
+    },
+    "dds/A380_EXTERIOR_ENG_CORES_RH_ALBEDO.PNG.DDS.gz": {
+      "sha256": "b8912b55c3ec02078ccbbba9bc251e72778a912f1ca57ef6ba279cffd579d471",
+      "size": 6213828
+    },
+    "dds/A380_EXTERIOR_ENG_CORES_RH_NORM.PNG.DDS.gz": {
+      "sha256": "64a37405bd5e40dc394b578b5bc0a138f1a535f1ff5ca7fb96e0064dff51993b",
+      "size": 3573288
+    },
+    "dds/A380_EXTERIOR_ENG_LH_ALBEDO.PNG.DDS.gz": {
+      "sha256": "f5fa4e106f9f21dcd7885998528144e3013582ea74449cabd21c8cec43903f99",
+      "size": 8838659
+    },
+    "dds/A380_EXTERIOR_ENG_LH_COMP.PNG.DDS.gz": {
+      "sha256": "7a6357b52a5a6613efa6d83aee4814b657ae5ce2ed77d99102dd8cb87c3d8ffc",
+      "size": 3470459
+    },
+    "dds/A380_EXTERIOR_ENG_LH_NORM.PNG.DDS.gz": {
+      "sha256": "0c2bf76b6a53abad5d6755c522db1d15bb638d26f9c30afd5765ff1af47a89bc",
+      "size": 3106021
+    },
+    "dds/A380_EXTERIOR_ENG_RH_ALBEDO.PNG.DDS.gz": {
+      "sha256": "65767c6510d3538746494103e3e18f2fa73adfcc78add3b13dfc79afd0a91db7",
+      "size": 8984546
+    },
+    "dds/A380_EXTERIOR_ENG_RH_COMP.PNG.DDS.gz": {
+      "sha256": "5e16ac4cc5f25b92ebda9ff0e82d98590e3ace4240c8fab523462fd8d04889ea",
+      "size": 3454148
+    },
+    "dds/A380_EXTERIOR_ENG_RH_NORM.PNG.DDS.gz": {
+      "sha256": "1a258b3689b9c9ef8c91d1efa4f33a621dc8b5ae8845077453cca9e3bc103132",
+      "size": 3068414
+    },
+    "dds/A380_EXTERIOR_ICE_BASECOLOR.PNG.DDS.gz": {
+      "sha256": "27b567b03f9fa506d2e113a086d97807fbc1478313dd7b387e24ac5c6d7b8355",
+      "size": 2815180
+    },
+    "dds/A380_EXTERIOR_ICE_EMISSION.PNG.DDS.gz": {
+      "sha256": "b1d7a446ae08bd16ad4abe7c68e76a5b496dffaf6c046f53918f91d7d9dc21b6",
+      "size": 797717
+    },
+    "dds/A380_EXTERIOR_ICE_NORMAL.PNG.DDS.gz": {
+      "sha256": "230bc5a864fbab2d3ad0d76fd0240dadd46d27eaa3ec0fe0ca0a05b54f40fa1c",
+      "size": 3025707
+    },
+    "dds/A380_EXTERIOR_ICE_OCCLUSIONROUGHNESSMETALLIC.PNG.DDS.gz": {
+      "sha256": "73a24a6cf25008050b3a36457103ab387180d8dd038a55959ba4e51131c69f83",
+      "size": 693948
+    },
+    "dds/A380_EXTERIOR_MISC_ALBEDO.PNG.DDS.gz": {
+      "sha256": "40fad05d8c75fc71727ad24bed2aacba5fc9976b8550a7465e6c830e449a7376",
+      "size": 64
+    },
+    "dds/A380_EXTERIOR_MISC_COMP.PNG.DDS.gz": {
+      "sha256": "6ae3e3ea44d411ac301354b796273b0dd10f12a6a83baf96c82c7260ce713536",
+      "size": 60160
+    },
+    "dds/A380_EXTERIOR_MISC_NORMAL.PNG.DDS.gz": {
+      "sha256": "a5e0ef55fc93c67b8ec2eef1c14562af916261f8a1a5f2a3f9d072e2ac2934c0",
+      "size": 392163
+    },
+    "dds/A380_EXTERIOR_NLG_ALBEDO.PNG.DDS.gz": {
+      "sha256": "e2b91d6aacad483b9abd3047ae24d475afb6caf4bf762c4bb3226624f82d24bf",
+      "size": 8898917
+    },
+    "dds/A380_EXTERIOR_NLG_METAL.PNG.DDS.gz": {
+      "sha256": "e2890ed20da7ea7655ccde600c810b98dfb13a4bf9a2fbd9c5e4572c955f36d1",
+      "size": 3532259
+    },
+    "dds/A380_EXTERIOR_NLG_NORMAL.PNG.DDS.gz": {
+      "sha256": "651ee51de604477ce2cdca32f3d7adf7ffeafe8ef397bd2c3a5839cc9217102f",
+      "size": 1008649
+    },
+    "dds/A380_EXTERIOR_WING1_2_ALBEDO.PNG.DDS.gz": {
+      "sha256": "854de9fcd4795b9a63754e993f02958de639a68243f02e8230bb1bb5b6417bc5",
+      "size": 11524915
+    },
+    "dds/A380_EXTERIOR_WING1_2_COMP.PNG.DDS.gz": {
+      "sha256": "f12b92ce1f87e2463213ed2f2ee4ec4fd0bf0fd44a01d5bd4d418c0d7d5c08e4",
+      "size": 13013744
+    },
+    "dds/A380_EXTERIOR_WING1_2_NORM.PNG.DDS.gz": {
+      "sha256": "60b4803126a9d0e90c527562491abe9eb82bc7bba277ff244381bed2dcf4edb1",
+      "size": 1473397
+    },
+    "dds/A380_EXTERIOR_WING1_ALBEDO.PNG.DDS.gz": {
+      "sha256": "7432f157fc09a295bffb3e0b786c745ea62ab86da8e6c8f794913401d3be79e9",
+      "size": 10503440
+    },
+    "dds/A380_EXTERIOR_WING1_COMP.PNG.DDS.gz": {
+      "sha256": "f3756b989fde8cea662fc860561a9be27c633bee617c7870f68679d3b7e03633",
+      "size": 11981143
+    },
+    "dds/A380_EXTERIOR_WING1_NORM.PNG.DDS.gz": {
+      "sha256": "a00e91c1950a54d637e13811fb9719b4326b9d24ad9071dce288591dc1fb6c9a",
+      "size": 973357
+    },
+    "dds/A380_EXTERIOR_WING2_2_ALBEDO.PNG.DDS.gz": {
+      "sha256": "5671dcea3e436b756a670464a548d48ed85c545835a48e38fd671a5969634e97",
+      "size": 12045540
+    },
+    "dds/A380_EXTERIOR_WING2_2_COMP.PNG.DDS.gz": {
+      "sha256": "f244071829eb39ee9b001c115d49eb3e23840e33237c67b981f2877eda3ae262",
+      "size": 13157926
+    },
+    "dds/A380_EXTERIOR_WING2_2_NORM.PNG.DDS.gz": {
+      "sha256": "09edb9c5dacf1a1fe13e0c9e2c8fdd46c76203e0ec7c411c286c53858c940996",
+      "size": 1528193
+    },
+    "dds/A380_EXTERIOR_WING2_ALBEDO.PNG.DDS.gz": {
+      "sha256": "6712b4825e97f1f1b44e88f10017c2adf1cc9987e5ea89f536d627937aac6216",
+      "size": 10461821
+    },
+    "dds/A380_EXTERIOR_WING2_COMP.PNG.DDS.gz": {
+      "sha256": "721a1dbf0f2d77439c437b51d496e3520f1fec9fded1adbf9f866283ef4f281f",
+      "size": 11789622
+    },
+    "dds/A380_EXTERIOR_WING2_NORM.PNG.DDS.gz": {
+      "sha256": "9ad900c222ffb01972d5eb14fe02241e71ef75bd5830179f4cade3fbbafccb01",
+      "size": 946043
+    },
+    "dds/A380_EXTERTIOR_FAN_ALBEDO.PNG.DDS.gz": {
+      "sha256": "d772fc2b0f13905efe06238a64c1ae6e1fa52faf65713b9ce302cce4c39b979e",
+      "size": 3508794
+    },
+    "dds/A380_EXTERTIOR_FAN_COMP.PNG.DDS.gz": {
+      "sha256": "9555c5df6f8b7debd5d302eddbc55ef6b4c96cba7c96c030d36d0a643e6dae58",
+      "size": 1658289
+    },
+    "dds/A380_EXTERTIOR_FAN_NORM.PNG.DDS.gz": {
+      "sha256": "4745526ef90a167b5a373852af47bd9849bf01a74cfd03c9e3b40daea34ba603",
+      "size": 3089311
+    },
+    "dds/A380_EXTERTIOR_PYLON_ALBEDO.PNG.DDS.gz": {
+      "sha256": "bbd3af94a447fd35a13a5d821ff0add32bb6953126239b04d3bd76fadbec29f6",
+      "size": 11712229
+    },
+    "dds/A380_EXTERTIOR_PYLON_COMP.PNG.DDS.gz": {
+      "sha256": "a3bbc46532f46c0ed22968c9951321ad98222140aa8add97f1c887900eaf48bb",
+      "size": 12724931
+    },
+    "dds/A380_EXTERTIOR_PYLON_NORM.PNG.DDS.gz": {
+      "sha256": "52cbaa34084742f688dcdc4f6b0e9472427cc77d9167c27466a90ce22e9a33ef",
+      "size": 7224847
+    },
+    "dds/A380_PAX_WINDOW_ALBEDO.PNG.DDS.gz": {
+      "sha256": "cf8d07771832e8f38a8d61cb3aada453da1936efddac8bf65847b69917539e2c",
+      "size": 77072
+    },
+    "dds/A380_PAX_WINDOW_COMP.PNG.DDS.gz": {
+      "sha256": "a503fea2cd15a0632fd2844cff99167dfccff07a5a12c48e2306b683dd68865a",
+      "size": 5262528
+    },
+    "dds/A380_PAX_WINDOW_NORM.PNG.DDS.gz": {
+      "sha256": "cf866318b809f2de9c586cb31f61bb9b3ae708395925f044a09e97987720d7f8",
+      "size": 65082
+    },
+    "dds/A380_SUITES_STAIRS_ALBEDO.PNG.DDS.gz": {
+      "sha256": "af79078cd1e6f755bdaf9b219a4aa6f8519b13082a590d2ec025ad540463e158",
+      "size": 9575023
+    },
+    "dds/A380_SUITES_STAIRS_COMP.PNG.DDS.gz": {
+      "sha256": "e57e55f4a12b1d9c9cacfd32fce52a7b9548bc5cc4f019e28ebd45032ed3797c",
+      "size": 2973856
+    },
+    "dds/A380_SUITES_STAIRS_EMIS.PNG.DDS.gz": {
+      "sha256": "a02f7c61493b1fa45e75263a961991fe70e190845a1bbf4fd503ca1a12c4fe89",
+      "size": 2582976
+    },
+    "dds/A380_SUITES_STAIRS_NORM.PNG.DDS.gz": {
+      "sha256": "767341fc7e23ab129083e24426a2cc939ef6c20a0bb243377f407a16691d95cd",
+      "size": 647000
+    },
+    "dds/A380_SUNSHADES_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "3146e579d4ff9b3dd16c4e84f634bb4f4b872da854cafe6a83f184cbb016bafe",
+      "size": 447953
+    },
+    "dds/A380_SUNSHADES_4K_COMP.PNG.DDS.gz": {
+      "sha256": "436e33190ae92d1bee5d929de35374a2ffd3c16ec002e2c6298f4a2854e69497",
+      "size": 3667569
+    },
+    "dds/A380_SUNSHADES_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "b096b0319d3d78d5dfbe8443b5b75c44982d5ad303d81f45b5bdb242a4752d9b",
+      "size": 1486139
+    },
+    "dds/A380_WINDSHIELD_ALBEDO.PNG.DDS.gz": {
+      "sha256": "d081e8001aa840479a15ec417949363144ad4c71bf8a6ce547fb4fe3fb534374",
+      "size": 8189453
+    },
+    "dds/A380_WINDSHIELD_DETAIL_SCRATCH_COMP.PNG.DDS.gz": {
+      "sha256": "21fda7ecc23a9b05fe96a2756761c3ce0c20170bedb2bc30a8389b2cd925572b",
+      "size": 149826
+    },
+    "dds/A380_WINDSHIELD_DETAIL_SCRATCH_NORMAL.PNG.DDS.gz": {
+      "sha256": "ac6850300c6e3c35dd7d779efaa5805b216261725b827290dff3b761a07f3955",
+      "size": 32643
+    },
+    "dds/A380_WINDSHIELD_FRONT_GLASS_ALBEDO.PNG.DDS.gz": {
+      "sha256": "09c432530bc5df693f2862213406c4597682661c518062cf348a28ed69ce9de5",
+      "size": 1121729
+    },
+    "dds/A380_WINDSHIELD_FRONT_GLASS_COMP.PNG.DDS.gz": {
+      "sha256": "de9f7b8bbaa37282ffc39544d6491e99a91a295c3a61b71ea8ae3bf35d3c6e9d",
+      "size": 1675546
+    },
+    "dds/A380_WINDSHIELD_NORMAL.PNG.DDS.gz": {
+      "sha256": "60b097cf570b1a28819d24832d83d340b1c12e89b4c836684e5a64664aab546e",
+      "size": 192730
+    },
+    "dds/CARGO_FWD.PNG.DDS.gz": {
+      "sha256": "c2b588f8304809ef25893f6b9886f68321a9c2b8d1a289d107d4e7b0c2b0a29d",
+      "size": 6080208
+    },
+    "dds/CARGO_FWD_COMP.PNG.DDS.gz": {
+      "sha256": "294cbf9e4b04911585cd3da76de6a562256c12a14c0d6407c6e9e3f3444a6344",
+      "size": 5415685
+    },
+    "dds/CARGO_FWD_NML.PNG.DDS.gz": {
+      "sha256": "c832cdf2824acd0882d99d522935d5a66842fd2ccc934729b24d213a009e501c",
+      "size": 848122
+    },
+    "dds/COCKPIT_FLOOR_PANELS_DETAIL_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "1b97a158081f2a15d46fb277bc2b13b0cbf50be33c5bbd1d2d02c49b6404b35e",
+      "size": 1137464
+    },
+    "dds/COCKPIT_FLOOR_PANELS_DETAIL_4K_COMP.PNG.DDS.gz": {
+      "sha256": "e2c71f8dbe88242d7f21cf18e7b3e677bd77cd3b4c7d7f67e940d2cefe86a53c",
+      "size": 10980
+    },
+    "dds/COCKPIT_FLOOR_PANELS_DETAIL_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "61f607dac7eb93fefc485e5a45aba4a812426e6951a10e2ac20e3db6bf9ba3f8",
+      "size": 2281800
+    },
+    "dds/DECAL_COCKPIT.PNG.DDS.gz": {
+      "sha256": "648178aa3cdef535f630058577cf855eec79666fed638c21eafd5f3959bfc5e9",
+      "size": 450644
+    },
+    "dds/DECAL_COCKPIT_NORMAL.PNG.DDS.gz": {
+      "sha256": "595e324c36243875ff23b37a7f94890b1129c931445881c946f9e1417f45a94b",
+      "size": 11498449
+    },
+    "dds/ENGINE_BLUR1_ALBEDO.PNG.DDS.gz": {
+      "sha256": "d601323201df0e2305e2f54555bcd8f40e36c707b9f41f0aac2006486e1320dc",
+      "size": 2712362
+    },
+    "dds/ENGINE_BLUR1_COMP.PNG.DDS.gz": {
+      "sha256": "f2dffef7005af7500db9553ff0f1cf845a5cae662703b11b7fd138eae292f25e",
+      "size": 4042160
+    },
+    "dds/ENGINE_BLUR2_ALBEDO.PNG.DDS.gz": {
+      "sha256": "c7425c1a212234f026801fb4ea808485c48afed179326c09ca81c783752bde0e",
+      "size": 1512113
+    },
+    "dds/ENGINE_BLUR2_COMP.PNG.DDS.gz": {
+      "sha256": "59abf05c9a540a17f224aa4065a15920b3ed7ea637d59eb99a08b79f751e035b",
+      "size": 9007417
+    },
+    "dds/ENGINE_BLUR3_ALBEDO.PNG.DDS.gz": {
+      "sha256": "b4af1ddf5df496aedd31f2a4925ae35e131ca7d11438a982b96a179256a5a298",
+      "size": 1834625
+    },
+    "dds/ENGINE_BLUR3_COMP.PNG.DDS.gz": {
+      "sha256": "ef4d64b69adb718b4471d88fc960e5c28aa1496455dcc64ccf70444bb3aa212a",
+      "size": 7836092
+    },
+    "dds/ENGINE_BLUR4_ALBEDO.PNG.DDS.gz": {
+      "sha256": "ea0106cc24a889d8eefcffe10a6b3846fd7dbf9190fca9b1291e3005e3e49470",
+      "size": 1840401
+    },
+    "dds/ENGINE_BLUR4_COMP.PNG.DDS.gz": {
+      "sha256": "0cce3a9cb046e5a9f74d0f6a6da1e168b29c393564cdad96d9ffd896053efd1b",
+      "size": 7305234
+    },
+    "dds/FWD CARGO DECALS.PNG.DDS.gz": {
+      "sha256": "1484f886ec43b0ec78e97124b0a8aafeb93f8836855673bbdee479db30b98cdd",
+      "size": 139990
+    },
+    "dds/LIGHT_OVHD_CHECKED_ALBEDO.PNG.DDS.gz": {
+      "sha256": "1e7126b2457f52eb6c96a99e9ded8df6f04150f3b1a70a9d05ddedc58971e479",
+      "size": 349396
+    },
+    "dds/LIGHT_OVHD_CHECKED_COMP.PNG.DDS.gz": {
+      "sha256": "f4de97b91e6e95519fd52d1d7512abdd151b14694a96398079dac88e1eed8b43",
+      "size": 1367710
+    },
+    "dds/LIGHT_OVHD_CHECKED_EMISSIVE.PNG.DDS.gz": {
+      "sha256": "926faebd488d08ffaa9943a01ce32d238e675c3d20990bcfca1e61eb61e08213",
+      "size": 954107
+    },
+    "dds/LIGHT_OVHD_CHECKED_NORMAL.PNG.DDS.gz": {
+      "sha256": "7e54015f6c319e1d56857f5ba21226203d3640567fbd1a8614ad4ae83418d2c6",
+      "size": 5470
+    },
+    "dds/MIKES_CABLES_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "dd8ab0471d9168d123440c988c043802f49e8f7dc451e972ce42dbdfa33b5f25",
+      "size": 6764844
+    },
+    "dds/MIKES_CABLES_4K_COMP.PNG.DDS.gz": {
+      "sha256": "9820a54a367ce6d9072bc7701d6abb99208c4ec10240d26d57d0582dce5144ac",
+      "size": 738552
+    },
+    "dds/MIKES_CABLES_4K_EMMIS.PNG.DDS.gz": {
+      "sha256": "24cc92bfb9f2c9ea371702b5c2750fd36635b0b1f349beb1a615d5e1ce05931f",
+      "size": 1332780
+    },
+    "dds/MIKES_CABLES_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "72870d42351df4f8582bd415e1b2ff5db9888ab1f17b6649e30189f957618e4a",
+      "size": 3669576
+    },
+    "dds/MISC_ALBEDO.PNG.DDS.gz": {
+      "sha256": "16933b30878254e56d67e2cc95f937d97869993abb58f21dddb7b586df41f09b",
+      "size": 7967098
+    },
+    "dds/MISC_COMP.PNG.DDS.gz": {
+      "sha256": "a953beefb076385df2ab8ce7e87b93df92e03a56185652fbc5f17b23b73304fa",
+      "size": 2690512
+    },
+    "dds/MISC_NORM.PNG.DDS.gz": {
+      "sha256": "73bcde71ae97510ec6fd7290d969f1b54d281f85d9aad67fdb07c6cec4b46a48",
+      "size": 3399367
+    },
+    "dds/PUSH_BASE_ALBEDO.PNG.DDS.gz": {
+      "sha256": "c410c911f86eeda514e355baf1849233ef12f887fcf01a708625696ecb537e35",
+      "size": 5843362
+    },
+    "dds/PUSH_BASE_METAL.PNG.DDS.gz": {
+      "sha256": "d38169c1acfa2e0da7034a213dc2ad713b52db2b3a4c7a7e5f69c54d37638a6f",
+      "size": 4531301
+    },
+    "dds/PUSH_BASE_NORMAL.PNG.DDS.gz": {
+      "sha256": "63f3ad05ea2388c7fc3dab398486364b3fe653cf2c2d81577d00f92bfd94c7d8",
+      "size": 2537219
+    },
+    "dds/PUSH_TEXT_EMIS.PNG.DDS.gz": {
+      "sha256": "df4ddad7e223b055590412495881e8d1985b4100d808355d7c47d108a142ede4",
+      "size": 1358328
+    },
+    "dds/RAT_BLUR_3.PNG.DDS.gz": {
+      "sha256": "1c6ecc075e23e6e01426d857d95833b50c260849bcf390a798df33816bbb9da1",
+      "size": 217267
+    },
+    "dds/RUDDER_CABLES_4K_ALBEDO.PNG.DDS.gz": {
+      "sha256": "0e1e135ee604af2a13ebabfd9f8f9f1d4970b39fd104d6eba984fe66dcce6431",
+      "size": 6548300
+    },
+    "dds/RUDDER_CABLES_4K_COMP.PNG.DDS.gz": {
+      "sha256": "934ee68db1ffb6bc6d6f5897dcf5e76e561d8bf118337ed1de16b49810af89b9",
+      "size": 2542545
+    },
+    "dds/RUDDER_CABLES_4K_NORMAL.PNG.DDS.gz": {
+      "sha256": "7d4bdb4a1477579364a087c023c96f02bb46d7d547a06dd5a377d0a5477059f9",
+      "size": 3216430
+    },
+    "dds/SCREEN_EMISSIVE.PNG.DDS.gz": {
+      "sha256": "4ed2088b1ced3ccafb385d5a61eccc932a80775a2d1e253acfcfcfe2355369d6",
+      "size": 1469849
+    },
+    "dds/TIRES_ALB.PNG.DDS.gz": {
+      "sha256": "0358ce915979a862ee28e9b67b25425e19779bf8f76552619fff67bbc5dcaba4",
+      "size": 14999797
+    },
+    "dds/TIRES_COMP.PNG.DDS.gz": {
+      "sha256": "487db9157540f6e3ac8b9acd37c009f98f5207f65aae711c752c99ebc2c8cf6c",
+      "size": 13830159
+    },
+    "dds/TIRES_NML.PNG.DDS.gz": {
+      "sha256": "f6cf7e80b8c8aed51e3f87d08ecff71d7f6077f19881bc10d92580912237d90f",
+      "size": 2835716
+    },
+    "geometry-manifest.json.gz": {
+      "sha256": "fc9e53c71038fefd04dc2dfc2f6c4d1c5448347e4b54a54c0c0d2d706167d743",
+      "size": 6367
+    },
+    "geometry-verification.json.gz": {
+      "sha256": "b21e2fab2fb8fdeea32604359f68811b6a940d27a38ff6090f7224ee7c01e913",
+      "size": 1276
+    },
+    "manifest.json.gz": {
+      "sha256": "ab1728949e37966ac1bcf85d1e6efe7a193783b286f939fe2499321cf642c70c",
+      "size": 27875
+    },
+    "native-manifest.json.gz": {
+      "sha256": "4c18798303f60b786cbca7f42af1c84630ca03fe27c98b608c2bc0ac60881156",
+      "size": 19929
+    },
+    "source-fidelity-verification.json.gz": {
+      "sha256": "2a985caa7e21bf63bc0b06cf034f9a323080c3b68c54fe928ad3677c3a86fd78",
+      "size": 489
+    },
+    "transport.json": {
+      "sha256": "3b92d0a7947a20dc0d82060bf0150867548eecbdc1aa092be9a2915ada850dd2",
+      "size": 380765
+    }
+  }
+}

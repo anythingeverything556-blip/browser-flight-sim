@@ -1,0 +1,1007 @@
+import * as THREE from 'three';
+import { weatherPanelCanvas } from './cockpitwear.js';
+
+const kl = 2048,
+  ea = 1152,
+  ki = Math.PI / 180,
+  Ki = 'Arial Narrow, Arial, Helvetica, sans-serif',
+  Us = (s, t, e) => Math.min(e, Math.max(t, s)),
+  It = {
+    kias: {
+      x: 195,
+      y: 300,
+      r: 150,
+      min: 0,
+      max: 600,
+      a0: -150,
+      a1: 150,
+      major: 50,
+      minor: 10,
+      labelEvery: 100,
+      title: 'KIAS',
+      arcs: [[450, 600, '#d22']],
+    },
+    g: {
+      x: 150,
+      y: 630,
+      r: 108,
+      min: -2,
+      max: 6,
+      a0: -135,
+      a1: 135,
+      major: 1,
+      minor: 0.5,
+      labelEvery: 1,
+      title: 'G',
+      arcs: [[3.5, 6, '#d22']],
+    },
+    aoa: {
+      x: 415,
+      y: 630,
+      r: 108,
+      min: 0,
+      max: 25,
+      a0: -135,
+      a1: 135,
+      major: 5,
+      minor: 1,
+      labelEvery: 5,
+      title: 'AOA',
+      unit: 'DEG',
+      arcs: [
+        [14, 18, '#e9a01c'],
+        [18, 25, '#d22'],
+      ],
+    },
+    clock: {
+      x: 150,
+      y: 905,
+      r: 96,
+      min: 0,
+      max: 12,
+      a0: 0,
+      a1: 360,
+      major: 1,
+      minor: 0.2,
+      labelEvery: 1,
+      title: '',
+      skipMax: !0,
+    },
+    fuel: {
+      x: 415,
+      y: 905,
+      r: 96,
+      min: 0,
+      max: 80,
+      a0: -135,
+      a1: 135,
+      major: 10,
+      minor: 5,
+      labelEvery: 20,
+      title: 'FUEL',
+      unit: 'LB x1000',
+      arcs: [[0, 5.5, '#d22']],
+    },
+    alt: {
+      x: 1415,
+      y: 270,
+      r: 135,
+      min: 0,
+      max: 10,
+      a0: 0,
+      a1: 360,
+      major: 1,
+      minor: 0.2,
+      labelEvery: 1,
+      title: 'ALT',
+      skipMax: !0,
+    },
+    vvi: { x: 1415, y: 565, r: 118 },
+    rpmL: {
+      x: 1690,
+      y: 235,
+      r: 88,
+      min: 0,
+      max: 110,
+      a0: -135,
+      a1: 135,
+      major: 10,
+      minor: 5,
+      labelEvery: 20,
+      title: 'RPM',
+      unit: '%',
+      arcs: [[100, 110, '#d22']],
+    },
+    rpmR: {
+      x: 1920,
+      y: 235,
+      r: 88,
+      min: 0,
+      max: 110,
+      a0: -135,
+      a1: 135,
+      major: 10,
+      minor: 5,
+      labelEvery: 20,
+      title: 'RPM',
+      unit: '%',
+      arcs: [[100, 110, '#d22']],
+    },
+    egtL: {
+      x: 1690,
+      y: 440,
+      r: 88,
+      min: 0,
+      max: 1e3,
+      a0: -135,
+      a1: 135,
+      major: 100,
+      minor: 50,
+      labelEvery: 200,
+      title: 'EGT',
+      unit: '°C',
+      arcs: [[860, 1e3, '#d22']],
+    },
+    egtR: {
+      x: 1920,
+      y: 440,
+      r: 88,
+      min: 0,
+      max: 1e3,
+      a0: -135,
+      a1: 135,
+      major: 100,
+      minor: 50,
+      labelEvery: 200,
+      title: 'EGT',
+      unit: '°C',
+      arcs: [[860, 1e3, '#d22']],
+    },
+    nozL: {
+      x: 1690,
+      y: 628,
+      r: 72,
+      min: 0,
+      max: 100,
+      a0: -120,
+      a1: 120,
+      major: 25,
+      minor: 12.5,
+      labelEvery: 50,
+      title: 'NOZ',
+      unit: '% OPEN',
+    },
+    nozR: {
+      x: 1920,
+      y: 628,
+      r: 72,
+      min: 0,
+      max: 100,
+      a0: -120,
+      a1: 120,
+      major: 25,
+      minor: 12.5,
+      labelEvery: 50,
+      title: 'NOZ',
+      unit: '% OPEN',
+    },
+    cit: {
+      x: 1805,
+      y: 1048,
+      r: 82,
+      min: -50,
+      max: 450,
+      a0: -135,
+      a1: 135,
+      major: 50,
+      minor: 25,
+      labelEvery: 100,
+      title: 'CIT',
+      unit: '°C',
+      arcs: [[427, 450, '#d22']],
+    },
+  },
+  li = (s, t) => (s.a0 + ((Us(t, s.min, s.max) - s.min) / (s.max - s.min)) * (s.a1 - s.a0)) * ki,
+  vm = (s) => (-90 + Math.sign(s) * 165 * Math.sqrt(Math.min(1, Math.abs(s) / 6e3))) * ki;
+// ---- dense field of small gauges: the real panel is packed with 1.5-inch dials beside the big ones. They go in the free strips beside the attitude
+// indicator and compass and in the bottom corners; every needle follows the simulation (tank quantities, hydraulics, temperatures, spikes...) ----
+const oatC = (ft) => 15 - 6.5 * Math.min(11, Math.max(0, ft * 0.0003048));
+const G = (label, min, max, red, v) => ({ label, min, max, red, v, a0: -135, a1: 135, r: 27 });
+const MINI_L = [
+  ...[0, 1, 2, 3, 4, 5].map((i) => G('T' + (i + 1), 0, 16, [0, 1.2], (st) => st.fuelTanksLb[i] / 1000)),
+  G('OL', 0, 100, [0, 10], (st) => st.oilPressurePsi[0]), G('OR', 0, 100, [0, 10], (st) => st.oilPressurePsi[1]),
+  G('HL', 0, 4, [0, 2], (st) => st.hydraulicPressureKpsi[0]), G('HR', 0, 4, [0, 2], (st) => st.hydraulicPressureKpsi[1]),
+  G('AMP', 0, 400, [350, 400], (st) => st.busCurrentA), G('VLT', 0, 30, [0, 22], (st) => st.busVoltageV),
+];
+const MINI_R = [
+  G('CAB', 0, 50, [35, 50], (st) => st.cabinAltitudeFt / 1000), G('dP', 0, 6, [5.2, 6], (st) => st.differentialPressurePsi),
+  G('OAT', -80, 40, [30, 40], (st) => oatC(st.altFt)), G('OTL', 0, 150, [110, 150], (st) => st.oilTemperatureC[0]),
+  G('OTR', 0, 150, [110, 150], (st) => st.oilTemperatureC[1]), G('F-T', -80, 80, [50, 80], (st) => st.fuelTemperatureC),
+  G('SPL', 0, 26, [0, 0], (st) => st.spikeIn || 0), G('SPR', 0, 26, [0, 0], (st) => st.spikeIn || 0),
+  G('BPL', 0, 100, [90, 100], (st) => (st.bypass ? st.bypass[0] : 0)), G('BPR', 0, 100, [90, 100], (st) => (st.bypass ? st.bypass[1] : 0)),
+  G('NZL', 0, 100, [0, 0], (st) => (st.noz ? st.noz[0] : 0)), G('NZR', 0, 100, [0, 0], (st) => (st.noz ? st.noz[1] : 0)),
+  G('OXY', 0, 100, [0, 20], (st) => st.oxygenQuantityPct),
+];
+const MINI_C = [ // bottom corners of the engine facet
+  G('AOA', 0, 25, [18, 25], (st) => st.aoaDeg), G('MCH', 0, 3.5, [3.3, 3.5], (st) => st.mach), G('FF', 0, 80, [0, 0], (st) => (st.ff ? (st.ff[0] + st.ff[1]) / 1000 : 0)), G('ALT', 0, 100, [85, 100], (st) => st.altFt / 1000),
+  G('PCH', -20, 20, [0, 0], (st) => (st.pitch || 0) * 57.3), G('BNK', -60, 60, [45, 60], (st) => (st.bank || 0) * 57.3), G('VS', -6, 6, [0, 0], (st) => st.vsFpm / 1000), G('KEA', 0, 600, [450, 600], (st) => st.kias),
+];
+const place = (list, xs, y0, pitch) => list.map((m, i) => ({ ...m, x: xs[i % xs.length], y: y0 + pitch * Math.floor(i / xs.length) }));
+const MINI = [
+  ...place(MINI_L, [622], 168, 71), ...place(MINI_R, [1221], 168, 65),
+  ...place([...MINI_C.slice(0, 4)], [1627, 1687], 1005, 62).map((m, i) => ({ ...m, x: [1627, 1687, 1627, 1687][i], y: [1005, 1005, 1067, 1067][i] })),
+  ...place([...MINI_C.slice(4)], [1925, 1985], 1005, 62).map((m, i) => ({ ...m, x: [1925, 1985, 1925, 1985][i], y: [1005, 1005, 1067, 1067][i] })),
+];
+
+// 3/4 of the logical 2048x1152 panel: needles and digits stay crisp (a 512x288 layer was visibly soft), and an upload is 5.3 MB at most 20 times a second
+const DYNAMIC_W = 1536, DYNAMIC_H = 864;
+// The whole 1536x864 overlay was redrawn and re-uploaded up to 20 times a second in flight (the change gate never skips: some needle always moves).
+// Now only the attitude and heading displays, which must look smooth, are redrawn at that rate, into a small canvas of just the centre column
+// (FAST_RECT, panel pixels); everything else is redrawn at most SLOW_HZ. The panel shader shows the fast canvas inside the rect, the full one elsewhere.
+const FAST_RECT = { x0: 688, y0: 124, x1: 1152, y1: 1100 }, SLOW_HZ = 6; // multiples of 4: whole pixels at the 0.75 overlay scale
+const FAST_W = Math.round((FAST_RECT.x1 - FAST_RECT.x0) * DYNAMIC_W / 2048), FAST_H = Math.round((FAST_RECT.y1 - FAST_RECT.y0) * DYNAMIC_H / 1152);
+// limits of the game's own WebGL context, handed over by main.js (setPanelHardware). Probing them with a throwaway context cost 3.7 s of a 15.7 s
+// SwiftShader boot (a second GL context on the GPU, the third counting boot.js's check); the probe stays only as the fallback.
+let hwLimits = null;
+export const setPanelHardware = (hw) => { hwLimits = hw; };
+function panelHardware() {
+  if (hwLimits) return hwLimits;
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+    if (!gl) return { maxTextureSize: 2048, maxAnisotropy: 8 };
+    const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
+    const ext = gl.getExtension('EXT_texture_filter_anisotropic') || gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic') || gl.getExtension('MOZ_EXT_texture_filter_anisotropic');
+    const maxAnisotropy = ext ? gl.getParameter(ext.MAX_TEXTURE_MAX_ANISOTROPY_EXT) : 1;
+    gl.getExtension('WEBGL_lose_context')?.loseContext();
+    return { maxTextureSize, maxAnisotropy };
+  } catch {
+    return { maxTextureSize: 2048, maxAnisotropy: 8 };
+  }
+}
+
+const panelSignature = (state) => JSON.stringify(state, (key, value) => {
+  if (typeof value !== 'number') return value;
+  if (key === 'flightTime') return undefined;
+  if (key === 'hour') return Math.round(value * 3600);
+  return Math.round(value * 2) / 2;
+});
+
+const q = (v, step) => (Number.isFinite(v) ? Math.round(v / step) : v);
+const fastSignature = (t) => { const n = t.nav || {};
+  return `${q(t.pitch, 0.002)}|${q(t.bank, 0.002)}|${q(t.hdg, 0.1)}|${q(t.slip, 0.0002)}|${q(t.fdPitch, 0.002)}|${q(t.fdRoll, 0.002)}|${t.apOn}|${t.apHdgOn}|${q(t.apHdg, 1)}|`
+    + `${n.valid}|${n.ilsValid}|${n.ident}|${q(n.course, 0.5)}|${q(n.brgDeg, 0.5)}|${q(n.distNm, 0.1)}|${q(n.gsDev, 0.01)}|${q(n.locDev, 0.01)}|${q(n.xtkNm, 0.01)}`; };
+
+class CockpitPanel {
+  constructor() {
+    const hw = panelHardware();
+    this.staticScale = hw.maxTextureSize >= 4096 ? 2 : 1;
+    this.canvas = document.createElement('canvas');
+    this.canvas.width = DYNAMIC_W;
+    this.canvas.height = DYNAMIC_H;
+    this.ctx = this.canvas.getContext('2d');
+    this.dynamicTexture = new THREE.CanvasTexture(this.canvas);
+    this.dynamicTexture.colorSpace = THREE.SRGBColorSpace;
+    this.dynamicTexture.minFilter = THREE.LinearFilter;
+    this.dynamicTexture.magFilter = THREE.LinearFilter;
+    this.dynamicTexture.generateMipmaps = false;
+    this.fastCanvas = document.createElement('canvas'); this.fastCanvas.width = FAST_W; this.fastCanvas.height = FAST_H;
+    this.fastCtx = this.fastCanvas.getContext('2d');
+    this.fastTexture = new THREE.CanvasTexture(this.fastCanvas);
+    this.fastTexture.colorSpace = THREE.SRGBColorSpace; this.fastTexture.minFilter = THREE.LinearFilter; this.fastTexture.magFilter = THREE.LinearFilter; this.fastTexture.generateMipmaps = false;
+    // the rect in panel UV (CanvasTexture flips y): u0, v0, u1, v1
+    this.fastRect = new THREE.Vector4(FAST_RECT.x0 / kl, 1 - FAST_RECT.y1 / ea, FAST_RECT.x1 / kl, 1 - FAST_RECT.y0 / ea);
+    this.lastSlowAt = -Infinity; this.slowDt = 0; this.fastDt = 0; this.fastKey = ''; this.fastUntil = 0; this.uploads = { fast: 0, slow: 0, bytes: 0 };
+
+    this.bg = document.createElement('canvas');
+    this.bg.width = kl * this.staticScale;
+    this.bg.height = ea * this.staticScale;
+    const staticCtx = this.bg.getContext('2d');
+    staticCtx.scale(this.staticScale, this.staticScale);
+    this.drawStatic(staticCtx);
+    weatherPanelCanvas(staticCtx, kl, ea);
+    this.texture = new THREE.CanvasTexture(this.bg);
+    this.texture.colorSpace = THREE.SRGBColorSpace;
+    this.texture.anisotropy = hw.maxAnisotropy;
+    this.sm = {};
+    this.gMax = 1;
+    this.gMin = 1;
+    this.t = 0;
+    this.pendingDt = 0;
+    this.lastDrawAt = -Infinity;
+    this.stateKey = '';
+    this.lastDrawMs = 0;
+    this.drawCount = 0;
+  }
+  ease(t, e, n, i, r) {
+    (this.sm[t] === void 0 || !isFinite(this.sm[t])) && (this.sm[t] = e);
+    let a = e - this.sm[t];
+    return (
+      r && (a = ((a + r * 1.5) % r) - r / 2),
+      (this.sm[t] += a * Math.min(1, n * i)),
+      r && (this.sm[t] = ((this.sm[t] % r) + r) % r),
+      this.sm[t]
+    );
+  }
+  bezel(t, e, n, i) {
+    const r = t.createRadialGradient(e - i * 0.3, n - i * 0.3, i * 0.2, e, n, i * 1.18);
+    (r.addColorStop(0, '#5b5f63'),
+      r.addColorStop(1, '#232527'),
+      (t.fillStyle = r),
+      t.beginPath(),
+      t.arc(e, n, i * 1.16, 0, Math.PI * 2),
+      t.fill(),
+      (t.fillStyle = '#0b0b0c'),
+      t.beginPath(),
+      t.arc(e, n, i * 1.02, 0, Math.PI * 2),
+      t.fill(),
+      (t.fillStyle = '#121314'),
+      t.beginPath(),
+      t.arc(e, n, i, 0, Math.PI * 2),
+      t.fill(),
+      (t.fillStyle = '#7d8185'));
+    for (const a of [45, 135, 225, 315]) {
+      const l = i * 1.09;
+      (t.beginPath(), t.arc(e + Math.cos(a * ki) * l, n + Math.sin(a * ki) * l, i * 0.045, 0, Math.PI * 2), t.fill());
+    }
+  }
+  glass(t, x, y, r) {
+    t.save();
+    t.beginPath();
+    t.arc(x, y, r * 0.88, 0, Math.PI * 2);
+    t.clip();
+    const g = t.createLinearGradient(x - r * 0.6, y - r, x + r * 0.5, y + r);
+    g.addColorStop(0, 'rgba(255,255,255,0.11)');
+    g.addColorStop(0.42, 'rgba(255,255,255,0.025)');
+    g.addColorStop(1, 'rgba(255,255,255,0)');
+    t.fillStyle = g;
+    t.fillRect(x - r, y - r, 2 * r, 2 * r);
+    t.restore();
+  }
+  scale(t, e) {
+    (t.save(), t.translate(e.x, e.y));
+    for (const [i, r, a] of e.arcs || [])
+      ((t.strokeStyle = a),
+        (t.lineWidth = e.r * 0.07),
+        t.beginPath(),
+        t.arc(0, 0, e.r * 0.9, li(e, i) - Math.PI / 2, li(e, r) - Math.PI / 2),
+        t.stroke());
+    ((t.strokeStyle = '#eee'), (t.fillStyle = '#eee'), (t.textAlign = 'center'), (t.textBaseline = 'middle'));
+    const n = Math.round((e.max - e.min) / e.minor);
+    for (let i = 0; i <= n; i++) {
+      const r = e.min + i * e.minor;
+      if (e.skipMax && i === n) continue;
+      const a = li(e, r),
+        l = Math.abs(r / e.major - Math.round(r / e.major)) < 1e-6,
+        h = e.r * (l ? 0.78 : 0.86);
+      if (
+        ((t.lineWidth = l ? e.r * 0.03 : e.r * 0.015),
+        t.beginPath(),
+        t.moveTo(Math.sin(a) * h, -Math.cos(a) * h),
+        t.lineTo(Math.sin(a) * e.r * 0.95, -Math.cos(a) * e.r * 0.95),
+        t.stroke(),
+        Math.abs(r / e.labelEvery - Math.round(r / e.labelEvery)) < 1e-6)
+      ) {
+        t.font = `bold ${Math.round(e.r * 0.14)}px ${Ki}`;
+        const u = e.r * 0.68,
+          f = e.id === 'clock' && r === 0 ? '12' : String(Math.round(r * 10) / 10);
+        t.fillText(f, Math.sin(a) * u, -Math.cos(a) * u);
+      }
+    }
+    ((t.font = `${Math.round(e.r * 0.13)}px ${Ki}`),
+      (t.fillStyle = '#cfd3d6'),
+      e.title && t.fillText(e.title, 0, -e.r * 0.34),
+      e.unit && ((t.font = `${Math.round(e.r * 0.1)}px ${Ki}`), t.fillText(e.unit, 0, -e.r * 0.2)),
+      t.restore());
+  }
+  miniStatic(t) {
+    // screws in the corners and along the edges of every facet
+    t.fillStyle = '#8a8f94';
+    for (const [x0, y0, w, h] of [[20, 110, 560, 1030], [575, 110, 680, 1030], [1265, 110, 300, 1030], [1575, 110, 455, 1030]]) {
+      for (const [x, y] of [[x0 + 12, y0 + 12], [x0 + w - 12, y0 + 12], [x0 + 12, y0 + h - 12], [x0 + w - 12, y0 + h - 12]]) { t.beginPath(); t.arc(x, y, 5, 0, 7); t.fill(); t.strokeStyle = '#2a2c2e'; t.lineWidth = 1.5; t.beginPath(); t.moveTo(x - 3, y - 3); t.lineTo(x + 3, y + 3); t.stroke(); }
+      for (let x = x0 + 70; x < x0 + w - 40; x += 70) for (const y of [y0 + 10, y0 + h - 10]) { t.fillStyle = '#6d7276'; t.beginPath(); t.arc(x, y, 2.2, 0, 7); t.fill(); }
+    }
+    for (const m of MINI) {
+      this.bezel(t, m.x, m.y, m.r);
+      t.save(); t.translate(m.x, m.y);
+      if (m.red && m.red[1] > m.red[0]) { t.strokeStyle = '#d22'; t.lineWidth = m.r * 0.1; t.beginPath(); t.arc(0, 0, m.r * 0.84, li(m, m.red[0]) - Math.PI / 2, li(m, m.red[1]) - Math.PI / 2); t.stroke(); }
+      t.strokeStyle = '#ececec'; for (let i = 0; i <= 8; i++) { const a = (m.a0 + ((m.a1 - m.a0) * i) / 8) * ki, big = i % 2 === 0; t.lineWidth = big ? 2 : 1.2; t.beginPath(); t.moveTo(Math.sin(a) * m.r * (big ? 0.62 : 0.74), -Math.cos(a) * m.r * (big ? 0.62 : 0.74)); t.lineTo(Math.sin(a) * m.r * 0.92, -Math.cos(a) * m.r * 0.92); t.stroke(); }
+      t.fillStyle = '#cfd3d6'; t.font = `bold ${Math.round(m.r * 0.38)}px ${Ki}`; t.textAlign = 'center'; t.textBaseline = 'middle'; t.fillText(m.label, 0, m.r * 0.5);
+      t.restore();
+    }
+  }
+  miniLive(n, t, e) {
+    for (let i = 0; i < MINI.length; i++) { const m = MINI[i]; this.needle(n, m.x, m.y, li(m, this.ease('mn' + i, m.v(t), 5, e)), m.r * 0.8, 2.3, '#f4f4f4', 0.18); }
+  }
+  label(t, e, n, i, r = 22, a = '#d8dcdf') {
+    ((t.fillStyle = a),
+      (t.font = `bold ${r}px ${Ki}`),
+      (t.textAlign = 'center'),
+      (t.textBaseline = 'middle'),
+      t.fillText(e, n, i));
+  }
+  drawStatic(t) {
+    const e = t.createLinearGradient(0, 0, 0, ea);
+    (e.addColorStop(0, '#26282b'),
+      e.addColorStop(1, '#1b1c1e'),
+      (t.fillStyle = e),
+      t.fillRect(0, 0, kl, ea),
+      (t.globalAlpha = 0.05));
+    for (let i = 0; i < 2500; i++)
+      ((t.fillStyle = Math.random() < 0.5 ? '#fff' : '#000'),
+        t.fillRect(Math.random() * kl, Math.random() * ea, 1 + Math.random() * 3, 1));
+    ((t.globalAlpha = 1), (t.strokeStyle = '#3b3e42'), (t.lineWidth = 4));
+    for (const [i, r, a, l] of [
+      [20, 110, 560, 1030],
+      [575, 110, 680, 1030],
+      [1265, 110, 300, 1030],
+      [1575, 110, 455, 1030],
+    ])
+      t.strokeRect(i, r, a, l);
+    for (const i of Object.keys(It)) {
+      const r = It[i];
+      ((r.id = i), this.bezel(t, r.x, r.y, r.r), r.min !== void 0 && this.scale(t, r));
+    }
+    const n = It.vvi;
+    (t.save(),
+      t.translate(n.x, n.y),
+      (t.strokeStyle = '#eee'),
+      (t.fillStyle = '#eee'),
+      (t.textAlign = 'center'),
+      (t.textBaseline = 'middle'));
+    for (const i of [-6e3, -4e3, -2e3, -1e3, -500, 0, 500, 1e3, 2e3, 4e3, 6e3]) {
+      const r = vm(i);
+      ((t.lineWidth = 3),
+        t.beginPath(),
+        t.moveTo(Math.sin(r) * n.r * 0.78, -Math.cos(r) * n.r * 0.78),
+        t.lineTo(Math.sin(r) * n.r * 0.95, -Math.cos(r) * n.r * 0.95),
+        t.stroke(),
+        (t.font = `bold ${Math.round(n.r * 0.15)}px ${Ki}`));
+      const a = Math.abs(i) >= 1e3 ? String(Math.abs(i) / 1e3) : i === 0 ? '0' : '.5';
+      t.fillText(a, Math.sin(r) * n.r * 0.6, -Math.cos(r) * n.r * 0.6);
+    }
+    ((t.font = `${Math.round(n.r * 0.12)}px ${Ki}`),
+      (t.fillStyle = '#cfd3d6'),
+      t.fillText('UP', -n.r * 0.25, -n.r * 0.32),
+      t.fillText('DN', -n.r * 0.25, n.r * 0.32),
+      t.fillText('VERT SPEED', n.r * 0.2, 0),
+      t.fillText('FT/MIN x1000', n.r * 0.2, n.r * 0.16),
+      t.restore(),
+      this.bezel(t, 920, 335, 228),
+      this.bezel(t, 920, 815, 200),
+      (t.fillStyle = '#0a0a0b'),
+      t.fillRect(372, 160, 180, 290),
+      (t.strokeStyle = '#5b5f63'),
+      (t.lineWidth = 6),
+      t.strokeRect(372, 160, 180, 290),
+      this.label(t, 'TRIPLE DISPLAY', 462, 140, 18),
+      this.label(t, 'KIAS', 462, 182, 18),
+      this.label(t, 'MACH', 462, 278, 18),
+      this.label(t, 'ALT FT', 462, 374, 18),
+      this.label(t, 'L', 1690, 128, 30),
+      this.label(t, 'ENGINES', 1805, 128, 24),
+      this.label(t, 'R', 1920, 128, 30),
+      this.label(t, 'FUEL FLOW  PPH', 1805, 728, 18),
+      this.label(t, 'INLET SPIKE', 1805, 812, 18),
+      this.label(t, 'FWD BYPASS', 1805, 905, 18),
+      this.label(t, 'NAV / AUTOPILOT', 1415, 728, 18),
+      this.label(t, 'GEAR', 340, 1040, 18),
+      this.label(t, 'BRAKES · CHUTE', 1415, 960, 18),
+      this.miniStatic(t));
+  }
+  needle(t, e, n, i, r, a, l = '#f4f4f4', h = 0.2) {
+    (t.save(),
+      t.translate(e, n),
+      t.rotate(i),
+      (t.fillStyle = l),
+      t.beginPath(),
+      t.moveTo(-a, r * h),
+      t.lineTo(-a * 0.55, -r * 0.9),
+      t.lineTo(0, -r),
+      t.lineTo(a * 0.55, -r * 0.9),
+      t.lineTo(a, r * h),
+      t.closePath(),
+      t.fill(),
+      (t.fillStyle = '#2c2e30'),
+      t.beginPath(),
+      t.arc(0, 0, a * 1.6, 0, Math.PI * 2),
+      t.fill(),
+      t.restore());
+  }
+  digits(t, e, n, i, r, a, l = '#f2f2f2', h) {
+    ((t.fillStyle = '#050505'),
+      t.fillRect(n - r / 2, i - a / 2, r, a),
+      (t.strokeStyle = '#444'),
+      (t.lineWidth = 2),
+      t.strokeRect(n - r / 2, i - a / 2, r, a),
+      (t.fillStyle = l),
+      (t.font = `bold ${h || Math.round(a * 0.72)}px Consolas, 'Courier New', monospace`),
+      (t.textAlign = 'center'),
+      (t.textBaseline = 'middle'),
+      t.fillText(e, n, i + 1));
+  }
+  lamp(t, e, n, i, r, a, l, h) {
+    ((t.fillStyle = l ? h : '#1d1f21'),
+      t.fillRect(n - r / 2, i - a / 2, r, a),
+      (t.strokeStyle = '#000'),
+      (t.lineWidth = 3),
+      t.strokeRect(n - r / 2, i - a / 2, r, a),
+      (t.fillStyle = l ? '#111' : '#4a4d50'),
+      (t.font = `bold ${Math.round(a * 0.38)}px ${Ki}`),
+      (t.textAlign = 'center'),
+      (t.textBaseline = 'middle'));
+    const u = e.split(`
+`);
+    const wide = Math.max(...u.map((f) => t.measureText(f).width));
+    if (wide > r - 10) t.font = `bold ${Math.floor(a * 0.38 * ((r - 10) / wide))}px ${Ki}`;
+    u.forEach((f, d) => t.fillText(f, n, i + (d - (u.length - 1) / 2) * a * 0.4));
+  }
+  adi(t, e, n) {
+    const l = this.ease('pitch', e.pitch / ki, 12, n),
+      h = this.ease('bank', e.bank, 12, n),
+      u = 210 / 38;
+    (t.save(),
+      t.beginPath(),
+      t.arc(920, 335, 210, 0, Math.PI * 2),
+      t.clip(),
+      t.translate(920, 335),
+      t.rotate(-h),
+      t.translate(0, l * u),
+      (t.fillStyle = '#a7b0b8'),
+      t.fillRect(-420, -840, 840, 840),
+      (t.fillStyle = '#121212'),
+      t.fillRect(-420, 0, 840, 840),
+      (t.strokeStyle = '#fff'),
+      (t.lineWidth = 4),
+      t.beginPath(),
+      t.moveTo(-420, 0),
+      t.lineTo(420, 0),
+      t.stroke(),
+      (t.font = `bold 22px ${Ki}`),
+      (t.textAlign = 'center'),
+      (t.textBaseline = 'middle'));
+    for (let d = -90; d <= 90; d += 5) {
+      if (d === 0) continue;
+      const p = -d * u;
+      if (Math.abs(p + l * u) > 210 * 1.1) continue;
+      const v = d % 10 === 0 ? 70 : 34;
+      ((t.strokeStyle = d > 0 ? '#202020' : '#f0f0f0'),
+        (t.fillStyle = t.strokeStyle),
+        (t.lineWidth = 3),
+        t.beginPath(),
+        t.moveTo(-v, p),
+        t.lineTo(v, p),
+        t.stroke(),
+        d % 10 === 0 && (t.fillText(String(Math.abs(d)), -v - 24, p), t.fillText(String(Math.abs(d)), v + 24, p)));
+    }
+    (t.restore(), t.save(), t.translate(920, 335), (t.strokeStyle = '#f0f0f0'));
+    for (const d of [-60, -45, -30, -20, -10, 0, 10, 20, 30, 45, 60]) {
+      const p = d * ki,
+        v = d % 30 === 0 ? 26 : 14;
+      ((t.lineWidth = 4),
+        t.beginPath(),
+        t.moveTo(Math.sin(p) * 212, -Math.cos(p) * 212),
+        t.lineTo(Math.sin(p) * (212 + v), -Math.cos(p) * (212 + v)),
+        t.stroke());
+    }
+    if (
+      (t.rotate(-h),
+      (t.fillStyle = '#ff9b1c'),
+      t.beginPath(),
+      t.moveTo(0, -206),
+      t.lineTo(-14, -180),
+      t.lineTo(14, -180),
+      t.closePath(),
+      t.fill(),
+      t.restore(),
+      e.apOn)
+    ) {
+      (t.save(), t.translate(920, 335), (t.strokeStyle = '#e050e0'), (t.lineWidth = 6));
+      const d = Us(-e.fdPitch * u, -210 * 0.7, 210 * 0.7),
+        p = Us(e.fdRoll * 3, -210 * 0.7, 210 * 0.7);
+      (t.beginPath(),
+        t.moveTo(-210 * 0.6, d),
+        t.lineTo(210 * 0.6, d),
+        t.moveTo(p, -210 * 0.6),
+        t.lineTo(p, 210 * 0.6),
+        t.stroke(),
+        t.restore());
+    }
+    if (e.nav.ilsValid) {
+      const d = 335 + Us(e.nav.gsDev / 0.7, -1, 1) * 210 * 0.6;
+      ((t.fillStyle = '#3ef06a'),
+        t.beginPath(),
+        t.moveTo(1124, d),
+        t.lineTo(1100, d - 12),
+        t.lineTo(1100, d + 12),
+        t.closePath(),
+        t.fill(),
+        (t.strokeStyle = '#ddd'),
+        (t.lineWidth = 2));
+      for (let p = -2; p <= 2; p++) (t.beginPath(), t.arc(1112, 335 + p * 210 * 0.3, 5, 0, Math.PI * 2), t.stroke());
+    }
+    ((t.strokeStyle = '#ff9b1c'),
+      (t.lineWidth = 9),
+      (t.lineCap = 'round'),
+      t.beginPath(),
+      t.moveTo(800, 335),
+      t.lineTo(880, 335),
+      t.lineTo(900, 355),
+      t.moveTo(1040, 335),
+      t.lineTo(960, 335),
+      t.lineTo(940, 355),
+      t.stroke(),
+      (t.fillStyle = '#ff9b1c'),
+      t.beginPath(),
+      t.arc(920, 335, 8, 0, Math.PI * 2),
+      t.fill(),
+      (t.lineCap = 'butt'),
+      (t.fillStyle = '#050505'),
+      t.fillRect(840, 575, 160, 34),
+      (t.strokeStyle = '#ddd'),
+      (t.lineWidth = 2),
+      t.beginPath(),
+      t.moveTo(900, 575),
+      t.lineTo(900, 609),
+      t.moveTo(940, 575),
+      t.lineTo(940, 609),
+      t.stroke());
+    const f = this.ease('slip', Us(e.slip * 600, -62, 62), 6, n);
+    ((t.fillStyle = '#eee'), t.beginPath(), t.arc(920 + f, 592, 15, 0, Math.PI * 2), t.fill());
+  }
+  hsi(t, e, n) {
+    const l = this.ease('hdg', e.hdg, 8, n, 360);
+    (t.save(),
+      t.translate(920, 815),
+      t.save(),
+      t.rotate(-l * ki),
+      (t.strokeStyle = '#eee'),
+      (t.fillStyle = '#eee'),
+      (t.textAlign = 'center'),
+      (t.textBaseline = 'middle'));
+    for (let u = 0; u < 360; u += 5) {
+      const f = u % 10 === 0 ? 20 : 11;
+      ((t.lineWidth = u % 10 === 0 ? 3 : 2),
+        t.save(),
+        t.rotate(u * ki),
+        t.beginPath(),
+        t.moveTo(0, -182),
+        t.lineTo(0, -182 + f),
+        t.stroke(),
+        u % 30 === 0 &&
+          ((t.font = `bold 30px ${Ki}`),
+          t.fillText({ 0: 'N', 90: 'E', 180: 'S', 270: 'W' }[u] || String(u / 10), 0, -138)),
+        t.restore());
+    }
+    (e.apOn &&
+      e.apHdgOn &&
+      (t.save(), t.rotate(e.apHdg * ki), (t.fillStyle = '#ff9b1c'), t.fillRect(-16, -186, 32, 14), t.restore()),
+      e.nav.valid &&
+        (t.save(),
+        t.rotate(e.nav.brgDeg * ki),
+        (t.strokeStyle = '#3ef06a'),
+        (t.fillStyle = '#3ef06a'),
+        (t.lineWidth = 6),
+        t.beginPath(),
+        t.moveTo(0, 152),
+        t.lineTo(0, -112),
+        t.stroke(),
+        t.beginPath(),
+        t.moveTo(0, -124),
+        t.lineTo(-14, -98),
+        t.lineTo(14, -98),
+        t.closePath(),
+        t.fill(),
+        t.restore()),
+      t.save(),
+      t.rotate(e.nav.course * ki),
+      (t.strokeStyle = '#ffd34d'),
+      (t.fillStyle = '#ffd34d'),
+      (t.lineWidth = 7),
+      t.beginPath(),
+      t.moveTo(0, -122),
+      t.lineTo(0, -182 * 0.42),
+      t.moveTo(0, 182 * 0.42),
+      t.lineTo(0, 142),
+      t.stroke(),
+      t.beginPath(),
+      t.moveTo(0, -126),
+      t.lineTo(-15, -98),
+      t.lineTo(15, -98),
+      t.closePath(),
+      t.fill(),
+      (t.strokeStyle = '#ccc'),
+      (t.lineWidth = 2));
+    for (let u = -2; u <= 2; u++) u && (t.beginPath(), t.arc(u * 182 * 0.17, 0, 6, 0, Math.PI * 2), t.stroke());
+    const h = e.nav.ilsValid ? Us(e.nav.locDev / 1.25, -2.2, 2.2) : Us(-e.nav.xtkNm / 2, -2.2, 2.2);
+    ((t.strokeStyle = '#ffd34d'),
+      (t.lineWidth = 7),
+      t.beginPath(),
+      t.moveTo(h * 182 * 0.17, -182 * 0.38),
+      t.lineTo(h * 182 * 0.17, 182 * 0.38),
+      t.stroke(),
+      t.restore(),
+      t.restore(),
+      (t.fillStyle = '#ff9b1c'),
+      t.beginPath(),
+      t.moveTo(0, -188),
+      t.lineTo(-12, -208),
+      t.lineTo(12, -208),
+      t.closePath(),
+      t.fill(),
+      t.restore(),
+      t.save(),
+      t.translate(920, 815),
+      (t.fillStyle = '#ff9b1c'),
+      t.beginPath(),
+      t.moveTo(0, -188),
+      t.lineTo(-12, -208),
+      t.lineTo(12, -208),
+      t.closePath(),
+      t.fill(),
+      (t.strokeStyle = '#ff9b1c'),
+      (t.lineWidth = 6),
+      t.beginPath(),
+      t.moveTo(0, -26),
+      t.lineTo(0, 30),
+      t.moveTo(-34, 0),
+      t.lineTo(34, 0),
+      t.moveTo(-14, 26),
+      t.lineTo(14, 26),
+      t.stroke(),
+      t.restore(),
+      this.digits(
+        t,
+        e.nav.valid ? e.nav.distNm.toFixed(e.nav.distNm < 100 ? 1 : 0) : '---',
+        770,
+        1058,
+        140,
+        52,
+        '#f6f6f6',
+      ),
+      this.label(t, 'DME NM', 770, 1100, 16),
+      this.digits(t, String(Math.round(e.nav.course) % 360).padStart(3, '0'), 1070, 1058, 110, 52, '#ffd34d'),
+      this.label(t, 'CRS', 1070, 1100, 16),
+      this.label(
+        t,
+        e.nav.valid ? e.nav.ident + (e.nav.ilsValid ? '  ILS' : '  TACAN') : 'NO NAV',
+        920,
+        1062,
+        24,
+        e.nav.ilsValid ? '#3ef06a' : '#d8dcdf',
+      ));
+  }
+  // glass highlights over every round gauge (they used to be drawn at the end of hsi(); they belong to the slow, full-panel layer)
+  glassAll(t) {
+    for (const gauge of Object.values(It)) if (gauge.r) this.glass(t, gauge.x, gauge.y, gauge.r);
+    for (const gauge of MINI) this.glass(t, gauge.x, gauge.y, gauge.r);
+  }
+  draw(t, e) {
+    this.pendingDt += Math.max(0, e || 0);
+    const now = performance.now();
+    const nextTime = this.t + this.pendingDt;
+    const blinkActive = t.warn.stall || t.warn.overG || t.warn.pullUp || t.warn.lowFuel || t.warn.overspeed || t.warn.gearUnsafe || t.unstart[0] || t.unstart[1];
+    const key = `${panelSignature(t)}:${blinkActive ? Math.floor(nextTime * 2.5) : ''}`;
+    this.slowDt += Math.max(0, e || 0);
+    // the fast layer has its own key (only what the attitude and heading displays show) and keeps drawing 0.6 s after it settles so the easing finishes
+    const fk = fastSignature(t);
+    if (fk !== this.fastKey) { this.fastKey = fk; this.fastUntil = now + 600; }
+    const slowWanted = key !== this.stateKey && now - this.lastSlowAt >= 1000 / SLOW_HZ, fastWanted = now < this.fastUntil;
+    if (now - this.lastDrawAt < 50 || (!slowWanted && !fastWanted)) return false;
+    this.lastDrawAt = now;
+    this.t = nextTime;
+    this.fastDt = this.pendingDt;
+    this.pendingDt = 0;
+    if (!slowWanted) { this.paintFast(t, this.fastDt); return true; }
+    this.stateKey = key;
+    this.lastSlowAt = now;
+    e = this.slowDt; this.slowDt = 0;
+    const started = now;
+    this.paintFast(t, this.fastDt);
+    const n = this.ctx;
+    n.setTransform(DYNAMIC_W / kl, 0, 0, DYNAMIC_H / ea, 0, 0);
+    n.globalAlpha = 1;
+    n.globalCompositeOperation = 'source-over';
+    n.clearRect(0, 0, kl, ea);
+    const i = Math.floor(this.t * 2.5) % 2 === 0,
+      r = t.warn.stall || t.warn.overG || t.warn.pullUp || t.unstart[0] || t.unstart[1],
+      a = t.warn.lowFuel || t.warn.overspeed || t.warn.gearUnsafe;
+    [
+      [
+        `MASTER
+WARN`,
+        r && i,
+        '#ff3a2e',
+      ],
+      [
+        `MASTER
+CAUTION`,
+        a && i,
+        '#ffb21e',
+      ],
+      [
+        `L INLET
+UNSTART`,
+        t.unstart[0],
+        '#ff3a2e',
+      ],
+      [
+        `R INLET
+UNSTART`,
+        t.unstart[1],
+        '#ff3a2e',
+      ],
+      ['L A/B', t.ab[0], '#58e070'],
+      ['R A/B', t.ab[1], '#58e070'],
+      [
+        `FUEL
+LOW`,
+        t.warn.lowFuel,
+        '#ffb21e',
+      ],
+      ['OVER G', t.warn.overG, '#ff3a2e'],
+      [
+        `AOA
+HIGH`,
+        t.warn.stall,
+        '#ff3a2e',
+      ],
+      [
+        `KIAS
+LIMIT`,
+        t.warn.overspeed,
+        '#ffb21e',
+      ],
+      ['PULL UP', t.warn.pullUp && i, '#ff3a2e'],
+      [
+        `A/P
+ENGAGED`,
+        t.apOn,
+        '#58e070',
+      ],
+      [
+        `GEAR
+UNSAFE`,
+        t.warn.gearUnsafe,
+        '#ff3a2e',
+      ],
+    ].forEach(([x, g, _], w) => this.lamp(n, x, 90 + w * 142, 58, 128, 66, !!g, _));
+    const h = this.ease('kias', t.kias, 6, e);
+    (this.needle(n, It.kias.x, It.kias.y, li(It.kias, h), It.kias.r * 0.86, 9),
+      this.digits(n, String(Math.round(t.kias)).padStart(3, ' '), 462, 220, 150, 52),
+      this.digits(n, t.mach.toFixed(2), 462, 316, 150, 52),
+      this.digits(n, String(Math.round(t.altFt)).padStart(5, ' '), 462, 412, 150, 52, '#f2f2f2', 32),
+      (this.gMax = Math.max(this.gMax, t.g)),
+      (this.gMin = Math.min(this.gMin, t.g)),
+      this.needle(n, It.g.x, It.g.y, li(It.g, this.gMax), It.g.r * 0.8, 4, '#9a9a9a'),
+      this.needle(n, It.g.x, It.g.y, li(It.g, this.gMin), It.g.r * 0.8, 4, '#9a9a9a'),
+      this.needle(n, It.g.x, It.g.y, li(It.g, this.ease('g', t.g, 8, e)), It.g.r * 0.86, 7),
+      this.needle(n, It.aoa.x, It.aoa.y, li(It.aoa, this.ease('aoa', t.aoaDeg, 6, e)), It.aoa.r * 0.86, 7));
+    const u = t.hour % 12,
+      f = (t.hour * 60) % 60,
+      d = (t.hour * 3600) % 60;
+    (this.needle(n, It.clock.x, It.clock.y, (u / 12) * Math.PI * 2, It.clock.r * 0.55, 7),
+      this.needle(n, It.clock.x, It.clock.y, (f / 60) * Math.PI * 2, It.clock.r * 0.82, 5),
+      this.needle(n, It.clock.x, It.clock.y, (d / 60) * Math.PI * 2, It.clock.r * 0.88, 2, '#ff9b1c'),
+      this.needle(n, It.fuel.x, It.fuel.y, li(It.fuel, t.fuelLb / 1e3), It.fuel.r * 0.86, 7),
+      this.digits(n, String(Math.round(t.fuelLb)).padStart(6, ' '), It.fuel.x, It.fuel.y + It.fuel.r * 0.36, 96, 28, '#f2f2f2', 20));
+    const p = t.gearPos > 0.02 && t.gearPos < 0.98;
+    (['NOSE', 'LEFT', 'RIGHT'].forEach((x, g) =>
+      this.lamp(n, x, 120 + g * 105, 1095, 95, 50, t.gearPos > 0.98 || p, p ? '#ff3a2e' : '#58e070'),
+    ),
+      (n.fillStyle = '#ddd'),
+      n.fillRect(460, 1030 + (t.gearDown ? 40 : 0), 26, 50),
+      n.beginPath(),
+      n.arc(473, 1030 + (t.gearDown ? 90 : 10), 22, 0, Math.PI * 2),
+      n.fill(),
+      this.label(n, t.gearDown ? 'DN' : 'UP', 520, 1075, 22),
+      // the fast canvas (painted first, with the real dt) is what shows in the centre column; this dt-0 copy only supplies the few pixels the
+      // displays reach outside it (the bank pointer tip above the lamp row, HSI digit edges)
+      this.adi(n, t, 0),
+      this.hsi(n, t, 0),
+      this.glassAll(n));
+    const v = this.ease('alt', t.altFt, 8, e);
+    (this.needle(n, It.alt.x, It.alt.y, ((v % 1e3) / 1e3) * Math.PI * 2, It.alt.r * 0.86, 9),
+      this.needle(n, It.alt.x, It.alt.y, ((v % 1e4) / 1e4) * Math.PI * 2, It.alt.r * 0.55, 12, '#c8c8c8'),
+      this.needle(n, It.vvi.x, It.vvi.y, vm(this.ease('vvi', t.vsFpm, 5, e)), It.vvi.r * 0.86, 8),
+      (n.fillStyle = '#060606'),
+      n.fillRect(1285, 750, 260, 190),
+      (n.font = 'bold 24px Consolas, monospace'),
+      (n.textAlign = 'left'),
+      (n.textBaseline = 'middle'));
+    const y = (x, g, _) => {
+      ((n.fillStyle = _ ? '#58e070' : '#5d6266'), n.fillText(x, 1298, g));
+    };
+    (y(`ALT ${t.apAltOn ? Math.round(t.apAltFt) : '-----'}`, 778, t.apOn && t.apAltOn),
+      y(`HDG ${t.apHdgOn ? String(Math.round(t.apHdg)).padStart(3, '0') : '---'}`, 812, t.apOn && t.apHdgOn),
+      y(
+        t.apMachOn ? `MACH ${t.apMach.toFixed(2)}` : `SPD ${t.apSpdOn ? Math.round(t.apSpd) : '---'}`,
+        846,
+        t.apOn && (t.apMachOn || t.apSpdOn),
+      ),
+      y(
+        `${t.nav.ident || '----'} ${t.nav.valid ? String(Math.round(t.nav.brgDeg) % 360).padStart(3, '0') + '°' : ''}`,
+        880,
+        t.nav.valid,
+      ),
+      y(
+        t.nav.ilsValid
+          ? `LOC ${t.nav.locDev.toFixed(1)} GS ${t.nav.gsDev.toFixed(1)}`
+          : t.nav.valid && t.nav.turnInS != null
+            ? t.nav.turnInS > 1
+              ? `TURN ${Math.round(t.nav.turnDeg)}° IN ${Math.floor(t.nav.turnInS / 60)}:${String(Math.floor(t.nav.turnInS % 60)).padStart(2, '0')}`
+              : `TURNING ${Math.round(t.nav.turnDeg)}°`
+            : 'ILS --',
+        914,
+        t.nav.ilsValid || (t.nav.valid && t.nav.turnInS != null),
+      ),
+      this.lamp(n, 'BRAKE', 1335, 1010, 92, 50, t.brakes, '#ffb21e'),
+      this.lamp(
+        n,
+        `PARK
+BRAKE`,
+        1440,
+        1010,
+        92,
+        50,
+        t.park,
+        '#ffb21e',
+      ),
+      this.lamp(n, 'CHUTE', 1335, 1072, 92, 50, t.chute === 'deployed', '#58e070'));
+    for (const x of [0, 1]) {
+      const g = x ? 'R' : 'L',
+        _ = x ? 1920 : 1690;
+      (this.needle(n, _, It.rpmL.y, li(It.rpmL, this.ease('rpm' + g, t.rpm[x], 4, e)), It.rpmL.r * 0.86, 6),
+        this.digits(n, String(Math.round(t.rpm[x])), _, It.rpmL.y + It.rpmL.r * 0.4, 56, 26),
+        this.needle(n, _, It.egtL.y, li(It.egtL, this.ease('egt' + g, t.egt[x], 2, e)), It.egtL.r * 0.86, 6),
+        this.digits(n, String(Math.round(t.egt[x])), _, It.egtL.y + It.egtL.r * 0.4, 56, 26),
+        this.needle(n, _, It.nozL.y, li(It.nozL, this.ease('noz' + g, t.noz[x], 3, e)), It.nozL.r * 0.86, 5),
+        this.digits(n, String(Math.round(t.ff[x])).padStart(5, ' '), _, 765, 150, 42));
+      const w = (b, S, E) => {
+        ((n.fillStyle = '#060606'),
+          n.fillRect(_ - 90, b - 18, 180, 36),
+          (n.fillStyle = '#ddd'),
+          n.fillRect(_ - 86, b - 14, 172 * Us(S, 0, 1), 28),
+          (n.font = `bold 20px ${Ki}`),
+          (n.textAlign = 'center'),
+          (n.textBaseline = 'middle'),
+          n.save(),
+          n.beginPath(),
+          n.rect(_ - 86, b - 14, 172 * Us(S, 0, 1), 28),
+          n.clip(),
+          (n.fillStyle = '#111'),
+          n.fillText(E, _, b),
+          n.restore(),
+          n.save(),
+          n.beginPath(),
+          n.rect(_ - 86 + 172 * Us(S, 0, 1), b - 14, 172, 28),
+          n.clip(),
+          (n.fillStyle = '#ddd'),
+          n.fillText(E, _, b),
+          n.restore());
+      };
+      (w(850, t.spikeIn / 26, `${t.spikeIn.toFixed(0)} IN AFT`),
+        w(943, t.bypass[x] / 100, `${Math.round(t.bypass[x])} %`));
+    }
+    (this.needle(n, It.cit.x, It.cit.y, li(It.cit, this.ease('cit', t.cit, 2, e)), It.cit.r * 0.86, 6),
+      this.digits(n, String(Math.round(t.cit)), It.cit.x, It.cit.y + It.cit.r * 0.4, 60, 26),
+      this.miniLive(n, t, e),
+      (this.dynamicTexture.needsUpdate = !0));
+    this.uploads.slow++; this.uploads.bytes += DYNAMIC_W * DYNAMIC_H * 4;
+    this.lastDrawMs = performance.now() - started;
+    this.drawCount++;
+    return true;
+  }
+  // attitude + heading displays only, into the centre-column canvas
+  paintFast(t, dt) {
+    const n = this.fastCtx, k = DYNAMIC_W / kl;
+    n.setTransform(k, 0, 0, DYNAMIC_H / ea, -FAST_RECT.x0 * k, -FAST_RECT.y0 * DYNAMIC_H / ea);
+    n.globalAlpha = 1; n.globalCompositeOperation = 'source-over';
+    n.clearRect(FAST_RECT.x0, FAST_RECT.y0, FAST_RECT.x1 - FAST_RECT.x0, FAST_RECT.y1 - FAST_RECT.y0);
+    this.adi(n, t, dt); this.hsi(n, t, dt);
+    this.fastTexture.needsUpdate = true;
+    this.uploads.fast++; this.uploads.bytes += FAST_W * FAST_H * 4;
+  }
+}
+
+export { CockpitPanel, It as PANEL_GAUGES, kl as PANEL_W, ea as PANEL_H, FAST_RECT as PANEL_FAST_RECT };

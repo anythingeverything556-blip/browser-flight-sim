@@ -1,0 +1,802 @@
+{
+  "schema": 1,
+  "source": "Supplied Bgt_F27500v2 Fokker.bnk, original Wwise Vorbis media converted to AAC. Twenty clips copied byte-for-byte from supplied conversion; two zero-duration MP4 clips repaired from original Vorbis, identified per sample. No generated engine waveforms.",
+  "eventNamespace": "play_bgt_f27500v2_",
+  "provenance": "Event names verified by Wwise FNV-1 lowercase hash; inside/outside switch values also hash-verified. Original layer curves and source pitch offsets extracted from bank XML. Browser gain/routing, loop seam and FDM mapping are adaptations, not original Wwise DSP.",
+  "groups": [
+    {
+      "engine": 1,
+      "view": "inside",
+      "layerId": 909614955,
+      "pitch": [
+        [
+          0.0,
+          0.0,
+          9
+        ],
+        [
+          0.4066059,
+          0.0,
+          7
+        ],
+        [
+          0.60137,
+          150.0,
+          4
+        ],
+        [
+          0.79271,
+          350.0,
+          1
+        ],
+        [
+          1.0,
+          500.0,
+          9
+        ],
+        [
+          1.5,
+          500.0,
+          4
+        ]
+      ],
+      "clips": [
+        {
+          "id": 899279545,
+          "cents": -500.0,
+          "volumeDb": 6.0,
+          "curve": [
+            [
+              0.6660492,
+              0.0,
+              1
+            ],
+            [
+              0.8518638,
+              1.0,
+              7
+            ],
+            [
+              1.0252061,
+              0.0,
+              9
+            ]
+          ]
+        },
+        {
+          "id": 492811497,
+          "cents": -500.0,
+          "volumeDb": 6.0,
+          "curve": [
+            [
+              0.8518638,
+              0.0,
+              1
+            ],
+            [
+              1.0252061,
+              1.0,
+              9
+            ],
+            [
+              1.4992665,
+              1.0,
+              5
+            ],
+            [
+              1.4992665,
+              0.0,
+              9
+            ]
+          ]
+        },
+        {
+          "id": 1006268785,
+          "cents": -150.0,
+          "volumeDb": 3.0,
+          "curve": [
+            [
+              0.472555,
+              0.0,
+              1
+            ],
+            [
+              0.6660492,
+              1.0,
+              7
+            ],
+            [
+              0.8518638,
+              0.0,
+              9
+            ]
+          ]
+        },
+        {
+          "id": 726197048,
+          "cents": 0.0,
+          "volumeDb": 2.0,
+          "curve": [
+            [
+              0.0,
+              1.0,
+              9
+            ],
+            [
+              0.472555,
+              1.0,
+              7
+            ],
+            [
+              0.6660492,
+              0.0,
+              9
+            ]
+          ]
+        }
+      ],
+      "eventName": "play_bgt_f27500v2_eng1_combustion",
+      "eventId": 3540366692
+    },
+    {
+      "engine": 2,
+      "view": "inside",
+      "layerId": 216112082,
+      "pitch": [
+        [
+          0.0,
+          0.0,
+          9
+        ],
+        [
+          0.48178,
+          0.0,
+          7
+        ],
+        [
+          0.64237,
+          150.0,
+          4
+        ],
+        [
+          0.81321,
+          350.0,
+          1
+        ],
+        [
+          0.99431,
+          500.0,
+          9
+        ],
+        [
+          1.5,
+          500.0,
+          4
+        ]
+      ],
+      "clips": [
+        {
+          "id": 866213173,
+          "cents": 0.0,
+          "volumeDb": 2.0,
+          "curve": [
+            [
+              0.0,
+              1.0,
+              9
+            ],
+            [
+              0.4731675,
+              1.0,
+              7
+            ],
+            [
+              0.6695026,
+              0.0,
+              9
+            ]
+          ]
+        },
+        {
+          "id": 33411684,
+          "cents": -150.0,
+          "volumeDb": 3.0,
+          "curve": [
+            [
+              0.4731675,
+              0.0,
+              1
+            ],
+            [
+              0.6695026,
+              1.0,
+              7
+            ],
+            [
+              0.8579843,
+              0.0,
+              9
+            ]
+          ]
+        },
+        {
+          "id": 107501689,
+          "cents": -350.0,
+          "volumeDb": 6.0,
+          "curve": [
+            [
+              0.6695026,
+              0.0,
+              1
+            ],
+            [
+              0.8579843,
+              1.0,
+              7
+            ],
+            [
+              1.0327225,
+              0.0,
+              9
+            ]
+          ]
+        },
+        {
+          "id": 1046894101,
+          "cents": -500.0,
+          "volumeDb": 6.0,
+          "curve": [
+            [
+              0.8579843,
+              0.0,
+              1
+            ],
+            [
+              1.0327225,
+              1.0,
+              9
+            ],
+            [
+              1.5,
+              1.0,
+              5
+            ]
+          ]
+        }
+      ],
+      "eventName": "play_bgt_f27500v2_eng2_combustion",
+      "eventId": 4153872673
+    },
+    {
+      "engine": 1,
+      "view": "outside",
+      "layerId": 230339779,
+      "pitch": [
+        [
+          0.0,
+          0.0,
+          9
+        ],
+        [
+          0.47,
+          0.0,
+          7
+        ],
+        [
+          0.6492,
+          90.0,
+          4
+        ],
+        [
+          0.82346,
+          180.0,
+          1
+        ],
+        [
+          1.00114,
+          250.0,
+          9
+        ],
+        [
+          1.5,
+          250.0,
+          4
+        ]
+      ],
+      "clips": [
+        {
+          "id": 882352813,
+          "cents": -90.0,
+          "volumeDb": 0.0,
+          "curve": [
+            [
+              0.4712042,
+              0.0,
+              1
+            ],
+            [
+              0.6498691,
+              1.0,
+              7
+            ],
+            [
+              0.828534,
+              0.0,
+              9
+            ]
+          ]
+        },
+        {
+          "id": 894211077,
+          "cents": 0.0,
+          "volumeDb": 0.0,
+          "curve": [
+            [
+              0.0,
+              1.0,
+              9
+            ],
+            [
+              0.4712042,
+              1.0,
+              7
+            ],
+            [
+              0.6498691,
+              0.0,
+              9
+            ]
+          ]
+        },
+        {
+          "id": 489513703,
+          "cents": -250.0,
+          "volumeDb": 0.0,
+          "curve": [
+            [
+              0.828534,
+              0.0,
+              1
+            ],
+            [
+              0.9993455,
+              1.0,
+              9
+            ],
+            [
+              1.5,
+              1.0,
+              5
+            ]
+          ]
+        },
+        {
+          "id": 672585564,
+          "cents": -180.0,
+          "volumeDb": 0.0,
+          "curve": [
+            [
+              0.6498691,
+              0.0,
+              1
+            ],
+            [
+              0.828534,
+              1.0,
+              7
+            ],
+            [
+              0.9993455,
+              0.0,
+              9
+            ]
+          ]
+        }
+      ],
+      "eventName": "play_bgt_f27500v2_eng1_combustion_side",
+      "eventId": 1193547766
+    },
+    {
+      "engine": 2,
+      "view": "outside",
+      "layerId": 111311748,
+      "pitch": [
+        [
+          0.0,
+          0.0,
+          9
+        ],
+        [
+          0.47,
+          0.0,
+          7
+        ],
+        [
+          0.6492,
+          90.0,
+          4
+        ],
+        [
+          0.82346,
+          180.0,
+          1
+        ],
+        [
+          1.00114,
+          250.0,
+          9
+        ],
+        [
+          1.5,
+          250.0,
+          4
+        ]
+      ],
+      "clips": [
+        {
+          "id": 246027030,
+          "cents": 0.0,
+          "volumeDb": 0.0,
+          "curve": [
+            [
+              0.0,
+              1.0,
+              9
+            ],
+            [
+              0.4731675,
+              1.0,
+              7
+            ],
+            [
+              0.6596859,
+              0.0,
+              9
+            ]
+          ]
+        },
+        {
+          "id": 25363776,
+          "cents": -180.0,
+          "volumeDb": 0.0,
+          "curve": [
+            [
+              0.6596859,
+              0.0,
+              1
+            ],
+            [
+              0.8344241,
+              1.0,
+              7
+            ],
+            [
+              0.9973822,
+              0.0,
+              9
+            ]
+          ]
+        },
+        {
+          "id": 240433614,
+          "cents": -250.0,
+          "volumeDb": 0.0,
+          "curve": [
+            [
+              0.8344241,
+              0.0,
+              1
+            ],
+            [
+              0.9973822,
+              1.0,
+              9
+            ],
+            [
+              1.5,
+              1.0,
+              5
+            ]
+          ]
+        },
+        {
+          "id": 464063563,
+          "cents": -90.0,
+          "volumeDb": 0.0,
+          "curve": [
+            [
+              0.4731675,
+              0.0,
+              1
+            ],
+            [
+              0.6596859,
+              1.0,
+              7
+            ],
+            [
+              0.8344241,
+              0.0,
+              9
+            ]
+          ]
+        }
+      ],
+      "eventName": "play_bgt_f27500v2_eng2_combustion_side",
+      "eventId": 2841380501
+    }
+  ],
+  "starter": {
+    "inside": 857651507,
+    "outside": 692109284,
+    "note": "Verified eng1_starter; shared by both engines to keep optional audio below 0.8 MB.",
+    "eventName": "play_bgt_f27500v2_eng1_starter",
+    "eventId": 2782746994
+  },
+  "switch": 298342448,
+  "inverter": 667788613,
+  "wind": 254797084,
+  "roll": 1043442738,
+  "samples": [
+    {
+      "id": 899279545,
+      "file": "899279545.m4a",
+      "bytes": 17691,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 3.705079,
+      "sourceLoopTags": {},
+      "sha256": "f426c7f599f57fe8625aa43da87a7d46f626e455cb57f10fcc1feb8d97432b5c"
+    },
+    {
+      "id": 492811497,
+      "file": "492811497.m4a",
+      "bytes": 28810,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 6.217234,
+      "sourceLoopTags": {},
+      "sha256": "b71956cd86d6c014f2dddb3aaf7baac481bfe39443a269c3d0107028c2752ada"
+    },
+    {
+      "id": 1006268785,
+      "file": "1006268785.m4a",
+      "bytes": 15297,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 3.162585,
+      "sourceLoopTags": {},
+      "sha256": "9cf2510fd3c41014be1d87cefaa552b7b69d3e0a2aa80d7a79bbfedd0290b605"
+    },
+    {
+      "id": 726197048,
+      "file": "726197048.m4a",
+      "bytes": 26074,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 5.571111,
+      "sourceLoopTags": {},
+      "sha256": "42272e406928603ac7f19a181d053157fc4f523749cdd0581623a5385ab2a35c"
+    },
+    {
+      "id": 866213173,
+      "file": "866213173.m4a",
+      "bytes": 28059,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 6.008118,
+      "sourceLoopTags": {},
+      "sha256": "7ddf98898e1f71c7ca6dee80ff0bd96e9f1d355e518358885992677e75c26794"
+    },
+    {
+      "id": 33411684,
+      "file": "33411684.m4a",
+      "bytes": 13694,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 2.776009,
+      "sourceLoopTags": {},
+      "sha256": "3354a289136f5ea3d583720f0bc51acc9d06552da15409c9a391ab9786827a19"
+    },
+    {
+      "id": 107501689,
+      "file": "107501689.m4a",
+      "bytes": 17028,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 3.562902,
+      "sourceLoopTags": {},
+      "sha256": "39aa5d92d2c7a18b88ba635ecd82db9af8486301ebf408e161b3b0295341827a"
+    },
+    {
+      "id": 1046894101,
+      "file": "1046894101.m4a",
+      "bytes": 32116,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 6.985397,
+      "sourceLoopTags": {},
+      "sha256": "2241ef9bdabffdb3c0e85f82a670541eda3fe43796902b52425fc934552810bc"
+    },
+    {
+      "id": 882352813,
+      "file": "882352813.m4a",
+      "bytes": 21736,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 4.607528,
+      "sourceLoopTags": {},
+      "sha256": "ffcc9437f4caf83bb05f0a0b82690fae38cae5584090d16d9bfacb4134b381a5"
+    },
+    {
+      "id": 894211077,
+      "file": "894211077.m4a",
+      "bytes": 18704,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 3.928118,
+      "sourceLoopTags": {},
+      "sha256": "c0cdccafe6225995dc58783862c844df4f73051a7666e2f8df3a696bc0881ccf"
+    },
+    {
+      "id": 489513703,
+      "file": "489513703.m4a",
+      "bytes": 19851,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 4.252698,
+      "sourceLoopTags": {},
+      "sha256": "853e12bf53a5876d5e3b9d5610f7ec54070554ceab77be4f4944f75fe38f756a"
+    },
+    {
+      "id": 672585564,
+      "file": "672585564.m4a",
+      "bytes": 27088,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 5.855193,
+      "sourceLoopTags": {},
+      "sha256": "7979d753ca951128a502f5add111ec5ab8356bf74fad89a4e114214fb5d8a8ea"
+    },
+    {
+      "id": 246027030,
+      "file": "246027030.m4a",
+      "bytes": 18491,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 3.842585,
+      "sourceLoopTags": {},
+      "sha256": "64371434bfeb6887702495de25743b43f18c2ba1f45c68158c7acbabcf40e4fc"
+    },
+    {
+      "id": 25363776,
+      "file": "25363776.m4a",
+      "bytes": 21993,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 4.69483,
+      "sourceLoopTags": {},
+      "sha256": "cb7961bf4c40f66ed3fb701c5eac9e373478e27834a8ced4e324c135eafd48cd"
+    },
+    {
+      "id": 240433614,
+      "file": "240433614.m4a",
+      "bytes": 19322,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 4.111338,
+      "sourceLoopTags": {},
+      "sha256": "2d0bad7a0b0655c70837dc9186eb4db7dfc996d242c2adf08254dfe1ccb9a294"
+    },
+    {
+      "id": 464063563,
+      "file": "464063563.m4a",
+      "bytes": 23151,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 4.93805,
+      "sourceLoopTags": {},
+      "sha256": "03f6fe56b40dc277b9f50416e4e540b0e46f45a2514036baca8572dc90d0df0b"
+    },
+    {
+      "id": 857651507,
+      "file": "857651507.m4a",
+      "bytes": 144442,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 32.242494,
+      "sourceLoopTags": {},
+      "sha256": "cd591388af4f6ce0ba6f18be0133e5cc82e1b49be7a1e426e45f0850e9e0c705"
+    },
+    {
+      "id": 692109284,
+      "file": "692109284.m4a",
+      "bytes": 141410,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 31.763673,
+      "sourceLoopTags": {},
+      "sha256": "d4258dd70eb6ca227844abf87218ded589a2aafa475eddc7f21a0ed3744fa2bc"
+    },
+    {
+      "id": 298342448,
+      "file": "298342448.m4a",
+      "bytes": 3000,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 0.470023,
+      "sourceLoopTags": {},
+      "sha256": "07f8bdb5ba79aaea21d9ee10dd3268367330e243b8605fb031148c9d3c2d479c",
+      "originalConvertedSha256": "dc3b76e44ddc96630dcfd88ced8e926a260d47db91ce4b7ace9a20651fd0ec38",
+      "conversionNote": "Re-encoded from original extracted Wwise Vorbis media using AAC-LC and reset packet timestamps; original supplied AAC stream duration was zero and Chrome rejected its MP4 container.",
+      "sourceVorbisSha256": "f6850be79b2f262a5c96647b495040d67ee5342a6284d10fa02cdf60a52679cf"
+    },
+    {
+      "id": 667788613,
+      "file": "667788613.m4a",
+      "bytes": 9203,
+      "channels": 2,
+      "sampleRate": 44100,
+      "durationSeconds": 0.990998,
+      "sourceLoopTags": {},
+      "sha256": "4259752b00b3449e36ff36e3adbf111f68cdf6d6f5cfc016215e9e55e6bd3693",
+      "originalConvertedSha256": "2b1ea7e6ff26cb44c8131dda56f1200fcbf27dde4f52909c7c6bb78242c18f65",
+      "conversionNote": "Re-encoded from original extracted Wwise Vorbis media using AAC-LC and reset packet timestamps; original supplied AAC stream duration was zero and Chrome rejected its MP4 container.",
+      "sourceVorbisSha256": "19476bacdb202a880b3e35de754100324438219e5facbb0fc94b12822bc194fe"
+    },
+    {
+      "id": 254797084,
+      "file": "254797084.m4a",
+      "bytes": 33019,
+      "channels": 1,
+      "sampleRate": 22050,
+      "durationSeconds": 6.998957,
+      "sourceLoopTags": {},
+      "sha256": "6467be81676eb24102816674a19da1eb13ce30e19fa53f6b92551601fc01d3b9"
+    },
+    {
+      "id": 1043442738,
+      "file": "1043442738.m4a",
+      "bytes": 53607,
+      "channels": 2,
+      "sampleRate": 22050,
+      "durationSeconds": 6.927619,
+      "sourceLoopTags": {},
+      "sha256": "15a37a69e0d9b6771e6805fe3ec8e32e4b8ceaf10ed60e9767328c84211fdb06"
+    }
+  ],
+  "totalMediaBytes": 733786,
+  "rpmRtpc": {
+    "id": 1004019192,
+    "name": "SIMVAR_GENERAL_ENG_PCT_MAX_RPM",
+    "mapping": "FDM turbine RPM / 15000; 15000 maximum is the browser F27 model calibration."
+  },
+  "otherEvents": {
+    "298342448": {
+      "name": "play_bgt_f27500v2_swclicksmall",
+      "id": 3408548400
+    },
+    "667788613": {
+      "name": "play_bgt_f27500v2_inverters",
+      "id": 3689766161
+    },
+    "254797084": {
+      "name": "play_bgt_f27500v2_wind_sound",
+      "id": 378292133
+    },
+    "1043442738": {
+      "name": "play_bgt_f27500v2_ground_roll",
+      "id": 2434961036
+    }
+  },
+  "browserAdaptationV3": {
+    "engineGain": 0.11,
+    "engineGainV2": 0.22,
+    "loopRmsReference": 0.25,
+    "crossfade": "Equal-power sin/cos of smoothstep between source bank peak RPM anchors; original bank curves retained above as provenance. RMS trim replaces source volumeDb in this browser mix.",
+    "loopSpliceSeconds": 0.08,
+    "pitch": "Original per-group pitch RTPC plus source cents offsets; multiply by actual turbine RPM/7000 below idle.",
+    "shutdown": "FDM actual RPM continues after lit=false. Rotation envelope fades smoothly to zero; no shutdown event sample added.",
+    "auxiliaryGainV2Ratio": 0.5
+  }
+}

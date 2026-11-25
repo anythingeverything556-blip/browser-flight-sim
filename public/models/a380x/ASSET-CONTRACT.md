@@ -1,0 +1,20 @@
+# FlyByWire A380X — converted original exterior, cockpit and full cabin
+
+Official source: original FlyByWire A380X stable 4K distribution; original 3D assets CC BY-NC 4.0, not GPL game/avionics code. https://flybywiresim.com/licenses/
+
+## Integration contract (geometry-verification.json PASS; native path is ready for integration)
+
+- Separate **new external aircraft**, not a recolor/replacement.
+- **Use native entry points**: `a380_exterior.native.gltf` and `a380_cockpit.native.gltf`. Import `configureA380TextureManager` and `applyA380NativeMaterials` from `tools/a380-native-textures.mjs`. `const manager = configureA380TextureManager(renderer); const g = await new GLTFLoader(manager).loadAsync(url); applyA380NativeMaterials(g.scene);` before adding/rendering. These native glTFs use unchanged original DDS through the registered handler. No KTX2 transcoder required. PNG variants require ~13.66GiB before mipmaps and are **not the default**. **Cockpit LOD00 contains the modeled passenger cabin** (business/economy/first-class seating, stairs, lavatory/galley). Do NOT use cockpit LOD01.
+- glTF meters, Y-up. Pilot/port is +X, so **rotate wrapper Y by Math.PI** for a game nose -Z / port -X; scale stays 1.0. Captain eye approximately (+0.65, 3.35, +31.9); panel target (0, 2.8, +33.0). Source exterior extents X ±39.934m, longitudinal Z -37.673..35.193m; source nose/cockpit appears +Z. Preserve source scale and origin; apply game-facing orientation at wrapper root, not per mesh.
+- Preserve every source node name, skin and animation. Exterior 2,197 nodes / 1,524 meshes / 106 clips. Interior+cabin 8,510 nodes / 7,181 meshes / 1,064 clips.
+- Full-resolution 4K release textures, no texture resizing/re-encoding with lossy codec; no decimation or geometry simplification.
+- Compiled source is **not browser-ready**: SHORT UV accessors contain half-float bits; int8 normals are VEC4; ASOBO primitive StartIndex/BaseVertexIndex slices must be resolved.
+- Final geometry is 724,130,130 bytes in 30 deterministic standalone glTF buffers <=24MiB. No virtual concatenation or URL modifier is needed for geometry; only the DDS texture handler is required. Source-fidelity audit PASS is source-fidelity-verification.json.
+- Original sampler time domains are in `animation-contract.json`. **Do not assume 0..1:** `c_gear` spans 0..0.8333333, main/body/wing gear 0..8.333333, flaps 0..1.666667, and some aileron clips include negative time (-4.166667..4.166667). All original times preserved without clamping. Sample by intended game state, not by playing all clips.
+- Exterior animation names include `c_gear`, `l_b_gear`, `r_b_gear`, `l_w_gear`, `r_w_gear`, `l_flap_percent_key`, `r_flap_percent_key`, `lower_rudder_percent_key`, `upper_rudder_percent_key`; model/source node names and clip names retained in manifest.
+- Geometry parsed successfully through Three r180 GLTFLoader: 1,569 exterior render instances / 2,934,519 drawn triangles, 8,110 interior+cabin render instances / 8,506,662 drawn triangles. Source unique primitive totals are 2,839,665 + 8,157,039 (instancing explains the difference). All 106 + 1,064 animation clips retained. Detailed proof in geometry-verification.json.
+- Native textures are 377 SHA-256 inventoried files, **3,464,549,464 bytes total**, largest 22,369,776 bytes, unchanged source DDS blocks/mips. Full quality needs desktop BPTC + signed RGTC + S3TC support and substantial (~4GB+) texture/geometry GPU memory. Fail explicitly if missing; no silent quality reduction.
+- Source currently extracted under sibling `external-aircraft/a380-source`. **Browser rendering is blocked**: visible Chrome cannot create a WebGL context, before any asset load. GPU upload, BC5 shader compilation, final appearance and performance are therefore unverified. See BROWSER-VERIFICATION.md. No 8K tier attempted: 4K already requires ~4GB+ visual GPU resources and local WebGL is unavailable.
+
+Incremental messaging tool was denied in this child (no admitted workflow binding), so parent/integration child can read this shared file for current status.

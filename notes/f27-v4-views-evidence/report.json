@@ -1,0 +1,246 @@
+{
+  "errors": [],
+  "samples": [
+    {
+      "mode": "day",
+      "mainSceneDraws": 1,
+      "view": "cockpit",
+      "hour": 12,
+      "exposure": 0.8,
+      "ao": 0,
+      "worldRedraws": 2,
+      "cloudMarches": 1,
+      "selfRefreshed": true,
+      "selfShadowDraws": 1095,
+      "selfCasters": 1095,
+      "programDelta": 0,
+      "renderMs": 690.2000000001863,
+      "size": "scene 640x400 (msaa 0) · ao 320x200 (half-res by design) · comp 640x400 · out 640x400 · clouds 160x100 · glass -",
+      "pixelsDiff": {
+        "max": 0,
+        "changed": 0,
+        "mean": 0
+      },
+      "visibleParts": [
+        "cockpit"
+      ]
+    },
+    {
+      "mode": "day",
+      "mainSceneDraws": 1,
+      "view": "orbit",
+      "hour": 12,
+      "exposure": 0.8,
+      "ao": 0.6,
+      "worldRedraws": 2,
+      "cloudMarches": 1,
+      "selfRefreshed": true,
+      "selfShadowDraws": 145,
+      "selfCasters": 145,
+      "programDelta": 0,
+      "renderMs": 3.400000000372529,
+      "size": "scene 640x400 (msaa 0) · ao 320x200 (half-res by design) · comp 640x400 · out 640x400 · clouds 160x100 · glass -",
+      "pixelsDiff": {
+        "max": 0,
+        "changed": 0,
+        "mean": 0
+      },
+      "visibleParts": [
+        "exterior"
+      ]
+    },
+    {
+      "mode": "dusk",
+      "mainSceneDraws": 1,
+      "view": "cockpit",
+      "hour": 20,
+      "exposure": 0.5873246029410131,
+      "ao": 0,
+      "worldRedraws": 2,
+      "cloudMarches": 1,
+      "selfRefreshed": true,
+      "selfShadowDraws": 1095,
+      "selfCasters": 1095,
+      "programDelta": 0,
+      "renderMs": 12,
+      "size": "scene 640x400 (msaa 0) · ao 320x200 (half-res by design) · comp 640x400 · out 640x400 · clouds 160x100 · glass -",
+      "pixelsDiff": {
+        "max": 0,
+        "changed": 0,
+        "mean": 0
+      },
+      "visibleParts": [
+        "cockpit"
+      ]
+    },
+    {
+      "mode": "dusk",
+      "mainSceneDraws": 1,
+      "view": "orbit",
+      "hour": 20,
+      "exposure": 0.5873246029410131,
+      "ao": 0.6,
+      "worldRedraws": 2,
+      "cloudMarches": 1,
+      "selfRefreshed": true,
+      "selfShadowDraws": 145,
+      "selfCasters": 145,
+      "programDelta": 0,
+      "renderMs": 4.6000000005587935,
+      "size": "scene 640x400 (msaa 0) · ao 320x200 (half-res by design) · comp 640x400 · out 640x400 · clouds 160x100 · glass -",
+      "pixelsDiff": {
+        "max": 0,
+        "changed": 0,
+        "mean": 0
+      },
+      "visibleParts": [
+        "exterior"
+      ]
+    },
+    {
+      "mode": "night",
+      "mainSceneDraws": 1,
+      "view": "cockpit",
+      "hour": 0,
+      "exposure": 0.5625,
+      "ao": 0,
+      "worldRedraws": 0,
+      "cloudMarches": 1,
+      "selfRefreshed": true,
+      "selfShadowDraws": 1095,
+      "selfCasters": 1095,
+      "programDelta": 0,
+      "renderMs": 9.200000000186265,
+      "size": "scene 640x400 (msaa 0) · ao 320x200 (half-res by design) · comp 640x400 · out 640x400 · clouds 160x100 · glass -",
+      "pixelsDiff": {
+        "max": 0,
+        "changed": 0,
+        "mean": 0
+      },
+      "visibleParts": [
+        "cockpit"
+      ]
+    },
+    {
+      "mode": "night",
+      "mainSceneDraws": 1,
+      "view": "orbit",
+      "hour": 0,
+      "exposure": 0.5625,
+      "ao": 0.6,
+      "worldRedraws": 0,
+      "cloudMarches": 1,
+      "selfRefreshed": true,
+      "selfShadowDraws": 145,
+      "selfCasters": 145,
+      "programDelta": 0,
+      "renderMs": 2.300000000745058,
+      "size": "scene 640x400 (msaa 0) · ao 320x200 (half-res by design) · comp 640x400 · out 640x400 · clouds 160x100 · glass -",
+      "pixelsDiff": {
+        "max": 0,
+        "changed": 0,
+        "mean": 0
+      },
+      "visibleParts": [
+        "exterior"
+      ]
+    }
+  ],
+  "events": [
+    {
+      "active": true,
+      "view": "orbit"
+    },
+    {
+      "active": false,
+      "view": "cockpit"
+    },
+    {
+      "active": true,
+      "view": "cockpit"
+    },
+    {
+      "active": false,
+      "view": "orbit"
+    },
+    {
+      "active": true,
+      "view": "orbit"
+    },
+    {
+      "active": false,
+      "view": "cockpit"
+    },
+    {
+      "active": true,
+      "view": "cockpit"
+    },
+    {
+      "active": false,
+      "view": "orbit"
+    },
+    {
+      "active": true,
+      "view": "orbit"
+    },
+    {
+      "active": false,
+      "view": "cockpit"
+    },
+    {
+      "active": true,
+      "view": "cockpit"
+    },
+    {
+      "active": false,
+      "view": "orbit"
+    },
+    {
+      "active": true,
+      "view": "cockpit"
+    },
+    {
+      "active": false,
+      "view": "cockpit"
+    }
+  ],
+  "regression": {
+    "stale": {
+      "mainSceneDraws": 1,
+      "view": "cockpit",
+      "hour": 0,
+      "exposure": 0.5625,
+      "ao": 0.6,
+      "worldRedraws": 0,
+      "cloudMarches": 0,
+      "selfRefreshed": false,
+      "selfShadowDraws": 0,
+      "selfCasters": 1095,
+      "programDelta": 0,
+      "renderMs": 7.2000000001862645,
+      "size": "scene 640x400 (msaa 0) · ao 320x200 (half-res by design) · comp 640x400 · out 640x400 · clouds 160x100 · glass -"
+    },
+    "fixed": {
+      "mainSceneDraws": 1,
+      "view": "cockpit",
+      "hour": 0,
+      "exposure": 0.5625,
+      "ao": 0,
+      "worldRedraws": 0,
+      "cloudMarches": 1,
+      "selfRefreshed": true,
+      "selfShadowDraws": 1095,
+      "selfCasters": 1095,
+      "programDelta": 0,
+      "renderMs": 6.7000000001862645,
+      "size": "scene 640x400 (msaa 0) · ao 320x200 (half-res by design) · comp 640x400 · out 640x400 · clouds 160x100 · glass -"
+    },
+    "pixelsDiff": {
+      "max": 225,
+      "changed": 754745,
+      "mean": 46.3750751953125
+    }
+  },
+  "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+  "method": "Actual F27 GLBs + actual Environment/WorldShadows/PostFX/VolumetricClouds/CloudShadow, fixed time, camera-relative fixture scene; first target vs explicit force-fresh pixels. Not full streamed world or hardware FPS."
+}

@@ -1,0 +1,15 @@
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import { f27CameraPose, f27SeatCm, F27_SEAT_RANGE } from '../src/f27camera.js';
+const v2 = new THREE.Vector3(8.25,.90,-.48);
+const pilot = f27CameraPose(v2, 0), instrument=f27CameraPose(v2,0,true);
+assert.ok(Math.abs(v2.y-pilot.eye.y-0.16)<1e-10);
+assert.equal(pilot.eye.x,v2.x); assert.equal(pilot.eye.z,v2.z);
+assert.ok(instrument.pitch<pilot.pitch-.20 && instrument.fov<pilot.fov);
+assert.equal(f27SeatCm(undefined),0); assert.equal(f27SeatCm('invalid'),0);
+assert.equal(f27SeatCm(1000),F27_SEAT_RANGE.max); assert.equal(f27SeatCm(-1000),F27_SEAT_RANGE.min);
+assert.equal(f27SeatCm('17.3'),17);
+assert.ok(Math.abs(f27CameraPose(v2,-25).eye.y-pilot.eye.y+0.25)<1e-10);
+assert.ok(Math.abs(f27CameraPose(v2,18).eye.y-pilot.eye.y-0.18)<1e-10);
+assert.ok(Math.abs(v2.y-.90)<1e-10,'input point is not mutated');
+console.log('PASS lower F27 pilot eye, panel preset, bounded saved seat preferences');

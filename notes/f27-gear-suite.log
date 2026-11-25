@@ -1,0 +1,1808 @@
+
+> earthwing@1.0.0 test
+> node tools/test-runner.mjs
+
+
+--- test/embed-policy-test.mjs ---
+PASS exact origin policy, fail-closed requests, static security parity and opt-in embed response
+
+--- test/documented-defaults-test.mjs ---
+README/HTML native 100%, adaptive on, four aircraft, C172 guide and local setup/logbook copy match release
+
+--- test/model-textures-test.mjs ---
+sf50: 403431 tris unchanged; 141 geometry views preserved; estimated RGBA+mips 199.5 → 40.0 MiB (not measured VRAM)
+il76: 368929 tris unchanged; 148 geometry views preserved; estimated RGBA+mips 164.0 → 148.0 MiB (not measured VRAM)
+
+--- test/selected-model-test.mjs ---
+Only selected aircraft model is loaded; saved and deep-link choices honored
+
+--- test/logbook-test.mjs ---
+Logbook bounds, duplicate landing guard, setup validation, malformed data, missing/quota storage and teleport cancellation pass
+
+--- test/panel-defaults-test.mjs ---
+Panel explanations, native Advanced groups, live reset paths and dead relief UI removal
+
+--- test/rail-label-test.mjs ---
+Wide rail visible text, accessible names retained and visible touch stick hint
+
+--- test/flight-hud-test.mjs ---
+PASS flight HUD: wide rail reserve, map/guide/lever obstacles, touch log scrolling and short-window bounds
+
+--- test/aircraft-art-test.mjs ---
+Four repository-model render cards and approved hero assets present
+
+--- test/c172-lesson-test.mjs ---
+C172 lesson/pattern ordered phases, crash guard, spawn and coach pass
+
+--- test/quick-start-test.mjs ---
+Quick start: explicit choice, home runway, transient clear weather
+
+--- test/models-cache-test.mjs ---
+PASS fixed-name models revalidate every load; hashed assets remain immutable
+
+--- test/touch-controls-test.mjs ---
+PASS touch-only/hybrid detection, axes, brakes, keyboard coexistence, disabled/paused release
+
+--- test/startup-fallback-test.mjs ---
+PASS imagery deadline, blocked/hanging fallback, safe DEM gate, explicit retry, fatal asset timeout
+PASS visible fatal-startup state, all early launch actions disabled, loader closed and retry available
+
+--- test/cloudshadow-glsl-test.mjs ---
+PASS cloud shadow uniform declarations and GLSL inline-comment audit
+
+--- test/dem-test.mjs ---
+dem-test ok: corrupt lines repaired, clean terrain and real ridges untouched
+
+--- test/fdm-test.mjs ---
+lift-off at 48.4 s, then 151 m/s, 1841 m after 70 s
+fdm-test ok
+
+--- test/controls-test.mjs ---
+PASS  ground: D steers right (yaw > 0) yaw=0.76
+PASS  ground: D does not roll roll=0.00
+PASS  ground: D does not count as manual stick input 
+PASS  ground: A steers left (yaw < 0) yaw=-0.76
+PASS  air: D rolls right (roll > 0) roll=0.99
+PASS  air: D does not yaw 
+PASS  air: D is manual input 
+PASS  air: A rolls left (roll < 0) roll=-0.99
+PASS  ground: W pitches like ArrowUp, S like ArrowDown after S pitch=0.99
+PASS  air: W pitches like ArrowUp, S like ArrowDown after S pitch=0.99
+PASS  arrows unchanged: ArrowUp pitches negative pitch=-0.99
+PASS  ground: W does not change throttle 
+PASS  bounce < 0.25 s keeps ground steering 
+PASS  A no longer toggles autopilot; K does; ? and F1 open help ap,help,help
+PASS  slew turn works with D 
+
+all controls tests passed
+
+--- test/missions-test.mjs ---
+PASS  recon: steering to every target scores near full marks
+PASS  recon: flying straight misses the offset targets but hits T1
+PASS  recon: hud lists next target bearing and score
+PASS  high & fast: needs M3 above 70,000 ft held 20 s
+PASS  high & fast: too low or too slow does not count
+PASS  free flight and guided flight create no scored mission
+
+all mission tests passed
+
+--- test/ew-guidance-regressions-test.mjs ---
+PASS EW-21: direct-to later fix uses ownship origin, retains and sequences subsequent fixes
+PASS EW-24: completion latches beyond final fix, zero progress distance, explicit reactivation resets
+PASS EW-22: route, go-around, cruise and mode buttons cannot engage Skyhawk AP; rejected NAV never claims success
+PASS EW-23: capped SF50 targets reflected in input with explanation, including metric and invalid input
+PASS EW-26: runway geometry scores normal touchdown without ILS; 5km sideways, short, long and missing positions fail
+PASS EW-27: unsupported replay is hidden and guarded; Skyhawk lesson and Blackbird guide retained
+PASS EW-28: actual context forwards inactive state, guide resets dwell for pause/loading/wreck/not-started
+PASS EW-29: continuous 20-second hold required; speed or altitude interruption resets
+PASS EW-39: actual canvas needle rotations at 0/1,000/10,000 ft preserve all three pointer periods
+PASS EW-40: real wheel handler changes actual Fly-by camera FOV at fixed aircraft pose in both directions
+
+--- test/ew-guidance-dateline-test.mjs ---
+PASS EW-25: actual map overlay inputs stay adjacent across date line in either world copy, including route, active leg, marker, trail and track
+(node:6795) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+--- test/tutorial-test.mjs ---
+PASS  tutorial waits for the pilot: nothing advances on its own
+PASS  each step advances only when its action happens
+PASS  hints react to what the pilot is doing
+PASS  the climb step teaches the real profile: low and fast to about 400 kt, then pull up
+PASS  the final card points to the new controls
+PASS  skip step moves on
+PASS  landing score: a smooth landing is an A, a hard one is not
+PASS  landing mission: final, flare, touchdown, rollout, score
+PASS  landing mission: a crash ends it with advice
+
+all tutorial and landing tests passed
+
+--- test/autopilot-test.mjs ---
+PASS  alt hold 250->150 kt gear up maxdev 209 ft, max AoA 12.1 deg, final 186 kt
+PASS  alt hold 250->150 kt gear down maxdev 251 ft, max AoA 12.2 deg, final 184 kt
+PASS  alt hold 250->200 kt gear up maxdev 193 ft, max AoA 12.1 deg, final 211 kt
+PASS  alt hold 200->300 kt gear down maxdev 321 ft, max AoA 10.6 deg, final 298 kt
+PASS  stall protect: below the minimum speed the AOA comes back under the limit AOA < 13.2 deg after 12.7 s, height lost 90 ft
+PASS  stall protect: it does not dive to get out of it 90 ft
+PASS  stall protect: a commanded climb never pushes the AOA past the warning angle max AoA 13.2 deg
+PASS  overspeed: a 600 kt target stays under 450 KEAS max 437 KEAS
+PASS  overspeed: Mach target 3.45 stays under the Mach limit max M 3.25
+PASS  climb to 78,700 ft at Mach 3.2 follows a speed schedule on altitude and M > 3 after 1262 s, max AoA 4.9 deg, max 366 KEAS, max M 3.23, protections: OVERSPEED PROTECT
+PASS  altitude hold in gusty air (about 6 m/s) max deviation 132 ft, max AoA 10.4 deg
+PASS  180 degree heading change 150 kt final heading error 0.1 deg, max bank 23, altitude change 4 ft
+PASS  180 degree heading change Mach 3 final heading error 2.0 deg, max bank 24, altitude change 4 ft
+PASS  recover: nose-high stall level after 46 s, lowest 17279 ft, then 214 kt, 17361 ft
+PASS  recover: inverted dive level after 16 s, lowest 13040 ft, then 386 kt, 13160 ft
+PASS  recover: steep spiral level after 11 s, lowest 16094 ft, then 390 kt, 16179 ft
+PASS  recover: slow and banked level after 50 s, lowest 18809 ft, then 206 kt, 18845 ft
+
+all autopilot tests passed (17)
+
+--- test/workstats-test.mjs ---
+PASS  redraw: 120 Hz frames are drawn at about 30 Hz 30 draws
+PASS  redraw: inactive clears the layer exactly once, then skips clear,skip,skip,skip,skip,skip,skip,skip,skip,skip,skip,skip,skip
+PASS  redraw: active again draws immediately 
+PASS  redraw: a layer that never showed anything does no work 
+PASS  gate: first state draws, settles after 4 draws, then skips true,true,true,true,false,false,false,false
+PASS  gate: sub-second flight timer jitter does not count as a change 
+PASS  gate: a whole second does 
+PASS  gate: change below display precision (4 digits) is ignored 
+PASS  gate: a real change draws again 
+PASS  gate: nested flag flips are seen 
+PASS  stats count work and skips 
+all workstats tests passed
+
+--- test/trees-test.mjs ---
+checked 8 regional tree variants, seasonal colours, and OSM overrides
+
+--- test/metar-test.mjs ---
+metar-test ok
+
+--- test/atc-test.mjs ---
+atc-test ok
+
+--- test/traffic-test.mjs ---
+traffic-test ok
+traffic providers ok
+
+--- test/adsbmap-test.mjs ---
+PASS  normalize: provider record to map entry (feet, knots, track); ground aircraft keep no altitude; hex lower case 
+PASS  emergency squawks are named; the emergency field counts too 
+PASS  altitude colours: warm low, cool high, grey on the ground 
+PASS  dead reckoning: 360 kt east for 10 s moves about 1.85 km east, never more than 60 s ahead 
+PASS  find matches callsign, registration, type, ICAO address and squawk, case-insensitive 
+PASS  view radius: half the visible diagonal, at least 20 NM, at most the providers' 250 NM 
+PASS  bearing: north 0, east 90 
+PASS  map traffic: the first fetch waits until the map sits on the aircraft (it used to fetch where the map was last open) first request at 51.47, -0.45
+PASS  map traffic: a pan during a request fetches the new area as soon as that request ends, not 12 s later 
+PASS  map traffic: while the map is shut the area round the aircraft keeps loading (every 30 s), so it opens with traffic 
+PASS  map traffic: a failed request retries in 3 s, not 15 
+PASS  proxy: a map-sized area (200 NM) uses 1 degree cells and covers the asked circle 
+PASS  proxy: answers are slimmed to the fields the simulator reads 
+PASS  proxy: worldwide lists (military from adsb.lol, emergencies merged from three squawks without duplicates), unknown list refused 
+PASS  proxy: a worldwide list falls back to adsb.fi when adsb.lol fails 
+adsbmap-test ok
+(node:6853) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+--- test/systems-test.mjs ---
+systems-test: pass
+
+--- test/landing-test.mjs ---
+PASS  without the aid a hands-off 3 degree approach touches down hard 4.06 m/s
+PASS  landing aid 185 kt: soft touchdown, no crash 1.46 m/s (limit for a hard landing is 5.5)
+PASS  landing aid 165 kt: soft touchdown, no crash 2.53 m/s (limit for a hard landing is 5.5)
+PASS  landing aid 200 kt: soft touchdown, no crash 1.26 m/s (limit for a hard landing is 5.5)
+PASS  landing aid 4.5 degree glide: soft touchdown, no crash 1.55 m/s (limit for a hard landing is 5.5)
+PASS  landing aid light, 170 kt: soft touchdown, no crash 1.95 m/s (limit for a hard landing is 5.5)
+PASS  the flare profile never asks for less than 0.6 m/s and is capped by height 
+all landing tests passed
+
+--- test/mach-dial-test.mjs ---
+mach-dial-test ok
+
+--- test/occlusion-test.mjs ---
+PASS  patch fits the basic template 
+PASS  basic: vFragDepth and logDepthBufFC are declared before the test uses them 
+PASS  basic: mask uniforms are declared before the test 
+PASS  basic: the test is the first thing in main, before any colour or lighting work 
+PASS  basic: patching twice changes nothing more 
+PASS  patch fits the lambert template 
+PASS  lambert: vFragDepth and logDepthBufFC are declared before the test uses them 
+PASS  lambert: mask uniforms are declared before the test 
+PASS  lambert: the test is the first thing in main, before any colour or lighting work 
+PASS  lambert: patching twice changes nothing more 
+PASS  patch fits the standard template 
+PASS  standard: vFragDepth and logDepthBufFC are declared before the test uses them 
+PASS  standard: mask uniforms are declared before the test 
+PASS  standard: the test is the first thing in main, before any colour or lighting work 
+PASS  standard: patching twice changes nothing more 
+PASS  patch fits the physical template 
+PASS  physical: vFragDepth and logDepthBufFC are declared before the test uses them 
+PASS  physical: mask uniforms are declared before the test 
+PASS  physical: the test is the first thing in main, before any colour or lighting work 
+PASS  physical: patching twice changes nothing more 
+PASS  a template without the insertion points is left alone 
+PASS  a skipped fragment still writes its depth and returns before any shading 
+PASS  the test only exists where log depth does 
+PASS  the declaration names match the uniforms 
+PASS  cullHidden keeps the material's own patch 
+PASS  cullHidden adds the mask test and uniforms 
+PASS  cullHidden extends the program key 
+PASS  cullHidden twice does not stack 
+PASS  materials without their own hook still get a key 
+PASS  custom shaders are left to their own source 
+PASS  an opaque double-sided mesh is an occluder 
+PASS  single-sided meshes are not (the mask draws both sides) 
+PASS  transparent, alpha-tested and depth-less meshes are not 
+PASS  a mesh the main camera does not draw is not 
+PASS  tiny parts are not worth a draw call 
+PASS  instanced meshes and custom shaders are not 
+PASS  the mask registers the occluders and moves them onto its layer 
+PASS  the layer is not one the game already uses 
+all occlusion tests passed
+
+--- test/dynres-test.mjs ---
+PASS  15 fps on a 3x ratio steps straight down, not by 5 %
+PASS  never goes below the screen own pixels (times the floor)
+PASS  holds when the frame time is inside the band
+PASS  steps up only after the hold time and with headroom
+PASS  a hitch (bad p90, fine median) still steps down a little
+PASS  converges: pixel cost ~ ratio^2 reaches 60 fps in two checks
+PASS  pressure ladder needs consecutive slow checks and recovers slowly
+PASS  emergency level 3 needs frames under 30 fps, drops the floor, and recovers
+PASS  a 60 Hz screen (every frame 16.7 ms, clean p90) probes one step up after the probe hold
+PASS  CPU-bound (noDown) holds the resolution instead of stepping down
+PASS  a failed probe sets a ceiling the scale does not climb past until it expires
+PASS  steps down are spaced by downHold unless frames are under 30 fps
+PASS  first decision comes after 12 frames and 1.5 s, not 30 frames
+PASS  preset fallback: ultra -> high -> normal, never to Low
+PASS  a preset drop needs two more slow checks after level 3 and fires once
+all dynres tests passed
+
+--- test/climb-test.mjs ---
+PASS  FLCH climbs 5000 m, captures the altitude within 30 m and never nears the stall
+PASS  FLCH climbs through the transonic range to 12 000 m
+PASS  FLCH descends with idle thrust and captures
+PASS  automatic take-off: lifts off near 110 m/s, holds the heading, raises the gear and hands over
+PASS  hand-flown rotation: every stick position from 20 % to 100 % lifts off without a strike; the stock gearing alone does not
+PASS  auto-trim holds the attitude through a speed change better than a fixed trim
+PASS  auto-trim never trims nose-up into the stall region
+PASS  go-around from 80 m on final: climbs 600 m, gear comes up, never near the stall or the ground
+PASS  stick gearing on the runway: a full pull lifts off sooner the faster the jet is rolling (it used to get weaker and never lift off)
+all climb tests passed
+
+--- test/imagery-test.mjs ---
+PASS  new national sources cover their capitals
+PASS  neighbouring countries are not claimed
+PASS  coarse zooms and the existing sources are untouched
+all imagery tests passed
+
+--- test/imagery-sources-test.mjs ---
+PASS  each source is picked inside its area at its max zoom, and not past it
+PASS  zoom caps of the existing sources
+PASS  fallback chain lists the overlapping sources in order
+PASS  URL templates reproduce the tiles fetched during the research
+PASS  every imagery host is allowed by the CSP, and nothing else loosened
+PASS  every source carries its attribution, and the credits list it
+PASS  blank / placeholder detection
+PASS  worker: a failed, missing or blank source tile falls back to the next source, then Esri
+PASS  Esri Wayback areas from wayback.json
+all imagery source tests passed
+
+--- test/validation-test.mjs ---
+      unstick 211 kt
+PASS  unstick speed at 25 t of fuel is within 200-225 kt (published: 210 kt)
+      captured 15.8 min, M 3.20, max CIT 402 C, max alpha 5.8, final 78743 ft
+PASS  mission climb: FLCH from 20,000 ft to M3.2 at 24 km in 14-20 min, CIT 380-430 C, no protection trips, ceiling held
+      burn 12.4 t/h at M 3.20, mass 42067 kg
+PASS  cruise fuel burn at M3.2 is 9-17.5 t/h (published 16-17 t/h at M3.0-3.15 for a heavier jet; the model was flown at ~43 t)
+      captured 20.5 min, holds 84976 ft at M 3.20
+PASS  climb to cruise: FLCH + Mach 3.2 reaches 85,000 ft in 17-26 min and holds it (it used to stall at ~81,000 ft)
+      burn 63.8 t/h
+PASS  full afterburner on the runway burns 55-68 t/h (2 x 34,000 lbf at about 2.1 lb/lbf/h)
+all validation tests passed
+
+--- test/buildcollide-test.mjs ---
+PASS  segBox: through, beside, above, and a segment that stops short
+PASS  segTri crosses a triangle once, from both sides
+PASS  buildingBoxes finds the extent and the tile top
+PASS  flying into a wall is a hit
+PASS  flying over the roof is not
+PASS  passing beside the building is not
+PASS  a fast pass (300 m between frames) through a thin building is still caught
+PASS  a courtyard: flying through the gap of a U-shaped pair of buildings is not a hit
+PASS  a teleport (respawn) between frames is not a hit
+PASS  hard points include the nose, wingtips and the extra wing points
+PASS  Skyhawk: the wingtips span 11 m and the wheels hang below the CG
+PASS  Skyhawk: a 14 m gap the SR-71 hits is clear for the Skyhawk; a 9 m gap is not
+PASS  Skyhawk: the wheels skimming a 30 m roof are a hit, 2 m above it are not
+all building collision tests passed
+
+--- test/no-airbrake-test.mjs ---
+PASS  flight model: no air brake or reverser exports, state or events
+PASS  a stray airbrake or reverser field on the model has no effect (drag and thrust ignore it)
+PASS  thrust on a ground roll at full power is forward, never reversed
+PASS  keys F and N do nothing (no air brake / reverse actions bound)
+PASS  HUD, help, guide, tutorial and missions no longer offer them to the SR-71
+PASS  the Il-76 keys exist but are bound to digits, never to F or N, and main.js refuses them in every other aircraft
+PASS  aircraft visual has no air brake panels or reverser doors
+all air brake / reverse thrust removal tests passed
+
+--- test/relay-test.mjs ---
+PASS  relay rejects a request without the token
+PASS  relay answers /health without a token
+PASS  relay caches: two identical requests hit the upstream once
+PASS  the Pages function, pointed at the relay with the key, returns aircraft
+all relay tests passed
+
+--- test/airdata-test.mjs ---
+PASS  at sea level and low Mach calibrated, equivalent and true airspeed agree
+PASS  Mach 0.8 at 10 000 ft: about 449 kt calibrated, 511 kt true
+PASS  Mach 1.5 at 35 000 ft: about 548 kt calibrated, 865 kt true (supersonic pitot)
+PASS  Mach 3.2 at 80 000 ft: true airspeed is about 1 850 kt, calibrated about 440 kt, equivalent about 349 kt
+PASS  calibrated airspeed is continuous through Mach 1
+all air data tests passed
+
+--- test/climb-profile-test.mjs ---
+PASS  the real profile (auto take-off, low to 400 kt, then pitch up) reaches 20,000 ft inside 2.5 minutes of brake release without nearing the stall
+PASS  a steeper 22 degree climb is also flyable and not slower to 20,000 ft by more than 20 s
+all climb profile tests passed
+
+--- test/fixes-p0-test.mjs ---
+PASS  crash off: impact absorbed, no crash, no dead stop absorbed 1, min speed 89.3 m/s
+PASS  crash on: the same arrival still crashes left nozzle hit the ground
+PASS  reset clears a NaN from the fuel pools, engines, read-outs and surfaces non-finite after reset+1 s: 0
+PASS  landing aid: no entry without a sink rate 
+PASS  landing aid: latched through the flare (sink slowed past -0.2) 
+PASS  landing aid: latched through a gust past 260 kt 
+PASS  landing aid: pilot pitch input takes over 
+PASS  landing aid: off at touchdown and above its height 
+PASS  B held + E pushes the throttle throttle 0.71
+PASS  Ctrl does not move the throttle 
+PASS  Q pulls the throttle back 0.15
+PASS  Shift+B sets the parking brake without pushing the throttle 
+PASS  METAR without a usable temperature parses, temp null 
+PASS  METAR bare TS is thunder 
+PASS  METAR VV/// is full cover 
+PASS  METAR +BLSN is not rain 
+PASS  METAR haze/smoke thin the air 
+PASS  METAR wind direction 999 is rejected 
+PASS  METAR OVX (JSON vertical visibility) is overcast 
+PASS  traffic callsign markup is escaped 
+all P0 fix tests passed
+
+--- test/airportdb-test.mjs ---
+PASS flatten: 48000 random points near and far, identical to the allocating original (22131 on/near a strip)
+PASS flatten: no per-call allocation (400k calls)
+PASS airportdb: airports without a usable runway are skipped, so longest/towerLatLon never throw
+PASS airports.json: unique idents, runways near their airport, idents match the geometry, runway and airport elevations agree
+
+--- test/api-proxy-test.mjs ---
+PASS metar proxy: upstream 204 -> 200 []
+PASS metar proxy: high-latitude bbox accepted, oversize/junk refused with no-store
+PASS metar client + proxy: nearestMetar works from -78 to 82 deg latitude
+PASS metar proxy: only 2xx cached, errors no-store
+PASS metar proxy: hung upstream aborted -> 504 no-store
+PASS traffic proxy: TRAFFIC_API_KEY only reaches the primary host
+PASS traffic client: exponential backoff 30/60/120/240/300 s for 404, HTML, 5xx and 429; ghosts cleared after 3 failures or 90 s; one warning per streak
+
+--- test/atc-arrival-test.mjs ---
+PASS  approach, landing and landed calls happen
+PASS  they name the arrival airport (Edwards) and runway 22L
+atc arrival tests passed
+
+--- test/atc-audio-test.mjs ---
+PASS  squelch without the game context makes one context and one buffer for many messages
+PASS  squelch reuses the game audio context (no second context)
+PASS  a held (paused / hidden) game audio stays silent
+PASS  hidden tab: no voice, pending speech and readbacks are dropped
+PASS  reset (respawn) drops pending radio
+all atc audio tests passed
+
+--- test/audio-sched-test.mjs ---
+   first frame 104 setTargetAtTime calls, then 2 over 100 steady frames
+PASS  steady state schedules (almost) nothing after the first frame
+PASS  a real change still gets through
+PASS  suspend fades then suspends; init() does not resume a held context; resume() does
+PASS  suspend then resume before the fade ends never suspends
+PASS  master gain comes back after resume
+PASS  resetForSpawn clears the wreck timers, silences the layers and replaces the wreck bus
+PASS  wreck sounds route to the bus, others to the mix
+PASS  four engine voices, no afterburner layers, buzz-saw and core voices on each
+PASS  each engine's fan tone is the blade-passing frequency of its own N1: 716 Hz at idle to 2,387 Hz at take-off
+PASS  the buzz-saw comes in above about 85 % N1; a reverser out is louder and lower and mutes the fan tone
+PASS  four engines schedule (almost) nothing in steady state, and a change in one engine moves only its own voices
+PASS  APU on the ground, spoiler buffet, hydraulic pumps for flaps and cargo, cabin boom and wind scale to the airframe; the Il-76 one-shots and warning tones exist
+all audio scheduling tests passed
+
+--- test/buildcollide-broad-test.mjs ---
+PASS broad phase matches brute force on 5371 frames, 23 collisions found
+PASS timing, 2500 buildings: brute 206.8 us/frame, broad 5.1 us/frame (40.2x), box checks 15756 vs 182393030
+
+--- test/buildings-upload-test.mjs ---
+PASS  tile buffers upload nearest first, within the byte budget, at least one tile per frame
+PASS  small tiles share one frame
+PASS  roof atlases are pre-uploaded under the same budget, and shown only once uploaded
+PASS  a dropped owner or evicted atlas is not uploaded
+PASS  without a renderer atlases attach immediately (old path)
+PASS  refit of an uploaded tile adds update ranges only for moved buildings; first upload sends everything
+all buildings upload tests passed
+
+--- test/ditch-radius-test.mjs ---
+PASS  KJFK: farthest runway end 3.31 km from the airport point (old radius 1.5 km missed it, new 6 km covers it)
+PASS  VHHH: farthest runway end 3.66 km from the airport point (old radius 1.5 km missed it, new 6 km covers it)
+PASS  LFPG: farthest runway end 4.24 km from the airport point (old radius 1.5 km missed it, new 6 km covers it)
+PASS  KSFO: farthest runway end 1.91 km from the airport point (old radius 1.5 km missed it, new 6 km covers it)
+PASS  runway ends outside the radius worldwide: 3735 of 21400 at 1.5 km, 29 at 6 km
+ditch radius tests passed
+
+--- test/fdm-reset-test.mjs ---
+PASS  reset after dirtying every field matches a new model (airborne) 37 fields
+PASS  fuel NaN is replaced by a full load (airborne) 
+PASS  the same 2 s of flight after reset is identical (airborne) 
+PASS  reset after dirtying every field matches a new model (on the runway) 37 fields
+PASS  fuel NaN is replaced by a full load (on the runway) 
+PASS  the same 2 s of flight after reset is identical (on the runway) 
+PASS  reset after dirtying every field matches a new model (airborne with a climb angle) 37 fields
+PASS  fuel NaN is replaced by a full load (airborne with a climb angle) 
+PASS  the same 2 s of flight after reset is identical (airborne with a climb angle) 
+PASS  a finite fuel load survives reset (spawn sets it) 
+all fdm reset tests passed
+
+--- test/flight-alloc-test.mjs ---
+PASS  the scripted flight completes without a crash 12 samples, 134 m, 236 m/s
+PASS  state matches the recorded reference (relative error under 1e-9) worst 0.00e+0, 240/240 values bit-identical
+all flight allocation tests passed
+
+--- test/geo-test.mjs ---
+PASS  20 km east of 179.95 wraps to a negative longitude -179.7579
+PASS  the tile under the jet is placed near the origin, not 24,645 km away x = 20.0 km
+PASS  re-basing on the wrapped longitude keeps the origin in range -179.7579
+PASS  a point west of the origin across the line is at x = -20 km x = -20000 m
+PASS  toXZ is symmetric over the line x = -2224 m
+PASS  toLatLon -> toXZ round trip across origins on and near the line worst 5.7e-9 m
+PASS  ordinary longitudes are unchanged 
+PASS  wrapLon and dLon 
+all geo tests passed
+
+--- test/map-test.mjs ---
+PASS map: airport markers diffed by airport (no clear-and-rebuild while scrolling), tooltips and labels escaped
+PASS map: trail and marker work skipped while the map is closed, flushed once when it opens
+
+--- test/nav-test.mjs ---
+PASS  Mach 3, 60 km legs: only WP1 is sequenced while flying the first leg WP1
+PASS  one sequence per update active 0 -> 1
+PASS  long legs keep the full turn lead lead 146 km
+PASS  Mach 3, 300 km legs: all four waypoints sequenced in order WP1,WP2,WP3
+PASS  Mach 3, 300 km legs: the route completes t 1037 s
+PASS  Mach 3, 300 km legs: overshoot stays inside a turn radius max xtk 144 km
+PASS  Mach 3, 300 km legs: flies over the last waypoint 2.0 km closest
+PASS  250 kt, 20 km legs: sequenced in order, tight capture WP1,WP2,WP3,WP4 (end of route) max xtk 3.4 km
+all nav tests passed
+
+--- test/particles-test.mjs ---
+PASS  airflow: idle frames neither upload nor draw
+PASS  airflow: emitted puffs upload only their range, then go quiet again after they expire
+PASS  airflow: positions are camera-relative every live frame, wrapped ring emits stay inside the range
+PASS  airflow: clear() zeroes live puffs (geometry version change)
+PASS  blast: idle does nothing, power draws only live puffs, then goes quiet after they expire
+all particle upload tests passed
+
+--- test/systems-reset-test.mjs ---
+PASS  an hour at 60,000 ft uses oxygen 96.40 %
+PASS  minutes in the menu or paused change nothing 96.40 % oxygen
+PASS  reset gives a full oxygen supply and cold temperatures 
+all systems reset tests passed
+
+--- test/aircraft-merge-test.mjs ---
+PASS mergeStatic synthetic: 5 -> 3 draws
+PASS merge: chase 307 -> 211 draws, cockpit 216 -> 158 draws (same 426264 triangles)
+PASS proxy: sun-map casters chase 81/332280 -> 53/67137, cockpit 75/320480 -> 10/48865 (draws/triangles)
+PASS proxy switch + hook; proxy 72698 triangles in 2 meshes
+aircraft-merge-test ok
+
+--- test/controls-input-test.mjs ---
+PASS  Shift then B at once: parking brake, throttle stays pb 1 thr 0
+PASS  Shift alone no longer moves the throttle (it is only the modifier of the Shift chords) 0.00
+PASS  E pushes the throttle 0.35
+PASS  guide step 1 (hold B, push with E): brakes held, throttle > 70 %, no parking brake 0.88
+PASS  Ctrl+W/G/Arrow: no pitch, no gear, never preventDefault (Ctrl+W still closes the tab) pitch 0 gear 0 prevented 
+PASS  Ctrl is not a throttle key 
+PASS  all released: no stuck pitch, no held keys 
+PASS  plain G still works 
+PASS  Meta+P goes to the browser 
+PASS  W held across a Ctrl tap keeps pitching -0.98
+PASS  no default binding uses Ctrl 
+PASS  mouse stick: cursor at the right edge rolls fully 1.00
+PASS  mouse stick: pointer over UI centres the stick 
+PASS  mouse stick: pointer leaving the window centres the stick 
+PASS  mouse stick: moving between elements inside the window does not centre it 
+PASS  mouse stick: window blur centres the stick 
+PASS  pad: stick drift inside the dead zone does nothing 
+PASS  pad: light stick flies but does not count as pilot override 0.09
+PASS  pad: stick beyond 0.3 is pilot override 
+PASS  pad: dead zone is rescaled so the stick still reaches 1 
+PASS  pad: known standard right stick at -1 gives full rudder immediately 
+PASS  pad: the same axis works once it has moved -0.09
+PASS  pad: non-standard mapping: no rudder from axis 2, no button actions, no throttle yaw 0 gear 0 thr 0
+PASS  pad: standard A fires gear once while held gear 1
+PASS  pad: standard right trigger pushes the throttle 0.50
+PASS  paused: throttle, axes, gear and take-off keys do nothing thr 0.4
+PASS  paused: P and M still work 
+PASS  resume: throttle unchanged, held gamepad A does not fire the gear thr 0.4 gear 0
+PASS  menu (not enabled): no actions, no throttle 
+PASS  enabled again: actions work 
+PASS  tutorial hint shows in flight 
+PASS  tutorial hint hidden after a crash 
+PASS  tutorial hint hidden while respawning or paused 
+PASS  missions: landing missions start on their approach, tutorial on the runway 
+PASS  missions: fit rules 
+PASS  missions: only free, recon and high & fast survive a teleport 
+controls input: all passed
+
+--- test/crash-split-test.mjs ---
+PASS prepare: 10 meshes, 282534 triangles, 7.1 MB, 73 ms wall, 57 ms of slices
+PASS split {"fuselageSegments":2,"wingSections":1}: 2 bins, 252264 triangles, 0 moved bins, per-triangle 281 ms -> cached 1.0 ms
+PASS split {"fuselageSegments":3,"wingSections":2}: 4 bins, 252264 triangles, 0 moved bins, per-triangle 224 ms -> cached 0.2 ms
+PASS split {"fuselageSegments":5,"wingSections":2}: 5 bins, 252264 triangles, 0 moved bins, per-triangle 280 ms -> cached 1.1 ms
+PASS split {"fuselageSegments":6,"wingSections":2}: 6 bins, 252264 triangles, 0 moved bins, per-triangle 172 ms -> cached 0.5 ms
+PASS split {"fuselageSegments":8,"wingSections":3}: 9 bins, 252264 triangles, 0 moved bins, per-triangle 206 ms -> cached 0.9 ms
+impact-time split over 5 plans: per-triangle 1164 ms total -> cached 3.7 ms total
+PASS merged meshes keep 123 source parts in 27 draws
+PASS 1,000 km from the origin, rotated: cached split 1 ms vs per-triangle 225 ms (missed the cache before round 4)
+crash-split-test ok
+
+--- test/flare-test.mjs ---
+PASS  flare mode does not latch STALL PROTECT at a high-AOA moment status ''
+PASS  the same moment in ordinary V/S mode still latches it status 'STALL PROTECT'
+PASS  left at 45 % power the flare takes the throttle back below 12 m and lands (it used to float to 350 kt) throttle taken at 12.0 m, touchdown 2.04 m/s 295 kt
+PASS  the nose stays near the flare cap max pitch 9.1 deg, cap 11.0
+PASS  touchdown pitch is clear of the nozzles (static strike about 16 deg, 13 deg with the struts compressed) 9.1 deg, 1.61 m/s
+PASS  3 deg of bank at 46 m is flown out and lands without a nozzle strike touchdown bank 0.0 deg, pitch 9.1, 1.69 m/s
+PASS  -3 deg of bank at 46 m is flown out and lands without a nozzle strike touchdown bank -0.1 deg, pitch 9.1, 1.69 m/s
+PASS  5 deg of bank at 46 m is flown out and lands without a nozzle strike touchdown bank 0.1 deg, pitch 9.1, 1.65 m/s
+PASS  gusting air: soft landing, no crash 2.39 m/s
+all flare tests passed
+
+--- test/takeoff-stop-test.mjs ---
+PASS  stop() on an idle aid returns off 
+PASS  stop() during the roll returns roll 
+PASS  stop() in the rotation returns rotate 
+PASS  stop() in the climb returns climb 
+PASS  a second stop() is harmless 
+all take-off stop tests passed
+
+--- test/terrain-select-test.mjs ---
+PASS  high parked: same tiles, stitches, fades and ghosts as before on every one of 150 frames (025728f94e3932ee)
+PASS  high mach3 at 20 km: same tiles, stitches, fades and ghosts as before on every one of 300 frames (139dca5454e07e41)
+PASS  high low and fast: same tiles, stitches, fades and ghosts as before on every one of 300 frames (dc23c83a9a35d2a4)
+PASS  normal turning, loading boost: same tiles, stitches, fades and ghosts as before on every one of 300 frames (7c03dd2b33d58216)
+PASS  ultra across the antimeridian: same tiles, stitches, fades and ghosts as before on every one of 300 frames (dea44887233b8eca)
+PASS  low, some tiles without imagery: same tiles, stitches, fades and ghosts as before on every one of 300 frames (0f153a07dd73709c)
+PASS  high, no imagery, boost: same tiles, stitches, fades and ghosts as before on every one of 300 frames (506409b6d4aae730)
+PASS  every tile mesh uses the single shared terrain material (393 meshes)
+PASS  so one program variant is compiled for all of them 
+PASS  no tile owns a uniform object of its own 
+PASS  shared uniforms stay live views of the module uniforms 
+PASS  there are sampler uniforms among the shared ones 
+PASS  the first tile of a render call gets the full upload (all shared uniforms flagged, no extra upload) 
+PASS  its imagery, mask, tile origin and fade reach the shared uniforms 
+PASS  later tiles upload only per-tile values and samplers 
+PASS  a tile without imagery shows the fallback colour and the white texture 
+PASS  the next render call starts with a full upload again 
+PASS  and so does a render into another target 
+PASS  with the gate off every tile forces a full upload 
+PASS  tiles drawn with another material (overrides) are left alone 
+PASS  builds per update never exceed the cap, slow frames or not (max 2)
+PASS  texture uploads per frame are capped by bytes (5 x 256 px with mipmaps) even with a free time budget (5 uploaded, 5 waiting)
+PASS  the rest follow on the next frames, then the tiles are ready 
+PASS  water masks go through the same upload queue instead of uploading at first draw 
+PASS  and are bound once uploaded 
+terrain-select OK
+
+--- test/terrain-bench.mjs ---
+PASS  high: parked selection changed on 0/30 frames, 504 tiles x 32 cells, leafCap 300, want 289, budget 0.48
+PASS  high: leaf count respects the preset cap (289 <= 300)
+      drawn per level {"7":27,"8":27,"9":27,"10":27,"11":26,"12":27,"13":38,"14":41,"15":45,"16":45,"17":48,"18":36,"19":34,"20":56} tris 1161216
+PASS  high: finest tiles reach the runway 
+PASS  normal: parked selection changed on 0/30 frames, 462 tiles x 32 cells, leafCap 260, want 258, budget 0.48
+PASS  normal: leaf count respects the preset cap (258 <= 260)
+PASS  ultra: parked selection changed on 0/30 frames, 789 tiles x 40 cells, leafCap 460, want 456, budget 0.59
+PASS  ultra: leaf count respects the preset cap (456 <= 460)
+PASS  parked: drawn set is non-empty and every drawn tile is ready 
+PASS  mach3-20km: drawn set is non-empty and every drawn tile is ready 
+PASS  low-300ms: drawn set is non-empty and every drawn tile is ready 
+terrain-perf OK
+
+--- test/gpuclass-test.mjs ---
+PASS  gpuClass integrated: ANGLE (AMD, AMD Radeon(TM) Graphics (0x00001681) Direct3D11 vs_5_0 ps_
+PASS  gpuClass integrated: ANGLE (AMD, AMD Radeon 680M (0x00001681) Direct3D11 vs_5_0 ps_5_0, D3D
+PASS  gpuClass integrated: ANGLE (AMD, AMD Radeon(TM) 780M Graphics Direct3D11 vs_5_0 ps_5_0, D3D
+PASS  gpuClass integrated: ANGLE (AMD, AMD Radeon(TM) Vega 8 Graphics Direct3D11 vs_5_0 ps_5_0, D
+PASS  gpuClass integrated: ANGLE (Intel, Intel(R) UHD Graphics 620 (0x00005917) Direct3D11 vs_5_0
+PASS  gpuClass integrated: ANGLE (Intel, Intel(R) Iris(R) Xe Graphics (0x00009A49) Direct3D11 vs_
+PASS  gpuClass integrated: Intel(R) HD Graphics, or similar
+PASS  gpuClass integrated: ANGLE (Apple, ANGLE Metal Renderer: Apple M1, Unspecified Version)
+PASS  gpuClass integrated: Apple GPU
+PASS  gpuClass integrated: Mali-G78 MP14
+PASS  gpuClass integrated: Adreno (TM) 650
+PASS  gpuClass discrete: ANGLE (NVIDIA, NVIDIA GeForce RTX 3050 Laptop GPU (0x000025A2) Direct3
+PASS  gpuClass discrete: ANGLE (AMD, AMD Radeon RX 6800 XT (0x000073BF) Direct3D11 vs_5_0 ps_5_
+PASS  gpuClass discrete: ANGLE (AMD, AMD Radeon(TM) RX 7600 Direct3D11 vs_5_0 ps_5_0, D3D11)
+PASS  gpuClass discrete: AMD Radeon Pro 5500M OpenGL Engine
+PASS  gpuClass discrete: Radeon R9 200 Series, or similar
+PASS  gpuClass discrete: ANGLE (Intel, Intel(R) Arc(TM) A770 Graphics Direct3D11 vs_5_0 ps_5_0,
+PASS  gpuClass discrete: ANGLE (Apple, ANGLE Metal Renderer: Apple M2 Max, Unspecified Version)
+PASS  gpuClass discrete: NVIDIA GeForce GTX 1060/PCIe/SSE2
+PASS  gpuClass software: ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)
+PASS  gpuClass software: llvmpipe (LLVM 15.0.7, 256 bits)
+PASS  gpuClass unknown: 
+PASS  first run preset: Normal on integrated, High on discrete/unknown, Low on software
+gpuclass OK
+
+--- test/cloud-steps-test.mjs ---
+PASS  full step count inside the layer and within 2 km of it
+PASS  fewer steps further away, never rising with distance, half from 15 km
+PASS  a high layer seen from the runway is also marched with fewer steps; floor of 12
+cloud steps OK
+
+--- test/cloud-anchor-test.mjs ---
+cloud-anchor-test ok {"kbab":[368994,506737],"egll":[325441,183835]}
+
+--- test/touchdown-test.mjs ---
+PASS  Vision Jet: a fast taxi and a full-power take-off roll over uneven ground report no touchdown 2 wheel contacts, 0 messages (was 2)
+PASS  Skyhawk: a fast taxi and a full-power take-off roll over uneven ground report no touchdown 18 wheel contacts, 0 messages (was 18)
+PASS  Vision Jet: one landing (bounces and both main wheels) on an uneven runway is reported once 6 main-wheel contacts -> 1 message (394 fpm at 32.2 s)
+PASS  reporter: a hop shorter than AIR_MIN is not a landing; a bounce is not a second one; a later landing (nose wheel first) is reported with the mains' sink 
+touchdown-test ok
+
+--- test/cloud-texoffset-test.mjs ---
+cloud-texoffset-test ok, worst mismatch 5.7e-14 tile
+
+--- test/landing-ref-test.mjs ---
+PASS  touchdown reference keeps the AOA near 11 deg at every landing weight
+PASS  pitch at the reference on a 2 m/s sink leaves >= 5 deg to a banked nozzle strike; the old 160 kt target left < 1 deg at full weight
+PASS  reference sits just above the AOA-protection speed (the landing aid flare floor)
+PASS  landing score: slow (nose-high) touchdowns no longer earn the speed points, near the reference does
+landing reference OK
+
+--- test/taxi-creep-test.mjs ---
+PASS  at idle with the brakes off the jet stays put (was 6 kt after 1 min, 44 kt after 9)
+PASS  once taxiing it keeps rolling at idle (breakaway only below walking pace)
+taxi creep OK
+
+--- test/wreck-start-test.mjs ---
+PASS prepare: 10 meshes, 282534 triangles, 7.1 MB, 81 ms wall, 65 ms of slices
+PASS chase-view breakup leaves the hidden cockpit interior out: 383880 vs 420724 piece triangles, wreck.start 2 vs 3 ms
+wreck-start-test ok
+
+--- test/crash-prepare-moving-test.mjs ---
+PASS prepare while the jet moves: 10 meshes, 282534 triangles, root moved 20 times between slices
+PASS impact after a moving prepare takes the cache for every split mesh: 5 cached, 0 per-triangle; wreck.start first 8 ms (pieces 6), again 2 ms
+crash-prepare-moving-test ok
+
+--- test/depth-decode-test.mjs ---
+PASS  reversed: w -> d -> w round trip at 1 m, 1 km and 25 km
+PASS  reversed: nearer is larger depth
+PASS  log: w -> d -> w round trip at 1 m, 1 km and 25 km
+PASS  log: nearer is smaller depth
+PASS  reversed: cleared depth (0) is sky; terrain 300 km away is not
+PASS  log: cleared depth (1) is sky
+   one float32 step at 25 km: reversed 2.97e-3 m, log 3.02e-2 m
+PASS  reversed keeps more precision than log at 25 km (one float32 step of d)
+PASS  GLSL decode matches the JS mirror (same formulas)
+depth decode OK
+
+--- test/cloud-halfrate-test.mjs ---
+PASS  off (default): a march and an upsample every frame, no reprojection
+PASS  half rate: a march every other frame, an upsample every frame
+      reprojected frame: screen centre samples the last march at u = 0.4811
+PASS  half rate: the frame between marches maps to the last march view (camera turned 2 degrees)
+PASS  half rate: a resized march target marches at once
+cloud half-rate OK
+
+--- test/crash-warm-pieces-test.mjs ---
+      50 runs, 5 ms
+PASS  warm-up draws every run once, with the scene lights, and nothing else
+PASS  renderer, camera, lights and scene are restored
+PASS  a second warm-up has nothing left to draw
+PASS  hard-landing 0.4: impact draws only warmed runs
+PASS  hard-landing 0.51: impact draws only warmed runs
+PASS  hard-landing 0.6: impact draws only warmed runs
+PASS  fast-shallow 1: impact draws only warmed runs
+PASS  steep-impact 1: impact draws only warmed runs
+PASS  structural-failure 1: impact draws only warmed runs
+crash-warm-pieces-test ok
+
+--- test/terrain-fade-coverage-test.mjs ---
+2700 frames in 5 s, 1570 with a crossfade; uncovered samples: 0
+   by kind {}
+PASS  every crossfading tile is fully covered by itself plus its partner
+
+--- test/c172-fdm-test.mjs ---
+PASS  stall speed flaps 0 52.8 KCAS (POH 53 KCAS, 48 KIAS)
+PASS  stall speed flaps 30 47.7 KCAS (POH 48 KCAS, 40 KIAS)
+PASS  climb at Vy, sea level, full throttle 769 fpm at 71 KIAS, 2450 rpm (POH 730)
+PASS  cruise 75 % power at 8,000 ft 126 KTAS, 75 % power, 2653 rpm, 10.1 gal/h (POH 122 KTAS, ~2550 rpm, ~10 gph)
+PASS  take-off ground roll, flaps 10, tail wheel up 255 m (POH ~256 m at this weight), wheels off at 51.6 KIAS (POH 51), 126 m up after 60 s, 67 KIAS
+PASS  take-off ground roll, flaps 10, tail wheel down (default) 290 m, wheels off at 57.7 KIAS, 126 m up after 60 s
+PASS  parked at idle with the brakes on moved 0.05 m, 701 rpm, gear loads 349/367/365 kg
+PASS  10 minutes of flight, finite state alt 1500 m, burned 3.2 kg
+PASS  glide ratio, engine off 8.8:1 at 66 KIAS (POH ~9:1)
+PASS  hands-off take-off roll: P-factor swing to 50 KIAS stays small 9.6 deg
+PASS  full pedal held 2 s at 15 KIAS: turns without tipping onto the propeller min pitch -1.4 deg, max yaw rate 35 deg/s
+PASS  full pedal held 2 s at 30 KIAS: turns without tipping onto the propeller min pitch -3.3 deg, max yaw rate 24 deg/s
+PASS  full pedal held 2 s at 45 KIAS: turns without tipping onto the propeller min pitch -0.3 deg, max yaw rate 17 deg/s
+PASS  tail wheel up: over-rotation on the runway is a tail scrape, not a crash max pitch 15.5 deg; 6 s later 65 KIAS, 0.1 m up
+PASS  tail wheel down: over-rotation rides on the tail wheel, no scrape or crash; no retraction under load max pitch 22.3 deg, peak tail wheel load 746 kg
+PASS  tail wheel: clear of the runway parked, retracts in 3 s parked load 0, half-way 0.50, then 0
+c172-fdm-test ok
+
+--- test/c172-visual-test.mjs ---
+PASS  moving parts and merged airframe 139 draw calls (from 327 meshes), 319122 triangles
+PASS  model sits on its wheels: lowest point at the ground, nose toward +x, span along z box y 0.00..2.90, 8.3 m long, 11.9 m span
+PASS  up elevator raises the elevator trailing edge; right aileron: left down, right up; flaps go down TE heights: elevator 0.99 -> 1.20, ailerons L 2.03 -> 1.90 R 1.99 -> 2.08, flap 1.96 -> 1.72 m
+PASS  propeller spins and blurs at running rpm; strobes flash 
+PASS  live gauges: 7 round quads on the panel faces, facing the seat, shown and redrawn in the cockpit view only 2 redraws, needle rpm 2307
+PASS  model corrections: stray windscreen ring removed, decals lifted, trim tabs and wicks on their surfaces, one tail material 8 parts re-attached, 12 decals lifted
+PASS  the elevator trim tab moves with the elevator (it stayed in the air before) 
+PASS  cockpit lights: off by day; at night the glareshield flood, instrument lamps and gauges glow panel flood 0.9 cd at night, 5 dial faces
+PASS  flaps 30: turn about the nose, which runs 6 cm aft and 4 cm down its track, staying under the shroud nose -0.060,-0.040,0.000, 10 deg -0.033,-0.022,0.000
+PASS  stowed flaps: the part under the shroud is inset (no z-fighting), the rest keeps its shape 28 vertices under the shroud inset, 64 aft vertices unchanged
+PASS  wells: the wing no longer runs on over the flaps and ailerons; each well is closed by a cove wall, the flaps' by a shroud 1627 triangle pieces cut from 9 shells
+PASS  ailerons, elevators and rudder turn about their leading edges (the exported hinges were 12-50 cm off them) Aileron_L, Elevator_L, Elevator_R, Rudder
+PASS  propeller: modelled blades while it barely turns; above that the disc draws both blades smeared over the frame's sweep idle sweep 70 deg/frame at 60 fps, radius 0.97 m
+PASS  ground shadow: the silhouette projected along the sun, under the aircraft on the ground, offset and softer with height blur 0.050 m on the ground, 1.07 m at 100 m
+PASS  crash: the Skyhawk breaks up (the crash code splits by position along the airframe) and clears 2 pieces (hard-landing, minor)
+PASS  rain on the glass: drops on the windshield and windows; the glass wets in rain, seen from the seat, and dries after 3 panes (Glass, Glass_Rear, Glass_Tint), wet 1.00 after 10 s of rain, 0.00 100 s after
+c172-visual-test ok
+
+--- test/keymap-test.mjs ---
+PASS  every action has a default key and the ids are unique 
+PASS  defaults: G gear, F flaps down, Shift+F flaps up, Shift+V previous view, ? help {"gear":1,"flapsDown":1,"flapsUp":1,"prevView":1,"help":1}
+PASS  gear rebound G -> N: G does nothing, N raises the gear 0 / 1
+PASS  throttle up on R (taken off Restart): R pushes it, Restart no longer fires, Shift no longer pushes thr 0.35 -> 0.35
+PASS  pitch on I/K: K pulls, the arrow no longer does; K/I left Autopilot and Strip; Shift+L gear fires only with Shift pull 0.98 arrow 0.00 gear 1
+PASS  slew-mode keys may reuse flight keys (E stays on the throttle) 
+PASS  a key taken in the same context leaves its old action 
+PASS  Shift alone only for held controls 
+PASS  only changed actions are saved 
+PASS  round trip 
+PASS  a broken save falls back to the defaults 
+PASS  key names 
+keymap tests passed
+
+--- test/c172-handsoff-test.mjs ---
+PASS  rigged: cruise hands off, no assist, flies nearly straight max bank 1.7 deg, heading 5.2 deg in 30 s
+PASS  no assist: climb power rolls and turns left (torque, P-factor), as a real one heading -84.8 deg, max bank 23.7 deg in 30 s
+PASS  assist: cruise hands off holds the wings level and the heading max bank 0.1 deg, heading 0.1 deg in 60 s, 102 KIAS
+PASS  assist: climb power hands off holds the wings level and the heading max bank 0.5 deg, heading -0.1 deg in 60 s, 79 KIAS
+PASS  assist: idle glide hands off holds the wings level and the heading max bank 0.3 deg, heading 0.1 deg in 60 s, 76 KIAS
+PASS  no assist: full-power take-off roll swings left heading -11.0 deg in 20 s, 63 KIAS
+PASS  assist: full-power take-off roll keeps the nose straight heading 0.27 deg in 20 s, 63 KIAS
+PASS  a held roll key banks the aircraft; let go, the wings come level bank 78.4 deg after 3 s of half roll, 0.6 deg 15 s after letting go
+PASS  assist, default weather, key-tapped pitch: take-off and 2 min climb keep the runway heading lift-off at 18 s; from 30 s after it (the crosswind weathercocks it on the way): heading -2.9..3.5 deg, max bank 2.8 deg, 449 m up
+PASS  assist: a slow roll on the ground holds the heading heading -0.25 deg in 60 s at 13.5 kt
+hands-off tests passed
+
+--- test/voicewarn-test.mjs ---
+voicewarn-test: ok
+
+--- test/explosion-test.mjs ---
+PASS  fireball: blasts out, drag stops the shell, glows for 2-3 s and rolls upward
+PASS  plume: buoyant rise slows as it cools, and it bends downwind
+PASS  staged soot: invisible and still until its delay, then rolls out glowing
+PASS  a fuelled Skyhawk nose-in gets a fireball, secondary bursts and burning debris
+PASS  an empty-tank Skyhawk crash does not explode
+PASS  a fuelled SR-71 fireball is far bigger than the Skyhawk one
+PASS  a tumbling engine nacelle stays finite (its spin used to run away to NaN and black out the screen)
+explosion-test: ok
+
+--- test/sf50-fdm-test.mjs ---
+PASS  weights and geometry MTOW 2722 kg (6,000 lb), fuel 907 kg, 0/50/100 % = 0/15/39 deg, max notch 2
+PASS  parked at idle with the brakes on, 60 s moved 0.16 m, gear carries 100.2 % of the weight, nose wheel 24.1 % (target ~23 %), CG 1.201 m, pitch -0.09 deg
+PASS  idle thrust, brakes off: only a ~1 cm/s creep, as a real jet on the flat moved 0.89 m in 60 s, 0.029 m/s
+PASS  static sea-level thrust 1,846 lbf 8.21 kN = 1845 lbf, idle 0.37 kN (4.5 %), N1 100 % N2 100 % ITT 825 C
+PASS  spool idle to take-off thrust 4-8 s 6.7 s to 95 % thrust
+PASS  fuel flow at sea level idle 111 lb/h, take-off 939 lb/h (est. 0.5 lb/lbf/h)
+PASS  thrust falls with altitude at M 0.5 (lapse fitted to the AFM MCT climb and cruise tables) SL 5.20, FL100 4.27, FL200 3.46, FL280 2.88, FL310 2.68 kN
+PASS  take-off ground roll, flaps 50 %, take-off trim, rotate at 90 KIAS to 5 deg (AFM technique) 1858 ft (566 m; published G3 1,910 ft at 6,000 lb, SL ISA), VR reached after 1704 ft, 105 KIAS and 109 m up after 50 s
+PASS  full pedal held 2 s at 15 KIAS: turns without a nose strike or crash min pitch -0.4 deg, max yaw rate 26 deg/s
+PASS  full pedal held 2 s at 30 KIAS: turns without a nose strike or crash min pitch -0.3 deg, max yaw rate 9 deg/s
+PASS  full pedal held 2 s at 45 KIAS: turns without a nose strike or crash min pitch -0.4 deg, max yaw rate 5 deg/s
+PASS  rejected take-off from 90 KIAS: idle, max braking, stops straight stopped in 2597 ft (791 m), 1.3 m off the centreline
+PASS  initial climb after clean-up, 170 KIAS, max continuous (AFM 1,860 fpm at 177 KIAS) 1784 fpm at 166 KIAS, gamma 6.1 deg, pitch 3.7 deg (AFM: 1,860 fpm at 177 KIAS, MCT)
+PASS  stall speed, flaps 100 %, gear down 67.6 KIAS flown (CLmax alpha, 1 g decel), 67.0 analytic wing (published 67 KCAS at MTOW)
+PASS  stall speed, flaps 50 % 77.5 KIAS flown, 76.9 analytic (VREF 100 / 1.3 = 77)
+PASS  stall speed, clean 86.1 KIAS flown, 85.5 analytic (est. 80-88)
+PASS  stall is gentle: wings stay level to the break, aoaNorm 0..1 max bank 0.0/0.0/0.0 deg through the stall
+PASS  aoaNorm scale: low at cruise speed, shaker flag near the stall aoaNorm 0.15 at 250 KIAS, 0.58 at 120 KIAS, 1.00 at the stall
+PASS  cruise FL280, max continuous thrust 316.2 KTAS, M 0.532, 2239 kg, alt 28000 ft (published 311-317 KTAS, MMO 0.53)
+PASS  fuel flow at FL280 max cruise ~500 lb/h 490 lb/h, N1 100 % ITT 830 C (published ~500 lb/h, 400-430 at FL310)
+PASS  FL310 service ceiling: can hold level flight at max continuous 316 KTAS, M 0.538, 458 lb/h
+PASS  hands-off 60 s, cruise FL250, M 0.48 heading 0.14 deg, bank 0.05 deg, altitude 5.7 m, speed 0.4 kt, trim -0.32, thrust lever 0.93
+PASS  hands-off 60 s, approach, flaps 100 %, gear down, 95 KIAS heading 0.07 deg, bank 0.02 deg, altitude 0.8 m, speed 0.0 kt, trim 0.51, thrust lever 0.84
+PASS  hands-off 3 degree approach holds the path 40 s sink 2.56 -> 2.48 m/s, 90.9 KIAS, lever 0.69
+PASS  pitch doublet damps, cruise peak pitch rate 20.4 deg/s in 3 s, 0.00 deg/s after 8 s
+PASS  pitch doublet damps, approach peak pitch rate 4.5 deg/s in 3 s, 0.02 deg/s after 8 s
+PASS  Dutch roll damps without the yaw damper (approach) peak yaw rate 2.7 deg/s, 0.61 deg/s after 12 s
+PASS  power increase pitches the nose down, gently ("little pitch change with power") pitch rate -0.19 deg/s relative to hands-off after 1.5 s, thrust +1.2 kN (-0.2 kN m about the CG)
+PASS  power reduction pitches the nose up pitch rate +0.29 deg/s relative to hands-off after 1.5 s
+PASS  gear retracts and extends in about 6 s up 6.0 s, down 6.0 s
+PASS  gear cannot retract with weight on wheels setGear(false) refused; lever forced back down by the squat switch
+PASS  gear-up landing is a crash (belly/strike), not a quiet touchdown belly hit the ground [crashed: belly hit the ground]
+PASS  gear extended above VLE: warning flag and event, no crash 213 KIAS (VLE 210), peak buffet 0.10
+PASS  flap overspeed flag above VFE (150 KIAS at 100 %) flag true at 162 KIAS, false at 120 KIAS
+PASS  setFlaps clamps 0..2 notches 0, 1, 2
+PASS  landing: stabilised approach, flare, touchdown without damage touchdown 76 KIAS, sink 1.86 m/s, max 2.94 g
+PASS  landing ground roll, max braking, flaps 100 % 1621 ft (494 m; published 1,622 ft)
+PASS  random inputs: finite state throughout 6 runs of up to 1440 s in total, 2 ended in a crash with a proper record
+PASS  crash record: dive into the ground nose hit the ground; 82 m/s, sink 22 m/s, mass 2722 kg, gear up [crashed: nose hit the ground]
+PASS  Crash option off: impacts are absorbed no crash record, y 29.95 m
+PASS  mass and CG follow fuel CG 1.135 -> 1.215 m (5.1 % MAC), mass 2722 -> 1815 kg
+PASS  time to climb on the AFM schedule (175 KIAS falling to 140): FL100 / FL200 / FL280 in 6 / 13 / 21 min, within 15 % 6.1 / 14.0 / 22.2 min
+PASS  FL250 cruise at max continuous: AFM 307 KTAS / 78 gph (G1; the G3 is a little faster) 309 KTAS, 77 gph
+PASS  best glide, engine out: AFM 14.7:1 at 114 KIAS 14.6:1 at 110 KIAS
+PASS  roll rate, full aileron: light and docile, not fighter-like (below 40 deg/s at 140 KIAS, below 75 at VMO) 24 / 35 / 63 deg/s at 100 / 140 / 250 KIAS
+PASS  50 % flaps at 150 KIAS, hands off: the nose drops about 5 deg in 2 s (Aviation Week flight report) -4.7 deg
+PASS  trim wheel stays inside its travel in every phase (take-off band set on the runway) take-off 0.38, climb -0.27, cruise -0.27, approach 0.34
+PASS  stick pusher: a held full pull at idle is pushed back from the stall angle, airborne only alpha peak 9.7 deg vs stall 9.0
+sf50-fdm-test ok
+
+--- test/sf50-handsoff-test.mjs ---
+PASS  no assist: cruise FL100, 220 KTAS hands off flies straight max bank 0.04 deg, heading 0.12 deg in 60 s
+PASS  assist: cruise FL100, 220 KTAS holds the wings level and the heading max bank 0.04 deg, heading 0.11 deg in 60 s, 189 KIAS
+PASS  no assist: approach, flaps 100 %, gear down hands off flies straight max bank 0.02 deg, heading 0.07 deg in 60 s
+PASS  assist: approach, flaps 100 %, gear down holds the wings level and the heading max bank 0.02 deg, heading 0.05 deg in 60 s, 92 KIAS
+PASS  assist: full-thrust take-off roll and climb keep the runway heading lift-off at 21.9 s, heading held within 0.05 deg, 90 m up
+PASS  assist, default weather: take-off and climb keep the runway heading lift-off at 22 s; heading -4.4..2.0 deg from 20 s after it, max bank 2.0 deg, 432 m up
+PASS  assist: a slow roll on the ground holds the heading heading 0.00 deg in 60 s at 0.2 kt
+PASS  a held roll key banks the jet; let go, the wings come level bank 59.9 deg after 3 s of half roll, 0.4 deg 20 s after letting go
+sf50-handsoff-test ok
+
+--- test/sf50-quality-test.mjs ---
+PASS SF50 quality: 403431 unchanged triangles; 40 unchanged rig nodes; 141 identical non-image buffers; 9 native image upgrades; no image reduced
+
+--- test/sf50-visual-test.mjs ---
+PASS  pilot displays retain native 2560 x 1600 detail with live flight data 2560 x 1600
+PASS  every mover and light of the model is found; the cabin, glazing and exterior are merged by material 21 movers, 146 draw calls, 412402 triangles
+PASS  model sits on its wheels: lowest point at the ground, nose toward +x, span along z, centre of gravity at the root box y -0.08..3.32, 9.4 m long, 11.8 m span
+PASS  flaps: the flight model's degrees go straight to the flap, trailing edge down; ailerons: right roll = left down, right up flap TE -0.09 -> -0.32, ailerons L 0.08 -> -0.01 R 0.08 -> 0.17 m
+PASS  ruddervators: pitch up raises both trailing edges, yaw right raises the left one and lowers the right one (V-tail mixing) pitch up L 1.97 -> 2.02, R 1.97 -> 2.02; yaw right L 2.02, R 1.91 m
+PASS  the surfaces follow a real flight: pitch up with the elevator command and a right roll with aileron to the right vtail L 0.26 R 0.26, da 0.60
+PASS  gear: legs fold between 10 % and 85 % of the transit with the doors open, then the doors close; nothing shows when up nose wheel y 0.10 -> 0.45 (half way), main wheel z -1.65 -> -1.03
+PASS  wheels roll forward with the flight model's wheel rates; struts hang longer in the air than compressed on the ground tyre top +0.040 m forward in 10 ms at 20 rad/s, struts 0.12 m longer unloaded
+PASS  sticks follow the controls (aft with up elevator, right with right aileron), the throttle lever goes forward with the thrust lever, the fan turns with N1 stick x 0.84 -> 0.82, throttle x 1.09 -> 1.12
+PASS  interior: drawn in the cockpit view and when the camera is close, hidden for a distant outside view cabin only when it can be seen
+PASS  cockpit: the glare shield reaches the windshield, so looking down past it shows the deck, not the hollow nose 9/14 sight lines past the shield end on the deck, all 66 deck vertices inside the skin
+PASS  cockpit: the jagged windshield frit edge is hidden and the glass nearly clear from the seat; outside keeps the dark tint windshield opacity 0.06 inside, 0.32 outside
+PASS  rain on the glass: drops on the windshield and side windows (not the frit); the glass wets in rain, seen from the seat 2 panes, wet 1.00 after 10 s of rain at 60 m/s
+PASS  shadows: the exterior casts, the cabin and glazing do not; the ground shadow is a silhouette of the airframe, not a world-cascade caster 22 casting exterior meshes, shadow blur 0.050 m on the ground
+PASS  lights: nav steady, strobes flash twice per 1.2 s, landing light and ground cone at night only, taxi light on the ground strobe 12/120 frames, taxi spot 0 -> landing 110 cd
+PASS  displays: the PFD/MFD redraw only in the cockpit view, alternately, never while paused; the GLB map is the fallback outside 6 PFD + 4 MFD redraws per second
+PASS  display feed: air data, engine, configuration, pressurisation, navigation and alerts in the displays' units ias 194, alt 25000, n1 84, ff 44 gph, cabin FL310 8597 ft
+PASS  crash: the Vision Jet breaks up with its own sizing and clears 7 pieces (steep-impact, minor)
+PASS  cabin door: opens over ~3 s on command (main door first, baggage door after), the emergency exit stays shut, and it closes again main door top 2.33 -> 3.22 m, baggage 1.80 -> 2.17 m
+sf50-visual-test ok
+
+--- test/sf50-wiring-test.mjs ---
+PASS  aircraft remain available; sf50 has a name, model, blurb and three stats 
+PASS  ?aircraft=sf50 and the saved setting choose it; anything else falls back to the DA40 
+PASS  every aircraft has a setup card 
+PASS  the model file is in public/ 1.8 MB
+PASS  pitch authority: full to 95 KIAS, about a quarter at VMO (floor 0.24), softer than the Skyhawk's schedule at the same speed 
+PASS  full back stick for 6 s at 100 KIAS in level flight does not break the aircraft peak 1.60 g
+PASS  full back stick for 6 s at 150 KIAS in level flight does not break the aircraft peak 2.22 g
+PASS  full back stick for 6 s at 200 KIAS in level flight does not break the aircraft peak 3.42 g
+PASS  full back stick for 6 s at 250 KIAS in level flight does not break the aircraft peak 3.80 g
+PASS  ...but it reaches the over-G warning at VMO (a determined pull still gets to the limit) 3.80 g
+PASS  quiet in cruise {"stall":false,"pullUp":false,"gearUnsafe":false,"overspeed":false,"overG":false,"lowFuel":false}
+PASS  stall: AOA above 90 % of the stall angle (not on the ground) 
+PASS  overspeed: above VMO 250 KIAS, above MMO 0.53, or past a flap / gear limit 
+PASS  gear horn: gear up, below 400 m, descending, slower than 150 KIAS; silent when fast, high or climbing 
+PASS  over-G: +3.6 g clean, +2 g with flaps out 
+PASS  low fuel below 90 kg (not with unlimited fuel); PULL UP descending fast near the ground 
+PASS  110 KIAS final: gear down, flaps 15 (notch 1) gear 1, flaps 15
+PASS  ...and it stays on the 3 degree path: sink 3-7 m/s, speed within 8 kt, not crashed -2.9 m/s, 106,106 KIAS
+PASS  FL250 cruise start: gear up, flaps up, lever below take-off thrust lever 0.90
+PASS  ...and holds it for a minute: altitude within 60 m, speed within 8 kt, Mach below MMO 4 m, 180 KIAS, M 0.45
+PASS  runway start: on the wheels, gear down, flaps 50 % commanded, engine idling n1 32
+PASS  gear up refused with weight on the wheels 
+PASS  gear up accepted in the air, down again accepted 
+PASS  retraction takes about 6 s 6.0 s
+PASS  collision points cover the span, the gear and the tail 17 points
+PASS  the Skyhawk-sized pad, smaller than the SR-71 point cloud 
+PASS  fan profile: quieter rumble and a higher, louder whine than the J58s; neutral profile leaves the SR-71 as it was 
+PASS  main passes the SF50's one engine with the fan profile 
+PASS  every IS_C172 branch has an SF50 answer (no aircraft-specific line is left to the SR-71 by accident) 
+PASS  Safe Return gives the planner the terrain sampler, usable fuel and altitude, and keeps the abandoned runways to avoid 
+PASS  Safe Return arms the autoland with the attempt number; the click handler cannot pass an event as the attempt 
+PASS  main handles the go-around, missed-approach, replan and hold events and passes the runway length 
+sf50-wiring-test ok
+
+--- test/sf50-autopilot-test.mjs ---
+PASS  ALT + SPD hold at FL100 / 180 KIAS for 90 s (after 30 s to settle) max error 1 ft, 0.2 kt
+PASS  trim servo: the autopilot integrator ends up on the trim wheel deI 0.000, trim -0.30
+PASS  autopilot off: in trim, no pitch bump hands off peak pitch rate 0.00 deg/s
+PASS  HDG: 180 deg turn at 160 KIAS heading error 0.0 deg, max bank 23.5, altitude 7991 ft
+PASS  FLCH climb 5,000 ft to FL250 on the climb schedule (175 falling to 140 KIAS), captures ALT 13.2 min, speed within 6.2 kt of the schedule, ends at 24997 ft
+PASS  FLCH descent to 10,000 ft without passing VMO ends 10011 ft, max 194 KIAS
+PASS  V/S -1,500 fpm -1461 fpm
+PASS  SPD 150 -> 220 KIAS (autothrottle) 219 KIAS, 12050 ft
+PASS  overspeed protection: a 300 kt target is held below VMO (250) max 232 KIAS
+PASS  underspeed protection: a 60 kt target and a climb never reach the stall closest 2.7 deg below the stall angle, 104 KIAS
+PASS  autoland, calm: lands and stops on the runway, configured on the way down done, events flaps50 gear flaps100 flare retard touchdown stopped
+PASS  autoland, calm: touchdown 150-600 m past the threshold, on the centreline 275 m, 0.0 m off the centreline
+PASS  autoland, calm: gentle touchdown, wings level, aligned, nose up but not on the tail -241 fpm, bank -0.1, heading 90.0, pitch 1.6, 73 KIAS
+PASS  autoland, calm: stops before the end, near the centreline stopped 780 m down the 1,800 m runway, 0.1 m off
+PASS  autoland: VREF + 10 with full flaps at 500 ft, easing to VREF at the flare (AFM 4-25 / 4-26) 93 KIAS at 500 ft (VREF + 10 = 93), 83 KIAS at the flare (VREF 83)
+PASS  autoland, 10 kt crosswind from the left: lands and stops on the runway, configured on the way down done, events flaps50 gear flaps100 flare retard touchdown stopped
+PASS  autoland, 10 kt crosswind from the left: touchdown 150-600 m past the threshold, on the centreline 264 m, 2.6 m off the centreline
+PASS  autoland, 10 kt crosswind from the left: gentle touchdown, wings level, aligned, nose up but not on the tail -244 fpm, bank 2.2, heading 87.5, pitch 1.7, 72 KIAS
+PASS  autoland, 10 kt crosswind from the left: stops before the end, near the centreline stopped 723 m down the 1,800 m runway, -0.1 m off
+PASS  autoland, 8 kt headwind, from the right side: lands and stops on the runway, configured on the way down done, events flaps50 gear flaps100 flare retard touchdown stopped
+PASS  autoland, 8 kt headwind, from the right side: touchdown 150-600 m past the threshold, on the centreline 233 m, -1.0 m off the centreline
+PASS  autoland, 8 kt headwind, from the right side: gentle touchdown, wings level, aligned, nose up but not on the tail -239 fpm, bank -1.6, heading 91.1, pitch 1.8, 72 KIAS
+PASS  autoland, 8 kt headwind, from the right side: stops before the end, near the centreline stopped 628 m down the 1,800 m runway, 0.2 m off
+PASS  go-around from 200 ft: climbs away, loses under 60 ft first, gear up +821 ft after 40 s, sank 12 ft
+PASS  Safe Return skips short and unpaved runways, lands into the wind KFAR 18, fixes KFARIF 3867 ft, KFARFF 2209 ft
+PASS  Safe Return over the airfield: no LOC / G/S capture while flying away from the runway lat LNAV, vert FLCH
+PASS  Safe Return over the airfield: flies out to the fixes, back down the final, lands and stops on the runway done after 10.5 min, touchdown 274 m / 0.0 m off, -229 fpm
+PASS  approach gate: above the 1,000 ft gate nothing is judged null
+PASS  approach gate: stable null
+PASS  approach gate: localizer lost no localizer signal
+PASS  approach gate: localizer not captured localizer not captured
+PASS  approach gate: glideslope not captured glideslope not captured
+PASS  approach gate: localizer deviation > 1 dot localizer deviation
+PASS  approach gate: glideslope deviation > 1 dot glideslope deviation
+PASS  approach gate: sink > 1,500 fpm below 500 ft excessive sink rate
+PASS  approach gate: 1,700 fpm is fine at 800 ft (gate is 500 ft) null
+PASS  approach gate: speed 25 kt high speed high
+PASS  approach gate: speed 12 kt low speed low
+PASS  approach gate: gear up at 450 ft gear not down
+PASS  approach gate: gear up at 800 ft is still allowed null
+PASS  approach gate: runway behind runway behind
+PASS  approach gate: below 100 ft the angular deviation is ignored null
+PASS  approach gate: below 100 ft 30 m off the centreline off the centreline
+PASS  go-around: abandons an approach with no glideslope below 1,000 ft glideslope not captured at 796 ft
+PASS  go-around: climbs away (sinks under 40 ft), take-off thrust and a nose-up pitch, gear and flaps up, autopilot still on +1241 ft in 49 s, peak pitch 14 deg, throttle 1.00, sank 1 ft, gear up, flaps 0, events goaround flaps0 goaround_done
+PASS  go-around: hands back to the autopilot: armed off, overrides cleared, trim servo free phase off, vsOverride null
+PASS  go-around: levels off at the missed-approach altitude (1,500 ft above) and holds it 3 ft over 40 s, target 1500 ft above the go-around start
+PASS  go-around: disarm during it restores vsOverride / tauV / kiDiv and the phase vsOverride was 4.321947935535416
+PASS  go-around: after disengage the jet keeps flying 
+PASS  go-around: no glideslope at 450 ft also aborts goaround glideslope not captured
+PASS  go-around: floating past the safe landing point in the flare goes around, thrust full goaround runway behind
+PASS  Safe Return: the first go-around asks for a re-plan (attempt 0 of 2 more) goaround flaps0 goaround_done replan, phase hold
+PASS  Safe Return: the second approach (the other runway end, the first is avoided) flies the fixes, lands and stops done after 14.2 min, touchdown 1529 m / 0.2 m off
+PASS  Safe Return: after the last go-around it holds altitude near the field in an orbit hold true, altitude within 24 ft, turned 311 deg in 90 s, max bank 24
+PASS  Safe Return: disarm leaves the hold 
+PASS  Safe Return: skips a runway with a crosswind above the limit for one into the wind KFAR 09
+PASS  Safe Return: with only a crosswind runway left it is still flown and the warning says so KNEA 36 crosswind
+PASS  Safe Return: the end with the headwind, not the tailwind KTLW 36
+PASS  Safe Return fuel: without the fuel limit the far airport wins; with only enough for the near one, the near one KFAR 09 -> KNEA 36 (183 kg: near needs 168, far 198)
+PASS  Safe Return fuel: nothing reachable still returns the nearest, marked fuel KNEA 36 fuel
+PASS  Safe Return terrain: a ridge on the final rejects that runway end KRDG 36 -> KRDG 18
+PASS  Safe Return terrain: terrain above every approach leaves no runway none
+PASS  Safe Return terrain: unknown terrain is not an obstacle KRDG 36
+PASS  Safe Return terrain: a ridge across the direct leg to the fix rejects that end KRT2 36 -> KRT2 18
+sf50-autopilot-test ok
+
+--- test/callouts-test.mjs ---
+PASS  a normal approach calls 100, 90 ... 10 in order, then Retard
+PASS  Retard repeats while the thrust stays above idle, stops once it is idle
+PASS  a fast descent skips calls it has no time for instead of queueing stale ones
+PASS  nothing below 100 ft unless armed above 150 ft first (a ground start or a low take-off)
+PASS  a go-around re-arms: climbing back above 150 ft and descending again calls again
+PASS  levelling off (no descent) holds the next call; a crash silences it
+PASS  a gentle flare: "Five" comes once, after Retard, with the thrust at idle and the wheels 5 ft up; never with the thrust still up
+PASS  every call-out clip is in public/audio/voice/callouts/
+altitude call-outs OK
+
+--- test/c172-autotrim-test.mjs ---
+      no auto-trim: 2.5 -> 1.3 deg; auto-trim: 2.5 -> 1.5 deg
+PASS  Skyhawk auto-trim keeps the attitude the pilot left (no drift back nose-down after a pull)
+c172 auto-trim OK
+
+--- test/chute-tear-test.mjs ---
+PASS  above the limit the chute is shown before it fails max open scale 0.36
+PASS  it fails once partly open, after 0.3-0.6 s failed at 0.53 s, open 0.36
+PASS  the canopy is detached into the scene, not parented to the aircraft 
+PASS  the attached chute is gone and the torn canopy appears at the tail starts 10.2 m from the CG
+PASS  the torn canopy falls back and away from the jet 133 m behind at 1.5 s
+PASS  it is hidden after a few seconds hidden at 6.0 s
+PASS  below the limit the chute opens fully and stays attached scale 1.00
+PASS  below the limit nothing is torn off 
+PASS  a jettisoned chute is released and falls away 81 m at 1.5 s
+chute-tear-test ok
+
+--- test/cockpitmap-test.mjs ---
+PASS  project: a point 10 NM due north is straight up with north-up, 10 NM due east is right 
+PASS  project: heading-up rotates the picture (heading 90: north to the left, east ahead; heading 180: north behind) 
+PASS  project: the point straight ahead of the heading is always straight up 
+PASS  project: antimeridian (179.9E to 179.9W is 0.2 deg east, not 359.8 west) 
+PASS  offset and distNm agree (10 NM along 270 from a threshold) 
+PASS  clipSeg: inside kept, crossing trimmed to the rect, outside dropped 
+PASS  pickVisibleAirports: range filter, nearest first, accepts db.near items, drops small fields at long range 
+PASS  pickVisibleAirports: capped at max, the arrival airport is kept even when far down the list 
+PASS  pickVisibleAirports: wraps across the antimeridian 
+PASS  headerInfo: active waypoint name and distance, GS, track 
+PASS  headerInfo: a valid ILS wins over the waypoint; an invalid one does not; metric units 
+PASS  headerInfo: no route and no ILS shows a dash; slow ground speed uses the heading; arrival falls back to the runway 
+PASS  CockpitMap: mounts hidden, toggles, update does no drawing while hidden 
+PASS  CockpitMap: redraws at most 10 Hz 
+PASS  CockpitMap: draws rings, airports, route, approach and the header text 
+PASS  CockpitMap: zoom steps through the ranges, clamps at both ends, setRange snaps 
+PASS  CockpitMap: track-up / north-up toggle and size toggle 
+PASS  CockpitMap: clicking an airport symbol calls onPickAirport; empty space does not 
+PASS  CockpitMap: airport query is cached while the aircraft barely moves, and redone after a range change 
+PASS  CockpitMap: survives odd state (no route, no arrival, NaN heading, empty db, route on the other side of the date line)
+
+--- test/runway-lights-test.mjs ---
+PASS runway lights: 424 edge-light pairs on the pavement edges, on the levelled strip, ends and axis agree, at 7 origins incl. CYLT (lat 82.5)
+PASS runway lights: an origin move rebuilds them and they stay on the runway
+
+--- test/landing-forgiveness-test.mjs ---
+PASS  Blackbird: a firm 5.5 m/s touchdown at 185 kt is a landing now (crashed before)
+PASS  Blackbird: 9 m/s still crashes
+PASS  Skyhawk: a firm 4.5 m/s touchdown is a landing now (crashed above 4)
+PASS  Vision Jet: a firm 5 m/s touchdown is a landing now (crashed above 4.5)
+landing forgiveness OK
+
+--- test/difficulty-test.mjs ---
+PASS  three modes, unknown or missing falls back to Medium
+PASS  Medium is the sim as it was: the shipped assist defaults
+PASS  Realistic switches every assist off; Easy switches them all on
+PASS  presetChanged spots an option changed after picking a mode
+PASS  the flight models default to the Medium touchdown limits
+PASS  sr71: 6 m/s lands in Medium and Easy, crashes in Realistic
+PASS  sr71: 7.5 m/s lands only in Easy
+PASS  sr71: 9.5 m/s crashes even in Easy
+PASS  c172: 5 m/s lands in Medium and Easy, crashes in Realistic
+PASS  c172: 6.5 m/s lands only in Easy
+PASS  c172: 8 m/s crashes even in Easy
+PASS  sf50: 5 m/s lands in Medium and Easy, crashes in Realistic
+PASS  sf50: 6.5 m/s lands only in Easy
+PASS  sf50: 8.5 m/s crashes even in Easy
+PASS  il76: 4.2 m/s lands in Medium and Easy, crashes in Realistic
+PASS  il76: 5.4 m/s lands only in Easy
+PASS  il76: 6.8 m/s crashes even in Easy
+PASS  without protection a held pull stalls the Skyhawk (the test can tell)
+PASS  Easy sr71 at 130 m/s: a held full pull stays below the stall, the g limit and 32° nose up
+PASS  Easy sr71 at 130 m/s: a held full push stays above the negative g limit and 27° nose down
+PASS  Easy sr71 at 130 m/s: a held full roll stops near 67° of bank
+PASS  Easy sr71 at 700 m/s: a held full pull stays below the stall, the g limit and 32° nose up
+PASS  Easy sr71 at 700 m/s: a held full push stays above the negative g limit and 27° nose down
+PASS  Easy sr71 at 700 m/s: a held full roll stops near 67° of bank
+PASS  Easy c172 at 45 m/s: a held full pull stays below the stall, the g limit and 32° nose up
+PASS  Easy c172 at 45 m/s: a held full push stays above the negative g limit and 27° nose down
+PASS  Easy c172 at 45 m/s: a held full roll stops near 67° of bank
+PASS  Easy c172 at 70 m/s: a held full pull stays below the stall, the g limit and 32° nose up
+PASS  Easy c172 at 70 m/s: a held full push stays above the negative g limit and 27° nose down
+PASS  Easy c172 at 70 m/s: a held full roll stops near 67° of bank
+PASS  Easy sf50 at 70 m/s: a held full pull stays below the stall, the g limit and 32° nose up
+PASS  Easy sf50 at 70 m/s: a held full push stays above the negative g limit and 27° nose down
+PASS  Easy sf50 at 70 m/s: a held full roll stops near 67° of bank
+PASS  Easy sf50 at 120 m/s: a held full pull stays below the stall, the g limit and 32° nose up
+PASS  Easy sf50 at 120 m/s: a held full push stays above the negative g limit and 27° nose down
+PASS  Easy sf50 at 120 m/s: a held full roll stops near 67° of bank
+PASS  Easy il76 at 100 m/s: a held full pull stays below the stall, the g limit and 32° nose up
+PASS  Easy il76 at 100 m/s: a held full push stays above the negative g limit and 27° nose down
+PASS  Easy il76 at 100 m/s: a held full roll stops near 67° of bank
+PASS  Easy il76 at 170 m/s: a held full pull stays below the stall, the g limit and 32° nose up
+PASS  Easy il76 at 170 m/s: a held full push stays above the negative g limit and 27° nose down
+PASS  Easy il76 at 170 m/s: a held full roll stops near 67° of bank
+PASS  protection leaves gentle flying and the ground alone
+difficulty OK
+
+--- test/handsoff-option-test.mjs ---
+PASS  Skyhawk, hands-off off: full roll reaches full aileron and banks past 30° in 3 s
+PASS  Skyhawk, hands-off off: full back stick raises the nose past 10° in 3 s
+PASS  Skyhawk, hands-off on: full roll reaches full aileron and banks past 30° in 3 s
+PASS  Skyhawk, hands-off on: full back stick raises the nose past 10° in 3 s
+PASS  Skyhawk: with the assist off, the stick is the pilot's alone (no aileron from the leveller when let go)
+PASS  Vision Jet, hands-off off: full roll reaches full aileron and banks past 30° in 3 s
+PASS  Vision Jet, hands-off off: full back stick raises the nose past 10° in 3 s
+PASS  Vision Jet, hands-off on: full roll reaches full aileron and banks past 30° in 3 s
+PASS  Vision Jet, hands-off on: full back stick raises the nose past 10° in 3 s
+PASS  Vision Jet: with the assist off, the stick is the pilot's alone (no aileron from the leveller when let go)
+hands-off option OK
+
+--- test/autobrake-test.mjs ---
+PASS  the key cycles OFF, LOW, MED, MAX and back to OFF 
+PASS  OFF never brakes 
+PASS  LOW holds about 1.2 m/s2 and MED about 2.0 m/s2 after touchdown; MAX is the full pedal and stops shortest 1.20, 2.00 m/s2; 1777 / 1090 / 590 m
+PASS  it waits for the thrust lever to close, and lets go when the lever goes up again (go-around) without switching off 
+PASS  pressing the brakes takes over and switches it off 
+PASS  it releases when the aircraft has stopped and does not brake a taxi or the next take-off roll 
+PASS  rejected take-off: closing the lever above 40 m/s on the roll brakes 
+all passed
+
+--- test/il76-fdm-test.mjs ---
+PASS  weights, geometry and gear: MTOW 210 t = empty + cargo + full tanks, 5 gear units of 20 wheels, 4 engines empty 88500 + cargo 37000 + fuel 84500 = 210000 kg
+PASS  wheelbase 14.17 m and track from the model (GLB root extras) wheelbase 14.17 m, main units at z = +-3.15 m
+PASS  static: the gear carries the weight, nose share 6-12 %, four equal main units, nothing creeps with the parking brake on 2059 kN of 2059 kN, nose 8.2 %, moved 0.32 m, strut sink 0.14 0.15 0.15 0.15 0.15
+PASS  light, at idle with the brakes off it stays put or crawls (rolling resistance 0.02 against idle thrust) 0.05 m/s after 40 s
+PASS  the parking brake holds 60 % thrust but not take-off power (research: brakes hold only up to about 75-80 % power) 1.5 m at lever 0.6, 88 m at 1.0
+PASS  spool: idle to 95 % take-off thrust in 6-11 s (8 s with margin) 10.0 s
+PASS  take-off thrust 4 x 16,000 kgf (A) at sea level and the fuel flow at take-off / idle 622 kN, 24.6 t/h at take-off (0.372 kg/kgf/h), 931 kg/h per engine at idle
+PASS  thrust lapses with altitude and Mach 530 / 335 / 199 kN at 0 / 5,000 / 10,000 m, M 0.3
+PASS  take-off run at MTOW, slats 14 / flaps 30, rotate at VR 171 KIAS: 1,540 m (UAC, conditions unspecified) within -25 % / +30 %, no tail strike, clean liftoff 1903 m, lift-off 337 km/h (VR 317), 381 km/h and 183 m after 60 s
+PASS  a lighter aircraft needs less runway, and a heavy one the most 150 t: 954 m, 210 t: 1903 m
+PASS  rejected take-off from 140 KIAS at MTOW stops on the runway, straight stopped in 1960 m, 1.7 m off the centreline
+PASS  stall speeds at 210 t: clean 322, T/O 264 (S14 F30), landing 233 (S25 F43) km/h, within 3 % 322 / 264 / 232 km/h; landing at MLW 206 km/h
+PASS  slowing down clean at idle, the stall warning comes in just above the stall speed warning at 370 km/h (stall 322) [crashed: tail ramp hit the ground]
+PASS  rate of climb at 450 km/h, 190 t, clean, SL, full lever: 12-26 m/s (D: 13 operational, 22 theoretical at take-off rating) 22.4 m/s (4412 fpm)
+PASS  cruise at 10,000 m, Mach 0.72, 170 t: 770 km/h (UAC) held hands-off for 90 s, lever below the stop, 6-9 t/h of fuel 776 km/h, M 0.719, lever 0.92, 7.6 t/h, altitude drift 13 m
+PASS  service ceiling 12,200 m (UAC): a 125 t aircraft holds Mach 0.72 there with thrust to spare needs 85 kN, 114 kN available
+PASS  landing roll at MLW from VREF with brakes, spoilers and reverse: 960 m (UAC) within -25 % / +35 %, stopped, straight 833 m (2733 ft); brakes only 895 m, + spoilers 867 m, + reverse 833 m
+PASS  each aid shortens the roll: spoilers (lift dump, more weight on the wheels), then reverse; coasting needs several kilometres coasting 4287 m
+PASS  touchdown: a firm 1.2 and 3.2 m/s (630 fpm) landing is fine, 5.5 m/s breaks the gear (realistic limit 3.7 m/s); every unit reports its contact touch events: 5 soft, 5 firm; slam: hard landing (5.5 m/s sink) [crashed: hard landing (5.5 m/s sink)]
+PASS  outboard engine out at 1.1 x V2 with take-off thrust: the nose yaws toward the dead engine without rudder, and rudder and ailerons hold it within 15 degrees, sideslip under 10 degrees heading change -1.8, max sideslip 4.3, yaw rate toward the dead engine 0.054 rad/s, climbing 9.3 m/s
+PASS  an inboard engine out is milder than an outboard one; both are flyable down to 300 km/h outboard sideslip 4.3, inboard 2.7, 300 km/h 5.4
+PASS  gear transit: 14 s up, 12 s down (D), gear-lock events 14.0 s up, 12.0 s down
+PASS  gear up is refused with weight on the wheels 
+PASS  gear overspeed above 370 km/h (200 kt) is reported once 203 KIAS
+PASS  slats 25 in 10 s, flaps 43 in 40 s (D), limited by the lever notch slats 10.0 s, flaps 40.0 s
+PASS  flaps 43 overspeed above 280 km/h is flagged 285 km/h [crashed: airframe overstressed (4.2 g)]
+PASS  limit speeds of the notches (B): 400, 400, 370, 370, 280 km/h Infinity,400,370,370,280
+PASS  spoilers in the air: out in 3.5 s, extra drag and lift loss steepen the descent descent -1.7 -> -13.4 m/s, spoilers 0.50 (half above 250 km/h)
+PASS  spoilers reach full travel on the ground 1.00
+PASS  thrust reverse is refused in the air 
+PASS  sleeves deploy in under 2 s, only on the outer engines in realistic; the inner pair stays closed engine 1: 0.45 at 0.8 s, 1.00 at 2.4 s; inner 0
+PASS  with the lever up, the outer engines push the aircraft backward-forward: reverse thrust of 15-80 kN each and inner engines at idle engine 1 -18 kN, engine 2 5 kN
+PASS  reverse power fades out below about 50 km/h: it never backs the aircraft up 13.82 m/s
+PASS  lifting off stows the reverser (lock-out) 
+PASS  a held full pull beyond the limit load breaks the airframe (ultimate 1.5 x +2 g = 3 g) airframe overstressed (3.0 g) [crashed: airframe overstressed (3.0 g)]
+PASS  far past VMO (more than 1.2 x 600 km/h) the airframe fails 197 KIAS (intact)
+PASS  hands-off flight from trim for two minutes: wings level, no divergence, pitch rates tiny bank 0.0 deg, altitude drift 23 m, pitch rate 0.000
+PASS  a roll disturbance dies out (Dutch roll and spiral are damped at approach speed with the yaw damper) roll rate 0.080 -> 0.002 rad/s
+PASS  the CG moves aft by about 10 % MAC as the fuel burns off, and the inertia scales with the mass (I = 12.6 / 12.5 / 23.2 million kg m2 at 210 t) CG 20 -> 29 % MAC, Ix 12.6 and 7.8 million kg m2
+PASS  fuel burn follows the flow (7-9 t/h at 170 t, 5,000 m) 130 kg in 60 s = 7.8 t/h
+PASS  IL76_MODES: every multiplier moves the easy way, strictly, from realistic to medium to easy (gear transit shortens) damp stab ctrl clmax spool thrust brake reverse flapRate gearTime vlim struct
+PASS  realistic is the researched airframe: no assists, outer-pair reversers only, manual spoilers; easy adds envelope protection 
+PASS  stall speed falls with the mode: realistic > medium > easy, in every configuration landing at MLW: 206 / 202 / 197 km/h
+PASS  landing sink limit rises with the mode (3.7 / 4.8 / 6.0 m/s), and so does the strut-bottoming limit 3.7 / 4.8 / 6
+PASS  stopping distance falls with the mode (stronger brakes, reverse on all four engines, auto spoilers, faster spool) 833 / 693 / 588 m
+PASS  engines spool faster in the easier modes 8.6 / 6.1 / 4.3 s
+PASS  ground spoilers deploy on touchdown by themselves in medium and easy, never in realistic 0.00 / 1.00 / 1.00
+PASS  roll damping: a roll rate dies away faster in the easier modes 0.003 / 0.001 / 0.000 rad/s after 6 s
+PASS  take-off run at MTOW falls with the mode (thrust 1.00 / 1.03 / 1.06, faster spool) 1903 / 1822 / 1760 m
+PASS  three minutes of random control inputs in Medium: finite numbers, intact (or a clean, reported break-up), no NaN intact, 517 km/h at 3572 m
+all passed
+
+--- test/il76-glb-test.mjs ---
+PASS  root node: frame text, mapping to the simulator frame, MAC, nose offset and the wheel unit centres MAC 6.562 m, nose tip 20.977 m ahead of the origin
+PASS  static groups Exterior, Interior and Glazing exist; glazing is plain alpha with no transmission 
+PASS  size and frame: 46.6 m long, 50.5 m span, wheels on y = 0, nose toward +z, port wing at +x, origin under 25 % MAC 
+PASS  20 wheels, each under a gear leg (or bogie / steering), with wheel_centre_m equal to its position and the tyre bottom on the ground ok
+PASS  every mover has a unit hinge_axis with a numeric max_deg, or a slide_axis with max_m, and a sense text 112 movers, 8 sliding
+PASS  required nodes: surfaces, doors, gear, engines, cockpit controls and lights 66 required nodes
+PASS  optional sequencing extras are well formed: seq windows inside 0..1, opening before closing, bogies turning before the legs stow 23 nodes carry seq extras
+PASS  every mover can be posed to its limit and put back exactly at rest 112 movers
+PASS  trailing edges move the documented way at the limit: surfaces down, spoilers up, slats down, ramp down, doors out, gear up, reversers aft ok
+PASS  live dials: the root lists each with a kind, a centre on the flight deck, unit facing and up vectors at right angles, and a radius 17 dials: clock, brake, rmi, asi, hdg, flap, alt, vsi, fuel
+PASS  triangle and draw-call budget of the model (informational ceiling: 500k triangles, 200 draws) 369k triangles, 148 draws
+all passed
+
+--- test/il76-visual-test.mjs ---
+PASS  the model contract: required nodes, every mover discovered from its extras, lights found 112 movers, 7 tabs; 60 driven by surfaces and gear; fans 4, reversers 4, wheels 20
+PASS  placement: wheels on the ground, nose +x, span along z with the port wing at -z, the root offset by the CG, size of the Il-76 46.6 x 14.0 x 50.5 m
+PASS  draw calls and triangles stay inside the budget for the model 172 draws, 372120 triangles, 112 movers
+PASS  ailerons: roll right puts the left trailing edge down and the right one up; the tabs follow TE moves -0.38 / 0.31 m
+PASS  elevators and rudders: pull raises the trailing edges, nose-right sends both rudder sections to starboard elevator TE up 0.41 m, rudder TE 0.92 m to starboard
+PASS  flaps trail down, slats droop forward/down, spoilers rise, in step with the flight model flap TE -1.03 m, slat -0.08 m, spoiler 0.27 m
+PASS  roll spoilers: the outer panels of the down-going wing rise with aileron input, the inner brake panels stay down ok
+PASS  gear travels through its sequence: doors first, then the bogies turn, then the legs swing in, then the doors close doors open at 0.04, bogies at 0.22, legs at 0.46 of the cycle
+PASS  the main wheels fold up into the fuselage fairings and the nose wheels into the nose bay: well off the ground and inboard main wheel -3.15 -> -1.60 m, z -4.08 -> -2.61
+PASS  wheels spin from the flight model, the nose gear steers on the ground, and the struts compress on touchdown ok
+PASS  fans turn with each engine's N1, and the reverser sleeves slide aft with the flight model's reverser position ok
+PASS  crew doors open and close over a few seconds and swing outward ok
+PASS  paratroop doors open and close ok
+PASS  cargo hatch: the clamshell doors open first, then the ramp lowers to the ground, then the rear upper door rises; the hoists run aft; it all closes again clamshell from 5.6 s, ramp from 13.1 s, upper door from 3.5 s
+PASS  door sequence helpers: windows ease in and out, and close in the closing window ok
+PASS  yokes pull aft and roll with the stick, the thrust levers follow the throttle and go back for reverse, the flap / spoiler / park-brake levers follow their systems ok
+PASS  the captain's eye: inside the flight deck, derived from the yoke, forward-looking over the panel to a clear windshield eye 16.25,1.40,-0.53; ahead 1.57 m to glass, panel 1.00 m
+PASS  the hold and flight deck are drawn in the cockpit view and when the camera is close, not from far away; the glass clears in the cockpit ok
+PASS  lights: nav steady, strobes flash, beacons flash with an engine lit, landing lights come on at night in the air and off by day ok
+PASS  the PFD, ND and engine display draw with the flight state (and with nothing), and redraw at under 20 Hz in the cockpit view only 14 redraws per second
+PASS  crash: the Il-76 breaks up with its own sizing and clears 8 pieces
+all passed
+
+--- test/il76-wiring-test.mjs ---
+PASS  the Il-76 has a name, model file, blurb and three stats; ?aircraft=il76 and the saved setting choose it 
+PASS  stick: full authority to 150 KIAS, a fifth of it by VMO, softer than the Vision Jet; a held full pull never breaks the airframe at any speed 160 kt 0.98 g, 250 kt 1.84 g, 320 kt 2.17 g, 250 kt 1.00 g, 150 kt 1.23 g
+PASS  warnings: stall, pull-up, gear horn, overspeed (Vmo, Mmo, flap and gear limits), over-g and low fuel; alerts rank warnings first 
+PASS  the display feed gives the PFD, ND and engine screens their units: kt, ft, fpm, deg, N1 / EGT of all four engines, flaps, slats, gear, spoilers, reversers, fuel 
+PASS  final approach start (148 KIAS at landing weight, inside the 280 km/h landing-flap limit): slats 25 / flaps 43, gear down, and it holds the approach for a minute; the cruise start holds FL330 at Mach 0.72 
+PASS  gear lever, flaps, spoilers, thrust reverse, doors and the cargo-hatch interlock follow the rules, and tell the player 
+PASS  one "Touchdown" report per landing even though all five gear units make contact 
+PASS  autopilot with IL76_AP: ALT / HDG / speed hold, a 60 degree turn and a 600 m climb with capture, FLCH to altitude, no crash 
+PASS  building collision points cover the span, the gear, the tail and the engines of a 50 m aircraft, with a pad to match 
+PASS  audio: TURBOFAN4 matches the PS-90A-76 (716 Hz idle to 2,387 Hz take-off blade-pass), main passes four engines, the profile and the system flags 
+PASS  main.js audit: each IS_SF50 line without an Il-76 answer is a deliberate Vision Jet feature (autoland, Safe Return, PFD feed, cabin door...), and no IS_GA branch swallows the Il-76 
+all passed
+
+--- test/existing-aircraft-test.mjs ---
+PASS  sr71-air: a 60 s run with stick inputs gives exactly the numbers it gave before the Il-76 
+PASS  sr71-run: a 60 s run with stick inputs gives exactly the numbers it gave before the Il-76 
+PASS  c172-air: a 60 s run with stick inputs gives exactly the numbers it gave before the Il-76 
+PASS  c172-run: a 60 s run with stick inputs gives exactly the numbers it gave before the Il-76 
+PASS  sf50-air: a 60 s run with stick inputs gives exactly the numbers it gave before the Il-76 
+PASS  sf50-run: a 60 s run with stick inputs gives exactly the numbers it gave before the Il-76 
+PASS  touchdown limits of the three aircraft are unchanged in every mode 
+PASS  the audio of the SR-71 and the Vision Jet (two- and one-engine profiles, afterburner layers, fan whine) writes exactly the parameters it wrote before 
+PASS  main.js: the Il-76 is neither IS_GA nor the SR-71, and the SR-71 keeps its own stick and assist path 
+all passed
+
+--- test/test-runner-test.mjs ---
+PASS failing fixture preserved exit 7; later scripts ran; timeout bounded; terrain-bench retained
+
+--- test/telemetry-test.mjs ---
+PASS local diagnostics bound, sanitization, detached snapshots, console/default preservation and shader hook chaining
+
+--- test/controllers-test.mjs ---
+PASS panel toggle/forced open/close, ordered flight activation and mission tour/tutorial/factory/stop boundaries
+
+--- test/hero-media-test.mjs ---
+PASS decorative media download gating, 4K selection, mute, pause/resume, runtime reduced motion, flight exit and failure fallback
+
+--- test/ew-12-15-traffic-reliability-test.mjs ---
+PASS EW-12: failures are no-store 502, not empty 200; successful empty data stays valid
+PASS EW-12: missing emergency categories are explicitly partial and not cached
+PASS EW-13: merged emergency caches retain each component observation age
+PASS EW-12: map retains previous worldwide picture on failure and partial responses
+PASS EW-13: acquisition contract rejects unknown stale age and malformed/future clocks
+PASS EW-13: edge propagates relay stale/acquiredAt without refreshing cache
+PASS EW-13: edge stale fallback preserves original snapshot age
+PASS EW-13: repeated stale deliveries cannot refresh 3-D recovery or map observation age
+PASS EW-14: late area fallback completes inside both client deadlines (virtual time)
+PASS EW-14: hung emergency categories share one total server budget (virtual time)
+PASS EW-15: relay forwards 250 NM and every authenticated worldwide route; cached age survives outage
+PASS EW-14/15: relay fallback and all-hung paths respect one 3-second budget (virtual time)
+12 EW-12–15 reliability regressions passed
+(node:7751) [DEP0205] DeprecationWarning: `module.register()` is deprecated. Use `module.registerHooks()` instead.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+
+--- test/ew17-explosion-boundary-test.mjs ---
+PASS EW-17 fixed boundary samples cover valid delayed secondary bursts
+
+--- test/ew41-ew43-radio-regression-test.mjs ---
+PASS EW-41 exclusive missed approach, stale readback cancellation, distinct inbound re-entry and reset
+PASS EW-43 late state/volume check and immediate cancellation via slider, button and keyboard
+
+--- test/ew42-ew44-voice-regression-test.mjs ---
+PASS EW-42 full-throttle climb silence, missed-approach latch, rearm and rollout
+PASS EW-44 real source preemption, shared routing, warning priority, phase tracking and spawn reset
+
+--- test/qa-flight-state-test.mjs ---
+EW-04: temporary flight weather cannot leak through voice/volume saves
+EW-07: restart begins a tracked attempt, can land, and teleport stays untracked
+EW-08: stale weather requests cannot apply/save or clear a newer busy state
+EW-09: bounded live weather survives resume and late METAR updates retain the attempt
+EW-10: zero, missing and malformed visibility remain distinct
+EW-11: context loss blocks all simulation/input; restoration requires safe full resource reload
+EW-30: stalled optional LOD completes as null at its independent 1.5s deadline and aborts
+EW-31: disabling adaptive resolution resets every pressure level and stale probe
+EW-32: size-only resize refreshes cloud native pixel limits
+EW-33/34: C172 slew exit survives physics at approach speed; all spawns clear slew
+EW-38: equal simulated time consumes equal oxygen at 1x and 16x; pause consumes none
+EW-45 hotfix: real pending terrain deadline permits shaded fallback without a streaming banner
+
+--- test/imagery-notice-test.mjs ---
+PASS pending deadline + active slow regional/global/queued requests stay quiet; shaded fallback retains DEM gate
+PASS real failure callback => one notice despite healthy traffic; selective manual retry and success clear it
+PASS usable parent/children coverage wins over sharpness denominator, max-detail no-data, and optional hi-res failure
+PASS no-data gap selective auto retry, no cancellation, persistent outage, stale failure and location-change clearing
+PASS healthy queued, Esri, regional and 4-slot upgrade accounting preserved by retries
+PASS actual terrain.update, base request failure, shaded mesh drawing, automatic backoff and texture-upload recovery
+PASS imagery-banner hotfix regressions
+
+--- test/qa-controls-ew-regression-test.mjs ---
+PASS EW-01 UI input isolation; EW-35 denied gamepad; EW-36 endpoints; EW-37 active supported controller
+
+--- test/a380x-test.mjs ---
+A380X: independent mass/geometry/thrust, cruise/final trim, takeoff, five contact units, inboard reverse, gear/flaps controls and warnings pass
+
+--- test/a380x-assets-test.mjs ---
+A380X: segmented binaries, missing/truncated assets, original clip binding, exterior-only boot, lazy shared interiors and passenger camera pass
+
+--- test/a380x-skin-test.mjs ---
+A380 source one-based palette decode: original crash reproduced, animated bounds repaired, source bytes preserved, zero-based untouched, invalid mixed palettes rejected
+
+--- test/a380x-transport-test.mjs ---
+A380 lossless transport: real glTF/FileLoader/DDS, every fixture byte/mip/animation, streaming gzip SHA/length failures, old-browser fallback, HTTP auto-decode, concurrency, segmentation and builder pass
+
+--- test/a380x-partition-test.mjs ---
+A380 view partitions: exact source union/dependencies, external-material indices, sparse/morph/skin/animation closure and independent lazy view loading PASS
+
+--- test/da40-assets-test.mjs ---
+node:internal/modules/cjs/loader:1603
+  const err = new Error(message);
+              ^
+
+Error: Cannot find module '@gltf-transform/core'
+Require stack:
+- /home/.openclaw-sandboxes/openclaw-ssh-workspace-6be41cb8788dd3b6707baa24e721f26e/workspace/f27-release/blackbird/blackbird-owner/tools/da40-tooling/package.json
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1603:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1145:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1169:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1196:12)
+    at Module._load (node:internal/modules/cjs/loader:1370:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1713:12)
+    at require (node:internal/modules/helpers:318:16)
+    at file:///home/.openclaw-sandboxes/openclaw-ssh-workspace-6be41cb8788dd3b6707baa24e721f26e/workspace/f27-release/blackbird/blackbird-owner/test/da40-assets-test.mjs:9:20
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/.openclaw-sandboxes/openclaw-ssh-workspace-6be41cb8788dd3b6707baa24e721f26e/workspace/f27-release/blackbird/blackbird-owner/tools/da40-tooling/package.json'
+  ]
+}
+
+Node.js v26.12.1
+
+--- test/da40-normal-test.mjs ---
+node:internal/modules/cjs/loader:1603
+  const err = new Error(message);
+              ^
+
+Error: Cannot find module '@gltf-transform/core'
+Require stack:
+- /home/.openclaw-sandboxes/openclaw-ssh-workspace-6be41cb8788dd3b6707baa24e721f26e/workspace/f27-release/blackbird/blackbird-owner/tools/da40-tooling/package.json
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1603:15)
+    at wrapResolveFilename (node:internal/modules/cjs/loader:1145:27)
+    at defaultResolveImplForCJSLoading (node:internal/modules/cjs/loader:1169:10)
+    at resolveForCJSWithHooks (node:internal/modules/cjs/loader:1196:12)
+    at Module._load (node:internal/modules/cjs/loader:1370:5)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:261:19)
+    at Module.require (node:internal/modules/cjs/loader:1713:12)
+    at require (node:internal/modules/helpers:318:16)
+    at file:///home/.openclaw-sandboxes/openclaw-ssh-workspace-6be41cb8788dd3b6707baa24e721f26e/workspace/f27-release/blackbird/blackbird-owner/test/da40-normal-test.mjs:6:22
+    at ModuleJob.run (node:internal/modules/esm/module_job:569:25) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [
+    '/home/.openclaw-sandboxes/openclaw-ssh-workspace-6be41cb8788dd3b6707baa24e721f26e/workspace/f27-release/blackbird/blackbird-owner/tools/da40-tooling/package.json'
+  ]
+}
+
+Node.js v26.12.1
+
+--- test/da40-fdm-test.mjs ---
+flaps 0: estimated unaccelerated stall 60.6 kt
+flaps 20: estimated unaccelerated stall 57.9 kt
+flaps 42: estimated unaccelerated stall 55.7 kt
+piloted climb: 862 ft/min at 70 KIAS
+takeoff: 335 m ground roll, 62 KIAS liftoff
+da40-fdm-test ok
+
+--- test/da40-performance-test.mjs ---
+landing stall ideal EAS ≈ CAS: 58.6 kt; reference 58 ± 2 kt
+1280 kg stall flaps 0: 63.1 kt EAS ≈ CAS; reference 63 ± 1 kt EAS ≈ CAS
+1280 kg stall flaps 42: 58.0 kt EAS ≈ CAS; reference 58 ± 1 kt EAS ≈ CAS
+1280 kg ground roll: 380.0 m; reference 370 ± 40 m
+1280 kg liftoff: 62.9 kt EAS (simulation only)
+1310 kg ground roll: 397.9 m; reference 397 ± 40 m
+1310 kg liftoff: 63.3 kt EAS (simulation only)
+1280 kg low-altitude climb: 694.2 ft/min; reference 690 ± 110 ft/min
+climb speed: 73.3 kt EAS; simulated pilot target 72 kt
+1310 kg low-altitude climb: 635.1 ft/min; reference 651 ± 110 ft/min
+climb speed: 73.4 kt EAS; simulated pilot target 72 kt
+1280 kg dynamic stall flaps 0: 63.2 kt EAS ≈ CAS; reference 63 ± 5 kt EAS ≈ CAS
+1280 kg dynamic stall flaps 42: 58.1 kt EAS ≈ CAS; reference 58 ± 5 kt EAS ≈ CAS
+cruise: 126.8 kt TAS; reference 124 ± 8 kt TAS
+fuel flow: 19.3 L/h; reference 19.3 ± 1.5 L/h
+da40-performance-test ok
+
+--- test/da40-visual-test.mjs ---
+DA40 visual: synthetic hierarchy and 53 real source bindings, pivots, doors, gear, controls and cockpit feed pass
+
+--- test/da40-wiring-test.mjs ---
+DA40 selection, controls, flight model, visual, display feed, logbook and difficulty wiring pass
+DA40 cockpit render scale is reapplied on view switch, respecting the manual quality cap
+
+--- test/f27-fdm-test.mjs ---
+MTOW static stall: flaps 0 = 90.95 KIAS, alpha 16.7 deg
+MTOW static stall: flaps 16.5 = 82.56 KIAS, alpha 15.0 deg
+MTOW static stall: flaps 40 = 74.02 KIAS, alpha 12.3 deg
+parked: CG height 2.297 m, supported load 1.000 g
+Dart spool: rpm after 1 s 8800, after 15 s 14957; static pair 51755 N
+warm start 300 m / 100 KIAS / gamma -3: after 30 s 100.14 KIAS, dh -82.8 m
+warm start 1500 m / 160 KIAS / gamma 0: after 30 s 159.76 KIAS, dh 1.6 m
+warm start 6000 m / 190 KIAS / gamma 0: after 30 s 189.90 KIAS, dh 0.9 m
+warm start 7620 m / 180 KIAS / gamma 0: after 30 s 179.04 KIAS, dh -0.1 m
+takeoff 18.35 t / flaps 16.5: ground roll 755 m, liftoff 100.0 KIAS, altitude after 60 s 165 m
+dynamic stall/recovery: flaps 0, developed at 86.4 KIAS / 0.82 g; recovered 155.6 KIAS, alpha 2.0 deg
+dynamic stall/recovery: flaps 40, developed at 69.5 KIAS / 0.84 g; recovered 107.1 KIAS, alpha -5.5 deg
+five-minute manual-style cruise: 240 KTAS, 196 KIAS, 14169 gas rpm, 745 kg/h pair, dh 5.4 m
+manual-style climb: 1148 ft/min at 137.4 KIAS and 14200 gas rpm
+f27-fdm-test ok
+
+--- test/f27-wiring-test.mjs ---
+PASS F27 registration, isolation, no jet rules, twin controls/audio, cold start, wheel/eye frame, default visibility, RPM modes, decoder support and lazy cockpit loading
+
+--- test/f27-ground-prop-test.mjs ---
+{
+  "pass": true,
+  "spawnBottomM": [
+    1.1102230246251565e-16,
+    -4.440892098500626e-16,
+    1.6653345369377348e-16
+  ],
+  "settledBottomM": [
+    -0.000050563305426409855,
+    -0.0000690095014380665,
+    -0.0000690093918621626
+  ],
+  "interiorBottomM": [
+    -0.000050563305426409855,
+    -0.0000690095014380665,
+    -0.0000690093918621626
+  ],
+  "slopeGapM": [
+    -0.0000745457056071791,
+    -0.0001675347397415844,
+    -0.00016441778753468334
+  ],
+  "compressionM": [
+    0.0855226773365283,
+    0.09349673587330365,
+    0.09349673587810026
+  ],
+  "settledPitchDeg": 0.04673951254946217,
+  "eyeBody": [
+    7.542864,
+    0.34139399999999975,
+    -0.48
+  ],
+  "moving": [
+    {
+      "rpms": [
+        0,
+        0
+      ],
+      "phases": [
+        0.020833333333333332,
+        0.020833333333333332
+      ]
+    },
+    {
+      "rpms": [
+        651,
+        0
+      ],
+      "phases": [
+        0.07602502662406815,
+        0.020833333333333332
+      ]
+    },
+    {
+      "rpms": [
+        0,
+        1395
+      ],
+      "phases": [
+        0.07602502662406815,
+        0.09583333333333333
+      ]
+    },
+    {
+      "rpms": [
+        651,
+        1395
+      ],
+      "phases": [
+        0.131216719914803,
+        0.17083333333333334
+      ]
+    }
+  ]
+}
+PASS original F27 pitch/roll yoke and four opposed rudder pedal clips from pilot commands
+
+--- test/f27-gear-test.mjs ---
+PASS F27 full 7s/17s gear cycle at 30/60/120 Hz, reversal, ground/pressure lock, both decoded GLBs, neutral/directional steering, no half-cycle snap and identical static world transforms
+{
+  "ext": {
+    "gearClips": 51,
+    "steeringCases": 15,
+    "repeatCycles": 25
+  },
+  "vc": {
+    "gearClips": 27,
+    "steeringCases": 15,
+    "repeatCycles": 25
+  },
+  "cockpit": {
+    "staticLeafMeshes": 848,
+    "optimizedComposes": 1807,
+    "baselineComposes": 3503,
+    "savedComposes": 1696
+  }
+}
+
+--- test/f27-audio-test.mjs ---
+PASS original media hashes, four bank layers, asset budget: 733786 media bytes
+PASS normalized zero-slope joins and original RTPC constant-power crossfades, interpolation and loop seam
+PASS gesture-only loading, original sample playback, twin state, pitch/Doppler, view fades, mute/pause/failure/crash
+PASS per-engine original starter trigger, cutoff, restart/reset and cockpit switch
+PASS missing media stays silent without synthesis and retries only failed samples
+PASS Audio integration: sample-only F27 engine/cabin, shared master mute/pause/reset
+
+--- test/f27-camera-v3-test.mjs ---
+PASS lower F27 pilot eye, panel preset, bounded saved seat preferences
+
+--- test/f27-spool-test.mjs ---
+{"pass":true,"cutoffRpm":7000,"after1s":5121.309402626494,"after5s":1467.2797100576863,"rundownTauSeconds":3.2}
+
+--- test/f27-lights-test.mjs ---
+F27 fixed budget, fractional dimmer, view swap, anchors, beacon and preparation passed.
+
+--- test/f27-cockpit-gauges-test.mjs ---
+{
+  "model": "public/models/f27/f27-white-vc-v2.glb",
+  "totalSourceClips": 624,
+  "instrumentClips": 261,
+  "live": 108,
+  "optional": 12,
+  "unimplemented": 141
+}
+f27-cockpit-gauges-test ok: real decoded GLB and AnimationMixer
+
+--- test/f27-warm-textures-test.mjs ---
+PASS F27 texture staging makes progress when RAF is blocked and uploads each texture once
+
+--- test/f27-livery-v4-test.mjs ---
+PASS 12 actual GLB materials, six sRGB WebPs (962074 bytes), matching cockpit/exterior, white restored, lighting/shaders unmodified, stale switch/failure retried
+
+--- test/f27-callouts-test.mjs ---
+PASS Descending exact crossings; no Airbus RETARD or Five
+PASS No replay from low approach spawn
+PASS Climb, level, rollout and bounce remain silent
+PASS Coarse frame says lowest crossing once
+PASS Missing, busy and warning-blocked events consumed, no backlog
+PASS Height oscillation cannot repeat spoken call
+PASS Go-around and touch-and-go rearm only above 150 ft
+PASS Pause/slew/crash/reset/teleport/gap/NaN never fake crossing
+PASS Invalid/unpowered RA does not speak height
+PASS Explicit radio DH wins simultaneous height; no hardcoded 200 ft
+PASS Barometric DA uses MSL independently of RA
+PASS Changing minimum below aircraft never invents crossing
+PASS No guessed V1/VR callout from taxi/deceleration/missing briefing
+PASS Verified V1/Rotate upward once, no automatic V2 voice, aborted takeoff reset
+PASS Invalid/unverified/missing-source V-speeds remain silent
+PASS Pilot assistance off remains silent
+PASS Documented RA switches off above 5000, requires fresh manual ON
+PASS DH lamp, 900 AMV test, 200 rising runway, 227 klaxon, inactive altitude alert
+PASS F27 has dedicated scheduler, legacy aircraft unchanged
+PASS Existing height sample routed through master-controlled voiceGain
+PASS Callout setting stops current clip
+PASS Mute/zero volume/pause/slew immediately stop speech
+PASS Warning priority drops height, never replays
+PASS Critical warning tone suppresses height even with no warning recording
+PASS All retained height assets exist; no OS speech bypass
+PASS F27 loader requests only six present height clips at the app base
+PASS 26 F27 callout scenarios
+
+--- test/f27-view-v4-test.mjs ---
+PASS F27 V4: first entry, same-frame gate, skipped draw, context loss, rapid intents, timeout/rejection, covered rollback, shadows/cloud/AO and unchanged light intensities
+
+--- test/f27-manual-flight-test.mjs ---
+{
+  "source": "current",
+  "approaches": [
+    {
+      "massKg": 15000,
+      "flapsDeg": 26.5,
+      "expectedReferenceKt": 88.11147911479316,
+      "modelReferenceKt": 88.11147911479316,
+      "finalKias": 88.1082852228506,
+      "heightChangeM": -146.5304978883505,
+      "finalStall": 0
+    },
+    {
+      "massKg": 15000,
+      "flapsDeg": 40,
+      "expectedReferenceKt": 83.90287671038831,
+      "modelReferenceKt": 83.90287671038831,
+      "finalKias": 84.14154744488668,
+      "heightChangeM": -141.97151185443272,
+      "finalStall": 0
+    },
+    {
+      "massKg": 18600,
+      "flapsDeg": 26.5,
+      "expectedReferenceKt": 98.11679067431743,
+      "modelReferenceKt": 98.11679067431743,
+      "finalKias": 98.22045642299875,
+      "heightChangeM": -162.72617249855284,
+      "finalStall": 0
+    },
+    {
+      "massKg": 18600,
+      "flapsDeg": 40,
+      "expectedReferenceKt": 93.4302893774042,
+      "modelReferenceKt": 93.4302893774042,
+      "finalKias": 93.64972491409624,
+      "heightChangeM": -157.33985464365537,
+      "finalStall": 0
+    }
+  ],
+  "feather": {
+    "beforeRpm": 14200,
+    "atSelection": {
+      "rpm": 14200,
+      "lit": false,
+      "ffKgS": 0,
+      "powerW": 0,
+      "torqueNm": 0,
+      "thrustN": -1015.7798275453836
+    },
+    "rpmAfter5s": 2976.4816975455965,
+    "otherEnginePowerW": 993142.740228098
+  },
+  "gearWarning": {
+    "retard": {
+      "gearWarning": true,
+      "rpm": 14162.597486928427
+    },
+    "advance": {
+      "gearWarning": false,
+      "rpm": 7015
+    },
+    "leftLeverLow": true
+  },
+  "featherFlight": {
+    "initialYawRateRadS": 0.00044811620700689077,
+    "leftThrustN": -1217.2903666994268,
+    "rightThrustN": 10729.50909053086,
+    "leftRpm": 2968.7405271487064,
+    "leftFuelKgS": 0,
+    "finalKias": 158.2748946091321
+  }
+}
+f27-manual-flight-test ok
+
+Test script summary
+Result  Seconds  Script
+PASS      0.07  test/embed-policy-test.mjs
+PASS      0.04  test/documented-defaults-test.mjs
+PASS      0.07  test/model-textures-test.mjs
+PASS      0.04  test/selected-model-test.mjs
+PASS      0.04  test/logbook-test.mjs
+PASS      0.03  test/panel-defaults-test.mjs
+PASS      0.03  test/rail-label-test.mjs
+PASS      0.03  test/flight-hud-test.mjs
+PASS      0.04  test/aircraft-art-test.mjs
+PASS      0.03  test/c172-lesson-test.mjs
+PASS      0.04  test/quick-start-test.mjs
+PASS      0.03  test/models-cache-test.mjs
+PASS      0.03  test/touch-controls-test.mjs
+PASS      0.10  test/startup-fallback-test.mjs
+PASS      0.14  test/cloudshadow-glsl-test.mjs
+PASS      0.28  test/dem-test.mjs
+PASS      0.17  test/fdm-test.mjs
+PASS      0.05  test/controls-test.mjs
+PASS      0.04  test/missions-test.mjs
+PASS      0.10  test/ew-guidance-regressions-test.mjs
+PASS      0.11  test/ew-guidance-dateline-test.mjs
+PASS      0.04  test/tutorial-test.mjs
+PASS      1.07  test/autopilot-test.mjs
+PASS      0.03  test/workstats-test.mjs
+PASS      0.03  test/trees-test.mjs
+PASS      0.03  test/metar-test.mjs
+PASS      0.04  test/atc-test.mjs
+PASS      0.09  test/traffic-test.mjs
+PASS      0.29  test/adsbmap-test.mjs
+PASS      0.05  test/systems-test.mjs
+PASS      0.20  test/landing-test.mjs
+PASS      0.03  test/mach-dial-test.mjs
+PASS      0.06  test/occlusion-test.mjs
+PASS      0.03  test/dynres-test.mjs
+PASS      0.46  test/climb-test.mjs
+PASS      0.04  test/imagery-test.mjs
+PASS      0.13  test/imagery-sources-test.mjs
+PASS      0.44  test/validation-test.mjs
+PASS      0.09  test/buildcollide-test.mjs
+PASS      0.12  test/no-airbrake-test.mjs
+PASS      0.10  test/relay-test.mjs
+PASS      0.04  test/airdata-test.mjs
+PASS      0.27  test/climb-profile-test.mjs
+PASS      0.11  test/fixes-p0-test.mjs
+PASS      0.22  test/airportdb-test.mjs
+PASS      0.16  test/api-proxy-test.mjs
+PASS      4.25  test/atc-arrival-test.mjs
+PASS      0.65  test/atc-audio-test.mjs
+PASS      0.17  test/audio-sched-test.mjs
+PASS      2.67  test/buildcollide-broad-test.mjs
+PASS      0.11  test/buildings-upload-test.mjs
+PASS      0.06  test/ditch-radius-test.mjs
+PASS      0.10  test/fdm-reset-test.mjs
+PASS      0.15  test/flight-alloc-test.mjs
+PASS      0.04  test/geo-test.mjs
+PASS      0.10  test/map-test.mjs
+PASS      0.04  test/nav-test.mjs
+PASS      0.10  test/particles-test.mjs
+PASS      0.05  test/systems-reset-test.mjs
+PASS      1.80  test/aircraft-merge-test.mjs
+PASS      0.06  test/controls-input-test.mjs
+PASS      7.89  test/crash-split-test.mjs
+PASS      0.21  test/flare-test.mjs
+PASS      0.07  test/takeoff-stop-test.mjs
+PASS      2.36  test/terrain-select-test.mjs
+PASS      2.24  test/terrain-bench.mjs
+PASS      0.04  test/gpuclass-test.mjs
+PASS      0.08  test/cloud-steps-test.mjs
+PASS      0.04  test/cloud-anchor-test.mjs
+PASS      0.24  test/touchdown-test.mjs
+PASS      0.04  test/cloud-texoffset-test.mjs
+PASS      0.08  test/landing-ref-test.mjs
+PASS      0.35  test/taxi-creep-test.mjs
+PASS      1.83  test/wreck-start-test.mjs
+PASS      1.75  test/crash-prepare-moving-test.mjs
+PASS      0.08  test/depth-decode-test.mjs
+PASS      0.08  test/cloud-halfrate-test.mjs
+PASS      1.13  test/crash-warm-pieces-test.mjs
+PASS      5.62  test/terrain-fade-coverage-test.mjs
+PASS      0.35  test/c172-fdm-test.mjs
+PASS      1.67  test/c172-visual-test.mjs
+PASS      0.05  test/keymap-test.mjs
+PASS      0.25  test/c172-handsoff-test.mjs
+PASS      0.04  test/voicewarn-test.mjs
+PASS      0.10  test/explosion-test.mjs
+PASS      0.89  test/sf50-fdm-test.mjs
+PASS      0.27  test/sf50-handsoff-test.mjs
+PASS      0.07  test/sf50-quality-test.mjs
+PASS      1.68  test/sf50-visual-test.mjs
+PASS      0.16  test/sf50-wiring-test.mjs
+PASS      1.68  test/sf50-autopilot-test.mjs
+PASS      0.05  test/callouts-test.mjs
+PASS      0.10  test/c172-autotrim-test.mjs
+PASS      1.74  test/chute-tear-test.mjs
+PASS      0.08  test/cockpitmap-test.mjs
+PASS      0.16  test/runway-lights-test.mjs
+PASS      0.12  test/landing-forgiveness-test.mjs
+PASS      0.54  test/difficulty-test.mjs
+PASS      0.12  test/handsoff-option-test.mjs
+PASS      0.04  test/autobrake-test.mjs
+PASS      1.02  test/il76-fdm-test.mjs
+PASS      0.95  test/il76-glb-test.mjs
+PASS      1.18  test/il76-visual-test.mjs
+PASS      0.40  test/il76-wiring-test.mjs
+PASS      0.28  test/existing-aircraft-test.mjs
+PASS      0.43  test/test-runner-test.mjs
+PASS      0.03  test/telemetry-test.mjs
+PASS      0.04  test/controllers-test.mjs
+PASS      0.04  test/hero-media-test.mjs
+PASS      0.20  test/ew-12-15-traffic-reliability-test.mjs
+PASS      0.09  test/ew17-explosion-boundary-test.mjs
+PASS      0.05  test/ew41-ew43-radio-regression-test.mjs
+PASS      0.05  test/ew42-ew44-voice-regression-test.mjs
+PASS      0.12  test/qa-flight-state-test.mjs
+PASS      0.12  test/imagery-notice-test.mjs
+PASS      0.05  test/qa-controls-ew-regression-test.mjs
+PASS      0.24  test/a380x-test.mjs
+PASS      0.11  test/a380x-assets-test.mjs
+PASS      0.08  test/a380x-skin-test.mjs
+PASS      0.18  test/a380x-transport-test.mjs
+PASS      0.12  test/a380x-partition-test.mjs
+FAIL      0.03  test/da40-assets-test.mjs
+FAIL      0.03  test/da40-normal-test.mjs
+PASS      0.23  test/da40-fdm-test.mjs
+PASS      0.26  test/da40-performance-test.mjs
+PASS      0.71  test/da40-visual-test.mjs
+PASS      0.14  test/da40-wiring-test.mjs
+PASS      0.79  test/f27-fdm-test.mjs
+PASS      0.13  test/f27-wiring-test.mjs
+PASS      1.20  test/f27-ground-prop-test.mjs
+PASS      1.27  test/f27-gear-test.mjs
+PASS      0.24  test/f27-audio-test.mjs
+PASS      0.07  test/f27-camera-v3-test.mjs
+PASS      0.09  test/f27-spool-test.mjs
+PASS      0.09  test/f27-lights-test.mjs
+PASS      0.76  test/f27-cockpit-gauges-test.mjs
+PASS      0.24  test/f27-warm-textures-test.mjs
+PASS      0.96  test/f27-livery-v4-test.mjs
+PASS      0.06  test/f27-callouts-test.mjs
+PASS      0.13  test/f27-view-v4-test.mjs
+PASS      0.18  test/f27-manual-flight-test.mjs
+141 scripts: 139 passed, 2 failed

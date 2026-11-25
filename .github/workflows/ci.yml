@@ -1,0 +1,49 @@
+name: Test and build
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm ci --prefix tools/da40-tooling --no-audit --no-fund
+      - run: npm test
+      - run: npm run build
+      - name: Chrome WebGL smoke (software rendering)
+        run: npm run test:smoke
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - name: Verify smoke rejects controlled failures
+        run: npm run test:smoke:negative
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - name: Chrome accessibility regressions without WebGL
+        run: |
+          node test/qa-controls-ew-browser-test.mjs
+          node test/intro-layout-browser-test.mjs
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+      - name: Chrome flight regression with gamepad API denied
+        run: node test/qa-controls-ew-denied-gamepad-smoke-test.mjs
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          SMOKE_OUTPUT_DIR: /tmp/earthwing-gamepad-smoke
+      - name: Chrome flight state and graphics regressions
+        run: node tools/qa-flight-browser.mjs
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+          SMOKE_OUTPUT_DIR: /tmp/earthwing-flight-smoke

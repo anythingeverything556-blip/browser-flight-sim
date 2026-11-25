@@ -1,0 +1,111 @@
+<!doctype html><meta charset="utf-8"><link rel="icon" href="data:,"><title>F27 V4 view lighting freshness verification</title>
+<style>body{margin:0;background:#111923;color:white;font:14px system-ui}canvas{display:block}#label{padding:12px}#result{white-space:pre-wrap;font:12px monospace;padding:12px}</style>
+<canvas></canvas><div id="label">Loading real F27 GLBs…</div><div id="result"></div>
+<script type="module">
+import * as THREE from 'three';
+import { F27Visual } from '/src/f27visual.js';
+import { createF27LightRig, prepareF27Part } from '/src/f27lights.js';
+import { createF27ViewTransition, createF27ViewCover, prepareF27ViewCasters } from '/src/f27view.js';
+import { Environment } from '/src/sky.js';
+import { WorldShadows } from '/src/shadows.js';
+import { PostFX } from '/src/post.js';
+import { VolumetricClouds } from '/src/vclouds.js';
+import { CloudShadow } from '/src/cloudshadow.js';
+try {
+const canvas=document.querySelector('canvas'), gl=canvas.getContext('webgl2',{antialias:false});
+if(!gl)throw Error('WebGL2 unavailable in this browser');
+const renderer=new THREE.WebGLRenderer({canvas,context:gl,antialias:false});
+renderer.setSize(640,400);renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+let mainSceneDraws=0;const originalRender=renderer.render.bind(renderer);renderer.render=(s,c)=>{if(s===scene&&c===camera)mainSceneDraws++;return originalRender(s,c);};
+let creates=0;const cp=gl.createProgram.bind(gl);gl.createProgram=()=>{creates++;return cp();};
+const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(58,1.6,0.05,15000),cw=new THREE.Vector3(34,13,28);
+const env=new Environment(scene,renderer);env.envSize=32;env.sun.castShadow=true;env.sun.shadow.mapSize.set(512,512);
+Object.assign(env.sun.shadow.camera,{left:-19,right:19,top:19,bottom:-19,near:40,far:120});env.sun.shadow.camera.updateProjectionMatrix();
+env.update(52,13,0,false);
+const post=new PostFX(renderer);post.configure({enabled:true,ao:0.6,aoSamples:6,bloom:0,smaa:false});post.setSize(640,400);
+const clouds=new VolumetricClouds(renderer);clouds.setQuality({scale:0.25,steps:8,lightSteps:1});clouds.halfRate=true;post.clouds=clouds;clouds.setSize(640,400);
+clouds._noise();while(!clouds.tex)await new Promise(r=>setTimeout(r,50));
+const cloudShadow=new CloudShadow();
+let selfShadowDraws=0;
+const visual=new F27Visual(scene),lightRig=createF27LightRig(scene);
+visual.preparePart=async part=>{part.root.traverse(o=>{if(o.isMesh){const previous=o.onBeforeShadow;o.onBeforeShadow=function(...args){selfShadowDraws++;previous?.apply(this,args);};}});lightRig.attach(part);prepareF27ViewCasters(part);await prepareF27Part(renderer,part,scene,camera);};
+await visual.load('/models/f27/f27-white-ext-v3.glb');
+visual.setLights({instruments:0.6,cockpitDomeRed:0.35,landing:true,taxi:true});
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(250,250),new THREE.MeshStandardMaterial({color:0x575a60,roughness:1}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+const blocker=new THREE.Mesh(new THREE.BoxGeometry(5,10,5),new THREE.MeshBasicMaterial());blocker.layers.set(2);scene.add(blocker);
+const world=new WorldShadows([visual.root,blocker],renderer);world.configure(2,256,[40,150]);world.every=2;
+const shAt={v:[1]},cover=createF27ViewCover(canvas), events=[];let view='orbit',aoNow=0.6;
+const transition=createF27ViewTransition({getView:()=>view,prepare:async v=>{if(v==='cockpit')await visual.preloadCockpit();},apply:v=>{view=v;},cover:active=>{events.push({active,view});cover.set(active);}});
+function pose(){
+ cw.copy(view==='cockpit'?visual.eye:new THREE.Vector3(34,13,28));
+ camera.position.set(0,0,0);camera.lookAt(view==='cockpit'?new THREE.Vector3(10,-0.45,0):new THREE.Vector3(0,1,0).sub(cw));camera.updateMatrixWorld(true);
+ visual.root.position.copy(cw).negate();
+ for(const p of visual.parts){p.root.visible=(p.kind==='cockpit')===(view==='cockpit');if(p.root.visible){p.adapter.setLights(visual.lights);p.adapter.update(0.05);}}
+ floor.position.set(-cw.x,-1.5-cw.y,-cw.z);blocker.position.set(20-cw.x,4-cw.y,-cw.z);
+ visual.root.updateMatrixWorld(true);lightRig.update(visual.parts.find(p=>p.root.visible));
+ env.sun.target.position.copy(visual.root.position);env.sun.position.copy(visual.root.position).addScaledVector(env.sunDir,80);
+ env.sun.updateMatrixWorld();env.sun.target.updateMatrixWorld();env.sun.shadow.updateMatrices(env.sun);
+}
+function pixels(){const data=new Uint8Array(640*400*4);gl.readPixels(0,0,640,400,gl.RGBA,gl.UNSIGNED_BYTE,data);return data;}
+function diff(a,b){let max=0,n=0,sum=0;for(let i=0;i<a.length;i++){const d=Math.abs(a[i]-b[i]);max=Math.max(max,d);if(d)n++;sum+=d;}return{max,changed:n,mean:sum/a.length};}
+function render({fresh=false,skip=false}={}){
+ transition.beginFrame();transition.beforeEnvironment(env);
+ env.update(52,cw.y,0,false);visual.setEnv(scene.environment);pose();
+ const aoTarget=view==='cockpit'?0:0.6;
+ if(transition.active)aoNow=aoTarget; // before main's easing, not after
+ if(skip)return null;
+ if(fresh||transition.active) {
+  if(fresh){world.fresh.fill(false);shAt.v=null;clouds._marchedAt=null;cloudShadow.map.w=0;cloudShadow.old.valid=false;}
+  transition.prepareFrame({renderer,scene,shadows:world,cloudShadow,vclouds:clouds,post,shAt,aoTarget});
+ }
+ cloudShadow.update(renderer,{shape:clouds.tex.shape,cover:0.7,base:1800,top:3500,wind:new THREE.Vector2(),now:10,cam:cw,groundY:-1.5,sunDir:env.sunDir});
+ const drawn=world.stats.drawn;world.update(renderer,scene,camera,cw,10,env.sunDir);
+ renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=fresh||!shAt.v;shAt.v=[1];
+ post.aoStrength=aoNow;
+ post.cloudParams={camAlt:cw.y,camXZ:new THREE.Vector2(cw.x,cw.z),coverage:0.7,base:1800,time:10,wind:new THREE.Vector2()};
+ const before=creates,marches=clouds.marches,sceneBefore=mainSceneDraws,selfBefore=selfShadowDraws,t0=performance.now();let selfCasters=0;
+ visual.parts.find(p=>p.root.visible).root.traverseVisible(o=>{if(o.castShadow)selfCasters++;});
+ transition.beforeRender(renderer);post.render(scene,camera);gl.finish();
+ const sample={mainSceneDraws:mainSceneDraws-sceneBefore,view,hour:env.hour,exposure:renderer.toneMappingExposure,ao:post.aoStrength,worldRedraws:world.stats.drawn-drawn,cloudMarches:clouds.marches-marches,selfRefreshed:selfShadowDraws>selfBefore,selfShadowDraws:selfShadowDraws-selfBefore,selfCasters,programDelta:creates-before,renderMs:performance.now()-t0,size:post.sizes()};
+ const rgba=pixels();transition.afterRender(renderer);return{sample,rgba};
+}
+render({fresh:true});const samples=[];
+for(const [mode,hour] of [['day',12],['dusk',20],['night',0]]){
+ for(const target of ['cockpit','orbit']){
+  env.hour=hour;env.envAt=performance.now();env.lutAt=performance.now(); // deliberately throttle-stale old lighting cache
+  const p=transition.request(target);await new Promise(r=>setTimeout(r,0));
+  // Wait for asset preparation without consuming idle callbacks or switching rig.
+  while(transition.pending===target && !transition.active){
+   render({skip:true}); if(transition.active)break; await new Promise(r=>setTimeout(r,20));
+  }
+  render({skip:true}); // draw=false may never reveal
+  const first=render();await p;
+  const ref=render({fresh:true});const pixelsDiff=diff(first.rgba,ref.rgba);
+  samples.push({mode,...first.sample,pixelsDiff,visibleParts:visual.parts.filter(p=>p.root.visible).map(p=>p.kind)});
+  document.querySelector('#label').textContent='F27 V4 · '+mode+' · '+target+' · first fresh frame equals explicit refresh';
+ }
+}
+// Prove the cockpit-only local-matrix optimization changes no rendered pixels.
+const staticLeaves=[];visual.interior.root.traverse(o=>{if(o.isMesh&&!o.matrixAutoUpdate)staticLeaves.push(o);});
+view='cockpit';env.hour=12;aoNow=0;env.envAt=-Infinity;env.lutAt=-Infinity;
+render({fresh:true}); // settle the changed viewpoint before the controlled pair
+const warmMatrices=render({fresh:true});
+const optimizedMatrices=render({fresh:true});
+const beforeMatrices=staticLeaves.map(o=>({name:o.name,local:o.matrix.elements.slice(),world:o.matrixWorld.elements.slice()}));
+staticLeaves.forEach(o=>o.matrixAutoUpdate=true);const unfrozenMatrices=render({fresh:true});
+staticLeaves.forEach(o=>o.matrixAutoUpdate=false);
+const changedMatrices=staticLeaves.map((o,i)=>({name:o.name,local:o.matrix.elements.some((v,k)=>Math.abs(v-beforeMatrices[i].local[k])>1e-10),world:o.matrixWorld.elements.some((v,k)=>Math.abs(v-beforeMatrices[i].world[k])>1e-10)})).filter(x=>x.local||x.world);
+const staticMatrixProof={leafMeshes:staticLeaves.length,pixelsDiff:diff(optimizedMatrices.rgba,unfrozenMatrices.rgba),selfDiff:diff(warmMatrices.rgba,optimizedMatrices.rgba),changedMatrices};
+// Deliberately reproduce the old path: change model + time without hooks.
+view='orbit';env.hour=12;env.envAt=-Infinity;env.lutAt=-Infinity;render({fresh:true});
+view='cockpit';env.hour=0;env.envAt=performance.now();env.lutAt=performance.now();shAt.v=[1];aoNow=0.6;clouds.frame=1;
+const stale=render();
+const fixedRequest=transition.request('cockpit');await new Promise(r=>setTimeout(r,0));const fixed=render();await fixedRequest;
+const regression={stale:stale.sample,fixed:fixed.sample,pixelsDiff:diff(stale.rgba,fixed.rgba)};
+window.qa={samples,events,regression,staticMatrixProof,renderer:gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL),method:'Actual F27 GLBs + actual Environment/WorldShadows/PostFX/VolumetricClouds/CloudShadow, fixed time, camera-relative fixture scene; first target vs explicit force-fresh pixels. Not full streamed world or hardware FPS.'};
+window.capture=async(mode,target)=>{env.hour=mode==='day'?12:mode==='dusk'?20:0;const p=transition.request(target);await new Promise(r=>setTimeout(r,0));render();await p;document.querySelector('#label').textContent='F27 V4 · '+mode+' · '+target+' · software WebGL proof';};
+document.querySelector('#result').textContent=JSON.stringify(samples.map(s=>({mode:s.mode,view:s.view,ao:s.ao,world:s.worldRedraws,clouds:s.cloudMarches,self:s.selfRefreshed,pixelDelta:s.pixelsDiff.max})),null,2);
+window.ready=true;
+}catch(e){window.failure=e.stack;document.querySelector('#result').textContent=e.stack;}
+</script>

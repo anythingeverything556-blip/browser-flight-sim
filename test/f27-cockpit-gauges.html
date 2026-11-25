@@ -1,0 +1,20 @@
+<!doctype html><meta charset="utf-8"><title>F27 genuine cockpit instrument verification</title>
+<style>body{margin:0;background:#263545;color:white;font:14px monospace}canvas{display:block}#panel{position:fixed;top:8px;left:8px;background:#152030dd;padding:12px;z-index:2}button{margin:5px;padding:8px}#status{max-width:90vw;white-space:pre-wrap}</style>
+<div id="panel">F27 actual staged VC v2 · source clips · native JS/Three<br><button id="idle">Ground / idle</button><button id="climb">Climb / 10° nose up / 30° bank</button><button id="engine">Left engine stopped</button><button id="fo">First officer panel</button><div id="status">Loading actual cockpit…</div></div>
+<script type="module">
+import * as THREE from '/node_modules/three/build/three.module.js';
+import {F27Visual,F27_EYE} from '/src/f27visual.js';
+import {F27Model} from '/src/f27.js';
+const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.6;document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#7398b0');scene.add(new THREE.HemisphereLight(0xffffff,0x666666,3));
+const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(-3,5,-2);scene.add(light);
+const camera=new THREE.PerspectiveCamera(60,innerWidth/innerHeight,.02,100);const visual=new F27Visual(scene);window.visual=visual;
+const fdm=new F27Model();fdm.pos.set(0,0,0);fdm.gearPos=1;fdm.vel.set(0,0,0);fdm.out={ias:0,T:288.15};fdm.brakes=0;
+let name='Ground / idle',fo=false,t=0;
+const panel=document.querySelector('#status');
+await visual.preloadCockpit();visual.setLights({instruments:true});
+function pose(mode){name=mode;fdm.quat.identity();fdm.pos.set(0,0,0);fdm.vel.set(0,0,0);fdm.gearPos=1;fdm.flaps=0;fdm.out={ias:0,T:288.15};fdm.engines.forEach(e=>{e.rpm=7000;e.propRpm=651;e.egt=300;e.ff=.025;});if(mode==='Climb'){fdm.pos.y=3048;fdm.out.ias=140/1.943844492;fdm.vel.y=5.08;fdm.gearPos=.5;fdm.flaps=11.5;fdm.engines.forEach(e=>{e.rpm=14200;e.propRpm=1320.6;e.egt=650;e.ff=.075;});fdm.quat.setFromAxisAngle(new THREE.Vector3(0,0,1),10*Math.PI/180).multiply(new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0),30*Math.PI/180));}if(mode==='Left stopped'){fdm.engines[0].rpm=0;fdm.engines[0].propRpm=0;fdm.engines[0].egt=15;fdm.engines[0].ff=0;}}
+document.querySelector('#idle').onclick=()=>pose('Ground / idle');document.querySelector('#climb').onclick=()=>pose('Climb');document.querySelector('#engine').onclick=()=>pose('Left stopped');document.querySelector('#fo').onclick=()=>fo=!fo;
+pose('Ground / idle');
+function frame(){t+=1/60;visual.update(1/60,fdm,new THREE.Vector3(),'cockpit',null,null,{groundM:fdm.pos.y-180,localTimeSeconds:12*3600+t});camera.position.copy(F27_EYE);if(fo)camera.position.z=0.48;camera.position.applyQuaternion(fdm.quat).add(fdm.pos);const target=new THREE.Vector3(F27_EYE.x+1,-.12,fo?.48:-.28).applyQuaternion(fdm.quat).add(fdm.pos);camera.up.set(0,1,0).applyQuaternion(fdm.quat);camera.lookAt(target);renderer.render(scene,camera);const a=visual.interior.adapter.instruments;panel.textContent=name+'\n'+Object.keys(a.values).length+' instrument clips sampled\nIAS '+(fdm.out.ias*1.943844492).toFixed(0)+' kt · alt '+(fdm.pos.y/0.3048).toFixed(0)+' ft · RPM '+fdm.engines.map(e=>e.rpm).join(' / ')+'\nUnsupported systems NOT fabricated (oil/PSI torque/electric/cabin/radios)';window.instrumentProof={name,values:a.values,annunciators:a.annunciators};requestAnimationFrame(frame);}frame();
+</script>

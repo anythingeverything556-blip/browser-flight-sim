@@ -1,0 +1,15 @@
+MTOW static stall: flaps 0 = 90.95 KIAS, alpha 16.7 deg
+MTOW static stall: flaps 16.5 = 82.56 KIAS, alpha 15.0 deg
+MTOW static stall: flaps 40 = 74.02 KIAS, alpha 12.3 deg
+parked: CG height 2.297 m, supported load 1.000 g
+Dart spool: rpm after 1 s 8800, after 15 s 14957; static pair 51755 N
+warm start 300 m / 100 KIAS / gamma -3: after 30 s 100.14 KIAS, dh -82.8 m
+warm start 1500 m / 160 KIAS / gamma 0: after 30 s 159.76 KIAS, dh 1.6 m
+warm start 6000 m / 190 KIAS / gamma 0: after 30 s 189.90 KIAS, dh 0.9 m
+warm start 7620 m / 180 KIAS / gamma 0: after 30 s 179.04 KIAS, dh -0.1 m
+takeoff 18.35 t / flaps 16.5: ground roll 755 m, liftoff 100.0 KIAS, altitude after 60 s 165 m
+dynamic stall/recovery: flaps 0, developed at 86.4 KIAS / 0.82 g; recovered 155.6 KIAS, alpha 2.0 deg
+dynamic stall/recovery: flaps 40, developed at 69.5 KIAS / 0.84 g; recovered 107.1 KIAS, alpha -5.5 deg
+five-minute manual-style cruise: 240 KTAS, 196 KIAS, 14169 gas rpm, 745 kg/h pair, dh 5.4 m
+manual-style climb: 1148 ft/min at 137.4 KIAS and 14200 gas rpm
+f27-fdm-test ok

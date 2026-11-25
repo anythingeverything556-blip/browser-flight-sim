@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import { createSheetController } from '../src/sheet-controller.js';
+import { activateFlight } from '../src/flight-lifecycle.js';
+import { beginMissionSession, stopMissionSession } from '../src/mission-session.js';
+const classes=(initial=[])=>{const set=new Set(initial);return {contains:x=>set.has(x),add:x=>set.add(x),remove:x=>set.delete(x),toggle:(x,on)=>{if(on)set.add(x);else set.delete(x);}}};
+const panel={classList:classes(['wide'])},button={dataset:{sheet:'map'},classList:classes()},body={classList:classes(['intro'])},seen=[];
+const document={body,getElementById:()=>panel,querySelectorAll:()=>[panel]};
+const open=createSheetController({document,buttons:[button],onOpen:id=>seen.push(id)});
+open('map');assert.ok(panel.classList.contains('open'));assert.ok(body.classList.contains('sheet-wide'));open('map');assert.ok(!panel.classList.contains('open'));open('map',true);open(null);assert.ok(!body.classList.contains('sheet-open'));assert.deepEqual(seen,['map','map']);
+const state={setup:{aircraft:'c172'}},controls={},calls=[];
+activateFlight({document,state,controls,cmap:{visible:false,toggle:v=>calls.push(['map',v])},settings:{},logbook:{begin:v=>calls.push(['log',v])},renderLogbook:()=>calls.push('logUI'),openSheet:id=>calls.push(['close',id]),placeAircraftPicker:()=>calls.push('picker'),syncStripH:()=>calls.push('strip'),toast:()=>calls.push('toast')});
+assert.ok(state.started&&controls.enabled);assert.ok(!body.classList.contains('intro'));assert.deepEqual(calls.map(x=>Array.isArray(x)?x[0]:x),['log','logUI','map','close','picker','strip','toast']);
+const events=[];const tour={start:h=>events.push(['tour',h]),stop:()=>events.push('tour-stop')},tutorial={start:c=>events.push(['tutorial',c]),stop:()=>events.push('tutorial-stop')};const options={spawn:{lat:1,lon:2,hdg:3},tour,tutorial,tutorialCtx:()=>42,createMission:(kind,spawn)=>({kind,...spawn})};
+assert.equal(beginMissionSession({...options,spawn:null,kind:'tour'}),null);assert.equal(beginMissionSession({...options,kind:'tour'}),null);assert.equal(beginMissionSession({...options,kind:'tutorial'}),null);assert.deepEqual(beginMissionSession({...options,kind:'c172pattern'}),{kind:'c172pattern',lat:1,lon:2,hdg:3});
+stopMissionSession({tour,tutorial,resetCoach:()=>events.push('coach'),clearBeacons:()=>events.push('beacons'),hideMission:()=>events.push('hide')});assert.deepEqual(events.slice(-5),['tour-stop','tutorial-stop','coach','beacons','hide']);
+console.log('PASS panel toggle/forced open/close, ordered flight activation and mission tour/tutorial/factory/stop boundaries');

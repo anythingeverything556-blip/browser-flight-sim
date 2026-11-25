@@ -1,0 +1,96 @@
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "codec_name": "mp3",
+            "sample_rate": "24000",
+            "channels": 1
+        }
+    ],
+    "format": {
+        "filename": "public/audio/voice/callouts/h100.mp3",
+        "duration": "0.840000"
+    }
+}
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "codec_name": "mp3",
+            "sample_rate": "24000",
+            "channels": 1
+        }
+    ],
+    "format": {
+        "filename": "public/audio/voice/callouts/h50.mp3",
+        "duration": "0.576000"
+    }
+}
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "codec_name": "mp3",
+            "sample_rate": "24000",
+            "channels": 1
+        }
+    ],
+    "format": {
+        "filename": "public/audio/voice/callouts/h40.mp3",
+        "duration": "0.528000"
+    }
+}
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "codec_name": "mp3",
+            "sample_rate": "24000",
+            "channels": 1
+        }
+    ],
+    "format": {
+        "filename": "public/audio/voice/callouts/h30.mp3",
+        "duration": "0.528000"
+    }
+}
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "codec_name": "mp3",
+            "sample_rate": "24000",
+            "channels": 1
+        }
+    ],
+    "format": {
+        "filename": "public/audio/voice/callouts/h20.mp3",
+        "duration": "0.624000"
+    }
+}
+{
+    "programs": [
+
+    ],
+    "streams": [
+        {
+            "codec_name": "mp3",
+            "sample_rate": "24000",
+            "channels": 1
+        }
+    ],
+    "format": {
+        "filename": "public/audio/voice/callouts/h10.mp3",
+        "duration": "0.504000"
+    }
+}

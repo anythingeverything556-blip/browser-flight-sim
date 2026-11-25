@@ -1,0 +1,41 @@
+{
+  "method": "Full-resolution image graft from owner-supplied handoff asset; stock mesh buffers preserved byte-for-byte",
+  "files": [
+    {
+      "file": "public/models/C172.glb",
+      "bytes": 2389444,
+      "sha256": "74ef054975038479b07494180cbf1d6fd0fdaa949268d46b5f4c5b149f40a782",
+      "triangles": 312513,
+      "nodes": 327,
+      "primitives": 452,
+      "images": 8
+    },
+    {
+      "file": "public/models/SF50.glb",
+      "bytes": 1481076,
+      "sha256": "10aa8435a1783e04acf7079c0e351c1e507cbdd30822b7efab8e9cde4d612d7b",
+      "triangles": 403431,
+      "nodes": 40,
+      "primitives": 143,
+      "images": 13
+    },
+    {
+      "file": "handoff/sf50-model-wip/SF50_exterior_fix1.glb",
+      "bytes": 1741204,
+      "sha256": "82714658498be35bb5830647a35ee95a0dcdd4527ebc17d6d0451b43e27fd545",
+      "triangles": 390997,
+      "nodes": 40,
+      "primitives": 142,
+      "images": 13
+    },
+    {
+      "file": "public/models/SF50_fullres_v1.glb",
+      "bytes": 1771184,
+      "sha256": "cf2df925927a6884ddf99b8f76b0b6781f642a3c6593632a662bd936b4eeb097",
+      "triangles": 403431,
+      "nodes": 40,
+      "primitives": 143,
+      "images": 13
+    }
+  ]
+}

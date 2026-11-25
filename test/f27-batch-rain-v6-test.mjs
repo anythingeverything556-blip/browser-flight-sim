@@ -1,0 +1,35 @@
+import assert from 'node:assert/strict';
+import * as T from 'three';
+import { batchF27Cockpit } from '../src/f27batch.js';
+import { GlassWater } from '../src/glasswater.js';
+import { gateF27DormantLights } from '../src/f27materials.js';
+import { loadModel } from './_glb-node.mjs';
+const root=new T.Group(),material=new T.MeshStandardMaterial(),geometry=new T.BoxGeometry();geometry.clearGroups();
+const leaf=(name,x,parent=root,m=material)=>{const o=new T.Mesh(geometry,m);o.name=name;o.position.x=x;parent.add(o);return o;};
+const a=leaf('static-A',1),b=leaf('static-B',3),control=new T.Group();control.name='control';root.add(control);
+const dynamic=leaf('child',0,control), lamp=leaf('x0_Warn_Fire01_On',4),transparent=leaf('glass',0,root,new T.MeshBasicMaterial({transparent:true}));
+const clip=new T.AnimationClip('control',1,[new T.NumberKeyframeTrack('control.position[x]',[0,1],[0,1])]);
+root.updateMatrixWorld(true);const result=batchF27Cockpit(root,[clip]);
+assert.equal(result.savedSubmissions,1);assert.equal(result.batches.length,1);assert.deepEqual(result.sources,[a,b]);
+assert.ok(dynamic.visible&&lamp.visible&&transparent.visible);assert.ok(!a.visible&&!b.visible);
+assert.equal(result.batches[0].geometry.index.count,geometry.index.count*2);
+const g=await loadModel('f27/f27-white-vc-v2');g.scene.traverse(o=>{if(o.userData.webDefaultVisible===false)o.visible=false;});g.scene.updateMatrixWorld(true);
+const real=batchF27Cockpit(g.scene,g.animations);assert.ok(real.savedSubmissions>100);assert.ok(real.sources.every(o=>!o.material.transparent));
+for(const o of real.sources)for(let p=o;p&&p!==g.scene;p=p.parent)assert.ok(!/Warn|GearInd|LIGHT_|Yoke|Propeller|PROPELLER/i.test(p.name));
+const water=new GlassWater({overlayOnly:true});
+for(const name of ['x0_Windows_Main_Side','x0_WindshieldWipersWet']){const pane=g.scene.getObjectByName(name);assert.equal(pane.material.name,'WINDSHIELD');water.attach(pane,g.scene);}
+assert.equal(water.meshes.length,2);assert.equal(water.rt,null);assert.equal(water.mode,1);assert.ok(water.meshes.every(m=>!m.visible));
+const update=(dt,rain,V=0,near=true)=>water.update(dt,{rain,V,near,sun:new T.Vector3(0,1,0),daylight:1});
+water.setMode(0);assert.equal(water.mode,1);water.setSize(900,600);update(1,1);assert.ok(water.active);assert.ok(water.meshes.every(m=>m.visible&&m.layers.mask===1));
+const time=water.uniforms.uTime.value,wet=water.wet;update(1,1,70);assert.ok(water.uniforms.uTime.value>time&&water.wet>wet);
+update(.1,1,0,false);assert.ok(!water.active&&water.meshes.every(m=>!m.visible));
+update(60,0,100);assert.equal(water.wet,0);assert.ok(!water.active&&water.meshes.every(m=>!m.visible));
+console.log('PASS F27 static opaque batching excludes animated ancestry, controls, lamps and glass; exact windshield panes animate, draw zero when dry, stay overlay-only at every preset.',{sources:real.sources.length,batches:real.batches.length,saved:real.savedSubmissions});
+
+const gateRoot=new T.Group(),gateMat=new T.MeshStandardMaterial();gateRoot.add(new T.Mesh(new T.BoxGeometry(),gateMat));
+const chunksBefore=T.ShaderChunk.lights_fragment_begin,uniform={value:true};
+assert.equal(gateF27DormantLights(gateRoot,uniform),1);assert.equal(gateF27DormantLights(gateRoot,uniform),0);
+const shader={uniforms:{},fragmentShader:'#include <lights_fragment_begin>'};gateMat.onBeforeCompile(shader,{});
+assert.equal(shader.uniforms.uF27GateDarkLights,uniform);assert.match(shader.fragmentShader,/pointLight.color/);assert.match(shader.fragmentShader,/spotLight.color/);
+assert.equal(T.ShaderChunk.lights_fragment_begin,chunksBefore,'only F27 material instances patched, never global shader state');
+const ordinary=new GlassWater();ordinary.attach(transparent,root);assert.equal(ordinary.mode,0);assert.ok(ordinary.meshes[0].visible,'other aircraft refraction mode stays available');ordinary.rt.dispose();

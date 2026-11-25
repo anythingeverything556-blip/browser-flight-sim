@@ -1,0 +1,15 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>SF50 live displays</title><style>html,body{margin:0;background:#111}canvas{display:block;margin:4px}</style></head>
+<body><script type="module">
+import { SF50Displays } from '../../src/sf50displays.js';
+const q = new URLSearchParams(location.search);
+const d = new SF50Displays({ scale: +(q.get('scale') || 0.5) });
+const s = { ias: 196.4, tas: 309, gs: 279, mach: 0.512, alt: 28012, vs: 0, hdg: 315, trk: 321, crs: 321, pitch: 2.2, bank: 0, fpa: 0, slip: 0, aoa: 0.33,
+  selIas: 196, selAlt: 28000, selHdg: 315, thrust: 88, thrustCmd: 88, n1: 91.6, n2: 95.2, itt: 716, oilT: 81, oilP: 64, ff: 62, fuelL: 90, fuelR: 89, gear: 0, flaps: 0, trim: 1,
+  cabAlt: 7900, cabDiff: 6.1, cabRate: 0, destElev: 871, oat: -38, isa: 3, windFrom: 270, windKt: 45, turnRate: 0, xtk: 0.2,
+  ap: { ap: true, yd: true, at: 'SPD', lat: 'GPS', vert: 'ALT', armed: 'VPTH', fd: true }, com1: '125.350', com1Name: 'INDY CENTER', wpt: 'IIU', dis: 84.7, ete: '18:13',
+  flt: '0:46:12', utc: '14:37:28', fobLb: 1200, endurance: '2+54', airports: [{ id: 'KSDF', x: -8, y: -30 }, { id: 'KLEX', x: 22, y: -10 }, { id: 'KFFT', x: 0, y: -18 }],
+  traffic: [{ x: -4, y: -7, rel: 8 }], alerts: [], ...JSON.parse(q.get('s') || '{}') };
+const t0 = performance.now(); for (let i = 0; i < 10; i++) { d.drawPFD(s); d.drawMFD(s); } window.__ms = (performance.now() - t0) / 10;
+document.body.append(d.pfd, d.mfd); window.__ready = true;
+</script></body></html>

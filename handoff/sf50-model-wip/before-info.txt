@@ -1,0 +1,129 @@
+SF50 t[0,0,0] ex{"frame":"glTF: +Z nose, +Y up, +X left wing; ground y = 0; origin = model datum (nose tip 4.68 m ahead along +Z)","model_frame_mapping":"simulator model frame (x fwd, y up, z right) = (gl.z, gl.y, -gl.x)","wheel_nose_centre_m":[0,0.18,3.38],"wheel_nose_radius_m":0.18,"wheel_main_centre_m":[-1.65,0.2,0.45],"wheel_main_radius_m":0.2}
+  Ctrl_Aileron_L t[4.56,1.214,0.248] ex{"hinge_axis":[-0.995367,-0.081847,0.050457],"max_deg":20,"sense":"trailing edge down"} mesh tris=1122 prims=1 mats=G3_Paint_MidnightNavy
+  Ctrl_Aileron_R t[-4.56,1.214,0.248] ex{"hinge_axis":[-0.995367,0.081847,-0.050457],"max_deg":20,"sense":"trailing edge down"} mesh tris=1122 prims=1 mats=G3_Paint_MidnightNavy
+  Ctrl_Flap_L t[2.21,1.018,0.367] ex{"hinge_axis":[-0.995196,-0.083892,0.050466],"max_deg":35,"sense":"trailing edge down"} mesh tris=1512 prims=1 mats=G3_Paint_MidnightNavy
+  Ctrl_Flap_R t[-2.21,1.018,0.367] ex{"hinge_axis":[-0.995196,0.083892,-0.050466],"max_deg":35,"sense":"trailing edge down"} mesh tris=1512 prims=1 mats=G3_Paint_MidnightNavy
+  Ctrl_Ruddervator_L t[1.097,2.487,-4.182] ex{"hinge_axis":[-0.755525,-0.611812,0.234241],"max_deg":20,"sense":"trailing edge toward the lower face of this V-tail panel (both +ve = nose-down pitch)"} mesh tris=1554 prims=1 mats=G3_Paint_VTail_X
+  Ctrl_Ruddervator_R t[-1.097,2.487,-4.182] ex{"hinge_axis":[-0.755525,0.611812,-0.234241],"max_deg":20,"sense":"trailing edge toward the lower face of this V-tail panel (both +ve = nose-down pitch)"} mesh tris=1554 prims=1 mats=G3_Paint_VTail_X
+  Display_GTC1 t[0.299,1.241,2.457] ex{"max_deg":0,"sense":"emissive screen quad; UV 0..1 = visible area"} mesh tris=2 prims=1 mats=G3_Display_GTC1
+  Display_GTC2 t[0.084,1.241,2.457] ex{"max_deg":0,"sense":"emissive screen quad; UV 0..1 = visible area"} mesh tris=2 prims=1 mats=G3_Display_GTC2
+  Display_GTC3 t[-0.131,1.241,2.457] ex{"max_deg":0,"sense":"emissive screen quad; UV 0..1 = visible area"} mesh tris=2 prims=1 mats=G3_Display_GTC3
+  Display_MFD t[-0.215,1.432,2.5] ex{"max_deg":0,"sense":"emissive screen quad; UV 0..1 = visible area"} mesh tris=2 prims=1 mats=G3_Display_MFD
+  Display_PFD t[0.215,1.432,2.5] ex{"max_deg":0,"sense":"emissive screen quad; UV 0..1 = visible area"} mesh tris=2 prims=1 mats=G3_Display_PFD
+  Door_Baggage t[0.658,1.783,-0.372] ex{"hinge_axis":[0.31414,0,0.949377],"max_deg":95,"sense":"opens upward"} mesh tris=2920 prims=5 mats=G3_Paint_Livery|G3_Jamb_DarkGrey|G3_Door_Inner_Trim|G3_Metal_Chrome_Oleo|G3_Seam_Dark
+  Door_Exit t[-0.53,2.155,1.771] ex{"hinge_axis":[-0.238495,0,-0.971144],"max_deg":80,"sense":"opens upward"} mesh tris=4336 prims=7 mats=G3_Tinted_Glazing|G3_Paint_Livery|G3_Frame_MatteBlack|G3_Jamb_DarkGrey|G3_Door_Inner_Trim|G3_Metal_Chrome_Oleo|G3_Seam_Dark
+  Door_Main t[0.201,2.299,1.691] ex{"hinge_axis":[0,-0.141983,0.989869],"max_deg":100,"sense":"opens upward"} mesh tris=5110 prims=7 mats=G3_Tinted_Glazing|G3_Paint_Livery|G3_Frame_MatteBlack|G3_Jamb_DarkGrey|G3_Door_Inner_Trim|G3_Metal_Chrome_Oleo|G3_Seam_Dark
+  Engine_Fan t[0,2.27,-0.52] ex{"hinge_axis":[0,0,1],"max_deg":0,"sense":"fan spin axis"} mesh tris=2208 prims=1 mats=G3_Fan_Titanium
+  Exterior t[-0.014,1.504,0.139] mesh tris=126883 prims=23 mats=G3_Paint_Livery|G3_Frame_MatteBlack|G3_Jamb_DarkGrey|G3_Composite_Inner|G3_Paint_MidnightNavy|G3_Wheelwell_Dark|G3_Rubber_Boot|G3_Lens_Clear|G3_Paint_VTail_X|G3_Paint_GlossBlack|G3_Paint_CirrusRed|G3_Paint_Pinstripe_White|G3_Duct_Dark|G3_Metal_InletLip_Polished|G3_Metal_Exhaust_Inconel|G3_Antenna_White|G3_Plastic_Black|G3_Seam_Dark|G3_Decal_White|G3_Paint_Silver|G3_Metal_Chrome_Oleo|G3_Metal_Brushed|G3_Wing_Walk_Grit
+  Gear_Main_L t[1.6,1.025,0.626] ex{"hinge_axis":[0,0,-1],"max_deg":88,"sense":"retract inboard into the wing / belly"} mesh tris=1604 prims=5 mats=G3_Brake_Caliper|G3_Paint_Gear_LightGrey|G3_Metal_Chrome_Oleo|G3_Paint_MidnightNavy|G3_Wheelwell_Dark
+    Wheel_Main_L t[0.05,-0.825,-0.176] ex{"hinge_axis":[1,0,0],"max_deg":0,"sense":"spin axis (positive = rolling forward)"} mesh tris=8526 prims=4 mats=G3_Rubber_Tyre|G3_Metal_Wheel_Silver|G3_Metal_Chrome_Oleo|G3_Brake_Disc_Steel
+  Gear_Main_R t[-1.6,1.025,0.626] ex{"hinge_axis":[0,0,1],"max_deg":88,"sense":"retract inboard into the wing / belly"} mesh tris=1604 prims=5 mats=G3_Brake_Caliper|G3_Paint_Gear_LightGrey|G3_Metal_Chrome_Oleo|G3_Paint_MidnightNavy|G3_Wheelwell_Dark
+    Wheel_Main_R t[-0.05,-0.825,-0.176] ex{"hinge_axis":[1,0,0],"max_deg":0,"sense":"spin axis (positive = rolling forward)"} mesh tris=8526 prims=4 mats=G3_Rubber_Tyre|G3_Metal_Wheel_Silver|G3_Metal_Chrome_Oleo|G3_Brake_Disc_Steel
+  Gear_Nose t[0,0.76,3.345] ex{"hinge_axis":[-1,0,0],"max_deg":110,"sense":"retract forward into the nose"} mesh tris=1196 prims=2 mats=G3_Metal_Chrome_Oleo|G3_Paint_Gear_LightGrey
+    Light_Taxi t[0,-0.36,0.115] ex{"max_deg":0,"sense":"emissive lens"} mesh tris=432 prims=1 mats=G3_Light_Landing_White
+    Wheel_Nose t[0,-0.58,0.035] ex{"hinge_axis":[1,0,0],"max_deg":0,"sense":"spin axis (positive = rolling forward)"} mesh tris=7470 prims=3 mats=G3_Rubber_Tyre|G3_Metal_Wheel_Silver|G3_Metal_Chrome_Oleo
+  GearDoor_Nose_L t[0.112,0.694,3.33] ex{"hinge_axis":[0,0.07124,0.997459],"max_deg":88,"sense":"door opens downward (gear down = open)"} mesh tris=836 prims=2 mats=G3_Paint_GlossBlack|G3_Wheelwell_Dark
+  GearDoor_Nose_R t[-0.112,0.694,3.33] ex{"hinge_axis":[0,-0.07124,-0.997459],"max_deg":88,"sense":"door opens downward (gear down = open)"} mesh tris=836 prims=2 mats=G3_Paint_GlossBlack|G3_Wheelwell_Dark
+  Glazing t[0.044,1.846,1.73] mesh tris=10058 prims=3 mats=G3_Windshield_GoldFilm|G3_Glass_Frit_Black|G3_Tinted_Glazing
+  Light_Courtesy t[0.695,0.8,1.76] ex{"max_deg":0,"sense":"courtesy light"} mesh tris=836 prims=1 mats=G3_Light_Courtesy
+  Light_Halo_L t[5.884,1.314,0.393] ex{"max_deg":0,"sense":"halo LED strip"} mesh tris=640 prims=1 mats=G3_Light_Halo
+  Light_Halo_R t[-5.884,1.314,0.393] ex{"max_deg":0,"sense":"halo LED strip"} mesh tris=640 prims=1 mats=G3_Light_Halo
+  Light_Landing_L t[5.849,1.298,0.997] ex{"max_deg":0,"sense":"landing/taxi LEDs"} mesh tris=288 prims=1 mats=G3_Light_Landing_White
+  Light_Landing_R t[-5.849,1.298,0.997] ex{"max_deg":0,"sense":"landing/taxi LEDs"} mesh tris=288 prims=1 mats=G3_Light_Landing_White
+  Light_Nav_L t[5.887,1.311,0.945] ex{"max_deg":0,"sense":"red nav"} mesh tris=96 prims=1 mats=G3_Light_Nav_Red
+  Light_Nav_R t[-5.887,1.311,0.945] ex{"max_deg":0,"sense":"green nav"} mesh tris=96 prims=1 mats=G3_Light_Nav_Green
+  Light_Strobe_L t[5.866,1.311,-0.071] ex{"max_deg":0,"sense":"white strobe"} mesh tris=96 prims=1 mats=G3_Light_Strobe_White
+  Light_Strobe_R t[-5.866,1.311,-0.071] ex{"max_deg":0,"sense":"white strobe"} mesh tris=96 prims=1 mats=G3_Light_Strobe_White
+  Stick_CoPilot t[-0.688,1.265,1.96] ex{"hinge_axis":[1,0,0],"roll_axis":[0,0,-1],"max_deg":15,"sense":"pitch axis: +ve = stick aft; roll_axis: +ve = stick right"} mesh tris=1480 prims=4 mats=G3_Metal_Brushed|G3_Stick_Grip|G3_Trigger_Red|G3_Knob_Black
+  Stick_Pilot t[0.687,1.265,1.96] ex{"hinge_axis":[1,0,0],"roll_axis":[0,0,-1],"max_deg":15,"sense":"pitch axis: +ve = stick aft; roll_axis: +ve = stick right"} mesh tris=1480 prims=4 mats=G3_Metal_Brushed|G3_Stick_Grip|G3_Trigger_Red|G3_Knob_Black
+  Throttle_Lever t[0,1.092,2.18] ex{"hinge_axis":[-1,0,0],"max_deg":30,"sense":"+ve = lever forward (more thrust)"} mesh tris=912 prims=4 mats=G3_Metal_Brushed|G3_Stick_Grip|G3_Trigger_Red|G3_Knob_Black
+  Interior t[0,0,0] mesh tris=205552 prims=37 mats=G3_Plastic_Satin_Black|G3_Metal_Brushed|G3_Trim_Charcoal|G3_Leather_Ivory|G3_Knob_Black|G3_Bezel_Black_Gloss|G3_Liner_WarmWhite|G3_Carpet_Charcoal|G3_CAPS_Red_Handle|G3_Smoked_Cover|G3_Seam_Dark|G3_Panel_Black_Satin|G3_Trim_Cognac|G3_CenterStack_Face|G3_LED_Cove|G3_O2_Yellow|G3_Alcantara_Charcoal|G3_Antenna_White|G3_Composite_Inner|G3_Metal_Chrome_Oleo|G3_Gear_Handle_White|G3_Carbon_Fibre|G3_GMC707_Face|G3_GMC707_Keys|G3_Rubber_Boot|G3_Master_Warning_Lens|G3_LED_Reading|G3_Safe_Return_Orange|G3_Leather_Ivory_Piping|G3_Seat_Cladding|G3_Seatbelt_Webbing|G3_Buckle_Chrome|G3_Trigger_Red|G3_Seat_Frame_Grey|G3_Speaker_Grille|G3_Visor_Tint|G3_Frame_MatteBlack
+TOTAL tris 403431 draws 143 materials 75 textures 13
+TEX G3_VTail_X_BaseColor_2k image/webp 2048x2048 18 KB
+TEX G3_VTail_X_ORM_2k image/webp 2048x2048 16 KB
+TEX G3_Display_GTC1_Tex image/webp 1600x1000 53 KB
+TEX G3_Display_GTC2_Tex image/webp 1600x1000 45 KB
+TEX G3_Display_GTC3_Tex image/webp 1600x1000 58 KB
+TEX G3_Display_MFD_Tex image/webp 2560x1600 158 KB
+TEX G3_Display_PFD_Tex image/webp 2560x1600 142 KB
+TEX G3_Livery_BaseColor_4k image/webp 4096x2048 38 KB
+TEX G3_Livery_ORM_4k image/webp 4096x2048 24 KB
+TEX G3_CenterStack_Face_Tex image/webp 256x640 4 KB
+TEX G3_Carbon_Weave_512 image/webp 512x512 4 KB
+TEX G3_GMC707_Face_Tex image/webp 1024x360 5 KB
+TEX G3_GMC707_Keys_Tex image/webp 1024x256 4 KB
+MAT G3_Paint_MidnightNavy bc 0.03,0.032,0.037,1 m 0.550000011920929 r 0.3400000035762787 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Paint_VTail_X bc 1,1,1,1 m 1 r 1 em 0,0,0 OPAQUE B:G3_VTail_X_BaseColor_2k M:G3_VTail_X_ORM_2k   clearcoat
+MAT G3_Display_GTC1 bc 0,0,0,1 m 0 r 0.36000001430511475 em 1,1,1 OPAQUE E:G3_Display_GTC1_Tex   emissive_strength+ior+specular
+MAT G3_Display_GTC2 bc 0,0,0,1 m 0 r 0.36000001430511475 em 1,1,1 OPAQUE E:G3_Display_GTC2_Tex   emissive_strength+ior+specular
+MAT G3_Display_GTC3 bc 0,0,0,1 m 0 r 0.36000001430511475 em 1,1,1 OPAQUE E:G3_Display_GTC3_Tex   emissive_strength+ior+specular
+MAT G3_Display_MFD bc 0,0,0,1 m 0 r 0.36000001430511475 em 1,1,1 OPAQUE E:G3_Display_MFD_Tex   emissive_strength+ior+specular
+MAT G3_Display_PFD bc 0,0,0,1 m 0 r 0.36000001430511475 em 1,1,1 OPAQUE E:G3_Display_PFD_Tex   emissive_strength+ior+specular
+MAT G3_Paint_Livery bc 1,1,1,1 m 1 r 1 em 0,0,0 OPAQUE B:G3_Livery_BaseColor_4k M:G3_Livery_ORM_4k   clearcoat
+MAT G3_Jamb_DarkGrey bc 0.07,0.07,0.075,1 m 0 r 0.550000011920929 em 0,0,0 OPAQUE    
+MAT G3_Door_Inner_Trim bc 0.1,0.1,0.105,1 m 0 r 0.6000000238418579 em 0,0,0 OPAQUE    
+MAT G3_Metal_Chrome_Oleo bc 0.95,0.95,0.96,1 m 1 r 0.05000000074505806 em 0,0,0 OPAQUE    
+MAT G3_Seam_Dark bc 0.008,0.008,0.009,1 m 0 r 0.699999988079071 em 0,0,0 OPAQUE    
+MAT G3_Tinted_Glazing bc 0.012,0.02,0.025,1 m 0 r 0.029999999329447746 em 0,0,0 OPAQUE    transmission
+MAT G3_Frame_MatteBlack bc 0.018,0.018,0.02,1 m 0 r 0.6200000047683716 em 0,0,0 OPAQUE    
+MAT G3_Fan_Titanium bc 0.55,0.55,0.58,1 m 1 r 0.2800000011920929 em 0,0,0 OPAQUE    
+MAT G3_Composite_Inner bc 0.16,0.16,0.16,1 m 0 r 0.8500000238418579 em 0,0,0 OPAQUE    
+MAT G3_Wheelwell_Dark bc 0.05,0.05,0.055,1 m 0 r 0.699999988079071 em 0,0,0 OPAQUE    
+MAT G3_Rubber_Boot bc 0.02,0.02,0.022,1 m 0 r 1 em 0,0,0 OPAQUE    
+MAT G3_Lens_Clear bc 0.9,0.9,0.9,1 m 0 r 0.019999999552965164 em 0,0,0 OPAQUE    ior+transmission
+MAT G3_Paint_GlossBlack bc 0.013,0.013,0.015,1 m 0.550000011920929 r 0.3400000035762787 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Paint_CirrusRed bc 0.5,0.018,0.035,1 m 0.44999998807907104 r 0.30000001192092896 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Paint_Pinstripe_White bc 0.86,0.86,0.84,1 m 0 r 0.30000001192092896 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Duct_Dark bc 0.03,0.03,0.035,1 m 0 r 0.6000000238418579 em 0,0,0 OPAQUE    
+MAT G3_Metal_InletLip_Polished bc 0.86,0.86,0.87,1 m 1 r 0.11999999731779099 em 0,0,0 OPAQUE    
+MAT G3_Metal_Exhaust_Inconel bc 0.25,0.22,0.19,1 m 1 r 1 em 0,0,0 OPAQUE    
+MAT G3_Antenna_White bc 0.85,0.85,0.83,1 m 0 r 0.3799999952316284 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Plastic_Black bc 0.02,0.02,0.02,1 m 0 r 0.5 em 0,0,0 OPAQUE    
+MAT G3_Decal_White bc 0.6,0.61,0.63,1 m 0.75 r 0.2800000011920929 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Paint_Silver bc 0.62,0.62,0.64,1 m 0.8500000238418579 r 0.30000001192092896 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Metal_Brushed bc 0.6,0.6,0.62,1 m 1 r 0.30000001192092896 em 0,0,0 OPAQUE    anisotropy
+MAT G3_Wing_Walk_Grit bc 0.05,0.05,0.055,1 m 0 r 0.8999999761581421 em 0,0,0 OPAQUE    
+MAT G3_Rubber_Tyre bc 0.022,0.022,0.023,1 m 0 r 1 em 0,0,0 OPAQUE    
+MAT G3_Metal_Wheel_Silver bc 0.74,0.75,0.77,1 m 1 r 0.23999999463558197 em 0,0,0 OPAQUE    
+MAT G3_Brake_Disc_Steel bc 0.42,0.42,0.43,1 m 1 r 1 em 0,0,0 OPAQUE    
+MAT G3_Brake_Caliper bc 0.09,0.09,0.1,1 m 0.30000001192092896 r 0.44999998807907104 em 0,0,0 OPAQUE    
+MAT G3_Paint_Gear_LightGrey bc 0.55,0.56,0.57,1 m 0 r 0.41999998688697815 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Light_Landing_White bc 0.9,0.9,0.85,1 m 0 r 0.05000000074505806 em 1,0.95,0.85 OPAQUE    emissive_strength
+MAT G3_Windshield_GoldFilm bc 0.022,0.021,0.016,1 m 0.07999999821186066 r 0.02500000037252903 em 0,0,0 OPAQUE    transmission
+MAT G3_Glass_Frit_Black bc 0.01,0.01,0.012,1 m 0 r 0.3499999940395355 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Seat_Cladding bc 0.05,0.05,0.055,1 m 0 r 0.5 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Plastic_Satin_Black bc 0.025,0.025,0.028,1 m 0 r 0.4000000059604645 em 0,0,0 OPAQUE    
+MAT G3_Alcantara_Charcoal bc 0.035,0.035,0.038,1 m 0 r 0.9200000166893005 em 0,0,0 OPAQUE    
+MAT G3_Seat_Frame_Grey bc 0.18,0.18,0.19,1 m 0.5 r 0.44999998807907104 em 0,0,0 OPAQUE    
+MAT G3_Leather_Ivory bc 0.78,0.72,0.62,1 m 0 r 0.47999998927116394 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Leather_Ivory_Piping bc 0.62,0.56,0.47,1 m 0 r 0.44999998807907104 em 0,0,0 OPAQUE    
+MAT G3_Seatbelt_Webbing bc 0.05,0.05,0.055,1 m 0 r 0.800000011920929 em 0,0,0 OPAQUE    
+MAT G3_Buckle_Chrome bc 0.9,0.9,0.92,1 m 1 r 0.07999999821186066 em 0,0,0 OPAQUE    
+MAT G3_Trigger_Red bc 0.7,0.03,0.02,1 m 0 r 0.3499999940395355 em 0,0,0 OPAQUE    
+MAT G3_Panel_Black_Satin bc 0.022,0.022,0.025,1 m 0 r 0.41999998688697815 em 0,0,0 OPAQUE    
+MAT G3_Bezel_Black_Gloss bc 0.012,0.012,0.014,1 m 0 r 0.15000000596046448 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Trim_Charcoal bc 0.06,0.06,0.065,1 m 0 r 0.6000000238418579 em 0,0,0 OPAQUE    
+MAT G3_Visor_Tint bc 0.03,0.03,0.02,1 m 0 r 0.10000000149011612 em 0,0,0 OPAQUE    transmission
+MAT G3_Knob_Black bc 0.02,0.02,0.02,1 m 0 r 0.3499999940395355 em 0,0,0 OPAQUE    
+MAT G3_CAPS_Red_Handle bc 0.75,0.03,0.02,1 m 0 r 0.30000001192092896 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Smoked_Cover bc 0.05,0.05,0.05,1 m 0 r 0.05000000074505806 em 0,0,0 OPAQUE    ior+transmission
+MAT G3_Safe_Return_Orange bc 0.9,0.35,0.05,1 m 0 r 0.3499999940395355 em 0.6,0.21,0.03 OPAQUE    
+MAT G3_O2_Yellow bc 0.85,0.62,0.05,1 m 0 r 0.4000000059604645 em 0,0,0 OPAQUE    
+MAT G3_Master_Warning_Lens bc 0.3,0.02,0.02,1 m 0 r 0.07999999821186066 em 0,0,0 OPAQUE    clearcoat+ior+transmission
+MAT G3_Gear_Handle_White bc 0.86,0.86,0.83,1 m 0 r 0.3199999928474426 em 0,0,0 OPAQUE    clearcoat
+MAT G3_Liner_WarmWhite bc 0.8,0.77,0.72,1 m 0 r 0.550000011920929 em 0,0,0 OPAQUE    
+MAT G3_Carpet_Charcoal bc 0.05,0.05,0.055,1 m 0 r 0.949999988079071 em 0,0,0 OPAQUE    
+MAT G3_Speaker_Grille bc 0.04,0.04,0.045,1 m 0.30000001192092896 r 0.699999988079071 em 0,0,0 OPAQUE    
+MAT G3_LED_Cove bc 1,0.92,0.8,1 m 0 r 0.30000001192092896 em 1,0.86,0.68 OPAQUE    emissive_strength
+MAT G3_LED_Reading bc 1,0.95,0.88,1 m 0 r 0.30000001192092896 em 1,0.95,0.88 OPAQUE    emissive_strength
+MAT G3_Light_Courtesy bc 0.9,0.88,0.8,1 m 0 r 0.20000000298023224 em 1,0.9,0.75 OPAQUE    emissive_strength
+MAT G3_Light_Halo bc 0.9,0.9,0.95,1 m 0 r 0.20000000298023224 em 0.85,0.92,1 OPAQUE    emissive_strength
+MAT G3_Light_Nav_Red bc 0.8,0.02,0.02,1 m 0 r 0.20000000298023224 em 1,0.04,0.03 OPAQUE    emissive_strength
+MAT G3_Light_Nav_Green bc 0.02,0.8,0.2,1 m 0 r 0.20000000298023224 em 0.05,1,0.25 OPAQUE    emissive_strength
+MAT G3_Light_Strobe_White bc 0.9,0.9,0.9,1 m 0 r 0.20000000298023224 em 1,1,1 OPAQUE    emissive_strength
+MAT G3_Stick_Grip bc 0.03,0.03,0.03,1 m 0 r 0.550000011920929 em 0,0,0 OPAQUE    
+MAT G3_Trim_Cognac bc 0.36,0.14,0.05,1 m 0 r 0.44999998807907104 em 0,0,0 OPAQUE    
+MAT G3_CenterStack_Face bc 1,1,1,1 m 0 r 0.44999998807907104 em 0.45,0.45,0.45 OPAQUE B:G3_CenterStack_Face_Tex E:G3_CenterStack_Face_Tex   clearcoat
+MAT G3_Carbon_Fibre bc 1,1,1,1 m 0.20000000298023224 r 0.1599999964237213 em 0,0,0 OPAQUE B:G3_Carbon_Weave_512   clearcoat
+MAT G3_GMC707_Face bc 1,1,1,1 m 0 r 0.44999998807907104 em 0.45,0.45,0.45 OPAQUE B:G3_GMC707_Face_Tex E:G3_GMC707_Face_Tex   clearcoat
+MAT G3_GMC707_Keys bc 1,1,1,1 m 0 r 0.44999998807907104 em 0.35,0.35,0.35 OPAQUE B:G3_GMC707_Keys_Tex E:G3_GMC707_Keys_Tex   clearcoat

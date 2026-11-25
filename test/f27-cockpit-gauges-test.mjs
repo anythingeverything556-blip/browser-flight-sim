@@ -1,0 +1,68 @@
+import assert from 'node:assert/strict';
+import {writeFileSync,readFileSync} from 'node:fs';
+import * as THREE from 'three';
+import {loadModel} from './_glb-node.mjs';
+import {F27Model} from '../src/f27.js';
+import {createFokkerAdapter} from '../src/f27adapter.js';
+import {f27InstrumentState,f27GaugeFractions,radioAltitudeFraction} from '../src/f27instruments.js';
+const gltf=await loadModel('f27/f27-white-vc-v2');
+const lighting=JSON.parse(readFileSync(new URL('../src/f27lighting.json',import.meta.url)));
+const adapter=createFokkerAdapter(THREE,gltf,{lighting,model:'cockpit'});
+const fdm=new F27Model();fdm.pos.set(0,3048,0);fdm.vel.set(100,5.08,0);fdm.out={ias:100,T:268.15};fdm.flaps=20;fdm.gearPos=1;fdm.trim=.4;
+fdm.engines[0].rpm=14200;fdm.engines[1].rpm=7000;fdm.engines[0].egt=700;fdm.engines[1].egt=300;fdm.engines[0].ff=.1;fdm.engines[1].ff=.025;
+const feed={groundM:3000,localTimeSeconds:3*3600+15*60+30,selectedHeadingDeg:180};
+const state=f27InstrumentState(fdm,feed,0), values=f27GaugeFractions(state);
+assert.equal(state.headingDeg,90);assert.ok(Math.abs(state.altFt-10000)<1e-8);
+assert.equal(values.x0_RPM_01_Aig,.71);assert.equal(values.x0_RPM_02_Aig,.35);
+assert.equal(values.x0_RPM_01_AigDecim,.2);assert.equal(values.x0_ExhTemp_01_Aig,.7);
+assert.equal(values.x0_Flaps_Aig,.5);assert.equal(values.x0_Trim_Pitch_ind,.7);
+assert.ok(Math.abs(values.x0_VSI_01_Aig-(.5+1000/12000))<1e-10);
+assert.ok(Math.abs(values.x0_FFFU_01_Aig-360/700)<1e-12);
+assert.ok(Math.abs(values.x0_FuelQtty_01_Aig-1500/2200)<1e-12);
+assert.equal(values.x0_Clock_01_Aig_Sec,.5);assert.equal(values.x0_Clock_01_Aig_Min,15.5/60);
+assert.equal(values.x0_HSI_01_Flag_Off,0);assert.equal(values.x0_ADI_01_flag_FD,0);
+assert.equal(values.x0_ADI_01_Sphere,.5);assert.equal(values.x0_ADI_01_BakSphereSup,.5);
+assert.equal(values.x0_HSI_01_ROSE,.25);assert.equal(values.x0_HSI_01_HDG,.25);
+for(const [alt,f] of [[0,0],[50,1/12],[100,1/6],[300,.5],[500,.625],[1000,.75],[2000,11/12],[2500,1]])assert.ok(Math.abs(radioAltitudeFraction(alt)-f)<1e-9);
+assert.equal(radioAltitudeFraction(-50),0);assert.equal(radioAltitudeFraction(9999),1);
+assert.equal(f27GaugeFractions({...state,altFt:-100}).x0_ALTI_02_AigHun,.9);
+assert.ok(!Object.hasOwn(values,'x0_Torq_01_Aig'),'do not pass N.m to a PSI torquemeter');
+assert.ok(!Object.hasOwn(values,'x0_OilPress_Aig1'),'do not invent oil system pressure');
+assert.ok(!Object.hasOwn(values,'x0_PressPneu_Sec_Aig'),'do not invent independent emergency accumulator');
+const controller=adapter.instruments;
+controller.update(fdm,feed,0);adapter.evaluatePose();
+const available=new Set(gltf.animations.map(c=>c.name));
+for(const [name,fraction] of Object.entries(values)) {assert.ok(available.has(name),`real source clip: ${name}`);assert.ok(Number.isFinite(fraction)&&fraction>=0&&fraction<=1,name);}
+// Neutral pitch/roll must be exactly authored quaternion identity on actual rigs.
+for(const name of ['x0_ADI_01_Sphere','x0_ADI_02_Sphere','x0_ADI_01_BakSphereSup','x0_HorizSec_Cylindre'])assert.ok(gltf.scene.getObjectByName(name).quaternion.angleTo(new THREE.Quaternion())<1e-5,name);
+const rpm=gltf.scene.getObjectByName('x0_RPM_01_Aig').quaternion.clone();
+fdm.engines[0].rpm=0;controller.update(fdm,feed,1);adapter.evaluatePose();assert.ok(rpm.angleTo(gltf.scene.getObjectByName('x0_RPM_01_Aig').quaternion)>.1,'real RPM needle rotates');
+assert.equal(gltf.scene.getObjectByName('x0_GearInd_w_gr_p_on').visible,true);assert.equal(gltf.scene.getObjectByName('x0_GearInd_w_red_p_on').visible,false);
+fdm.gearPos=.5;controller.update(fdm,{...feed,doorOpen:true},2);adapter.evaluatePose();
+assert.equal(gltf.scene.getObjectByName('x0_GearInd_w_gr_p_on').visible,false);assert.equal(gltf.scene.getObjectByName('x0_GearInd_w_red_p_on').visible,true);assert.equal(gltf.scene.getObjectByName('x0_WarnRect_Door_On').visible,true);
+controller.update(fdm,{...feed,powered:false},3);assert.ok(Object.values(controller.annunciators).every(v=>v===false));
+// Positive nose-up and right-bank: sign matches authored sphere/roll quaternions.
+fdm.quat.setFromAxisAngle(new THREE.Vector3(0,0,1),10*Math.PI/180);
+controller.update(fdm,feed,4);adapter.evaluatePose();
+assert.ok(gltf.scene.getObjectByName('x0_ADI_01_Sphere').quaternion.x<0);
+fdm.quat.setFromAxisAngle(new THREE.Vector3(1,0,0),30*Math.PI/180);
+controller.update(fdm,feed,5);adapter.evaluatePose();assert.ok(gltf.scene.getObjectByName('x0_ADI_01_BakSphereSup').quaternion.z<0);
+// Optional real systems feed; stale lamps and receiver validity clear on dropout.
+const extra={...feed,engines:[{oilPressurePsi:5,oilTempC:50,fuelPressurePsi:10,torquePsi:300,fire:true,fuelUsedKg:1234}],nav:[{valid:true,gsValid:true,dmeNm:123,cdi:-.5,gs:.3,toFrom:1,courseDeg:180}]};
+controller.update(fdm,extra,6);adapter.evaluatePose();
+assert.equal(controller.values.x0_OilPress_Aig1,.125);assert.equal(controller.values.x0_Torq_01_Aig,.5);
+assert.equal(controller.values.x0_HSI_01_Flag_Off,1);assert.equal(controller.values.x0_HSI_01_OBI_Dev,.25);
+assert.equal(gltf.scene.getObjectByName('x0_Warn_Fire01_On').visible,true);
+controller.update(fdm,{},7);adapter.evaluatePose();assert.equal(gltf.scene.getObjectByName('x0_Warn_Fire01_On').visible,false);
+assert.equal(controller.values.x0_HSI_01_Flag_Off,0);assert.equal(controller.values.x0_RALT_01_Flag,0);
+// Inventory EVERY original clip, with no controls silently counted as instruments.
+const instrumentPattern=/^x0_(ADI|ALTI|HSI|IAS|RALT|VSI|VOR|Clock|Chrono|PressPneu|Temp_Aig|Surf_|CRS_.*_n_|ADF_.*_(n_|Tune)|NAV_.*_n_|COM_.*_n_|DME_n_|TSP_n_|Pressu_|FuelPress|OilPress|OilTemp|Sync_Aig|RPM|Torq|G_Ind|ExhTemp|FFFU|Flaps_Aig|FuelQtty|Elec_|WaterMeth|Deice_.*_(Aig|ind)|DeIce_AMPS|Compass_Wheel|Trim_.*(ind|Ind|Aig)|FuelDatum|SteerW_ind|HorizSec)/;
+const instrumentClips=[...available].filter(n=>instrumentPattern.test(n));
+const baseValues=f27GaugeFractions(f27InstrumentState(fdm,feed,8));
+const optionalValues=f27GaugeFractions(f27InstrumentState(fdm,extra,8));
+const inventory=instrumentClips.map(name=>({name,status:Object.hasOwn(baseValues,name)?'live':Object.hasOwn(optionalValues,name)?'optional-system-feed':'unimplemented',duration:gltf.animations.find(c=>c.name===name).duration}));
+const summary={model:'public/models/f27/f27-white-vc-v2.glb',totalSourceClips:available.size,instrumentClips:inventory.length,live:inventory.filter(x=>x.status==='live').length,optional:inventory.filter(x=>x.status==='optional-system-feed').length,unimplemented:inventory.filter(x=>x.status==='unimplemented').length,annunciators:controller.annunciators,inventory};
+writeFileSync(new URL('./f27-cockpit-gauges-inventory.json',import.meta.url),JSON.stringify(summary,null,2)+'\n');
+adapter.dispose();
+console.log(JSON.stringify({...summary,inventory:undefined,annunciators:undefined},null,2));
+console.log('f27-cockpit-gauges-test ok: real decoded GLB and AnimationMixer');

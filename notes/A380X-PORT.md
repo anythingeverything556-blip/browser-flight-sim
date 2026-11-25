@@ -1,0 +1,15 @@
+# FlyByWire A380X: external aircraft preview — archive
+
+This historical preview is not the current DA40 edition. A380X is disabled in the current registry and picker; the selection and restoration instructions below describe the earlier preview only and do not enable it in the current build.
+
+The A380-842 is a fifth playable aircraft, not a replacement or a skin for the Vision Jet or another existing aircraft. Select it from the aircraft picker or add `?aircraft=a380x` to the preview URL. Start flight, then use **Views** to switch among the flight deck, passenger cabin and outside cameras. The exterior loads first; the flight deck and double-deck passenger cabin share one lazy-loaded scene.
+
+The source is the original FlyByWire A380X stable 4K public release for MSFS 2024. The web package retains the exterior, flight deck and passenger cabin, 10,707 source nodes, 1,170 original animation clips, and 377 original DDS files with unchanged SHA-256 and mipmaps. The conversion decodes and repacks the MSFS geometry representation without decimating meshes. Small per-file chunks preserve the buffers for Pages deployment. See `public/models/a380x/ATTRIBUTION.md` and `source-fidelity-verification.json` in the asset pack for license and comparison evidence. The model is CC BY-NC 4.0 and stays under that license; no MSFS avionics or original FlyByWire program code is bundled. This unofficial, non-commercial port is not endorsed by FlyByWire.
+
+This no-downsampling build is deliberately large (about 4.2 GB of served assets). It needs desktop WebGL 2 with BC7/BPTC and BC5/RGTC support and substantial memory, especially once the interior is loaded. GPUs without S3TC can decode the original DXT1/DXT5 mipmaps to full-size RGBA in the browser, using more memory. Web shaders approximate MSFS-specific materials, so preserved source geometry and textures do not mean pixel-identical rendering. The independently implemented Earthwing flight model, autopilot, gear and control-surface bindings are not a reproduction of MSFS aircraft systems or certified Airbus avionics.
+
+If the source ZIP does not contain the large assets, run `node tools/fetch-a380x-assets.mjs` from the extracted project root. The installer restores each source or converted file from the immutable preview, verifies byte size and SHA-256, and skips files already present and verified. Then follow the normal `npm ci` / `npm run dev` instructions.
+
+## Preview validation
+
+119 automated test scripts and the production build passed. The actual game loaded the original exterior and started a flight. The cockpit and passenger cabin were also rendered in Chrome as standalone diagnostics. A complete in-game exterior-to-interior run was not verified: the 16 GB software-rendering QA machine ran out of memory. This preview should be evaluated on a capable desktop GPU; the package intentionally does not fall back to lower-resolution assets. Cockpit screen meshes are present, but the original MSFS avionics are not running in Earthwing.

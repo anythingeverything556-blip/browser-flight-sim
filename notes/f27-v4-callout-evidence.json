@@ -1,0 +1,314 @@
+{
+  "schema": 1,
+  "reviewDate": "2026-11-23",
+  "manuals": [
+    {
+      "file": "fokker-f27-inspection/bgt-f27500-v2/Documentation/f27500it-bgt_v23_doc_en.pdf",
+      "sha256": "df3b5c7d658fe35ee02f1b842570860fe7d7164c8a1130cf81712b1a692dab7e",
+      "pages": 65,
+      "reviewedRelevantPages": [
+        {
+          "pdfPage": 30,
+          "text": "engine FiRe\nIn case of engine fire, the audible warning bell rings and the \ncorresponding red warning light is on (located on the upper center \npart of the main panel).\n- feather the propeller (see propellers chapter)\n- pull (click on) the shut off valve lever (below the warning light)\n- open the guard located behind the shut off valve lever and set the \nselector on 1 or 2 position to active one of the two extinguishers\n- switch off the corresponding fuel tanks pumps (failed engine side)\n- switch off the corresponding water/methanol pump\n- switch off the corresponding alternator\n- switch off the corresponding engine de-ice\nALArMS & CONTrOLS \nstbd\tengine\tfire\t\nwarning light\npull (click on) the shut \noff valve lever\nactive one extinguisher \nby setting the selector \non left or right position\nfeather the \npropeller\nP 30  GAURANT 2026 - 05\nFOKKER F27-500 (AIR INTER) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 43,
+          "text": "nAvigATiOn\nA radio magnetic indicator (CI 601) shows vOr 1 & 2 bearings with \n2 pointers.\nA \"SET\" knob (at the lower left part of the instrument) allows to set \nan heading bug. It is used as a reminder only (not linked to any \nautopilot mode).\nradio-altimeter should be manually switched on to be active.\nTo switch on the instrument, \"turn\" to the right the knob/light located \non the upper right corner of the instument. \"Turn\" the same knob to \nthe left to switch off. Once the instrument is powered, the green light \nis on (dim) a few seconds. when the radio-altimeter is alive, the light \nis\toff,\tthe\tred\tflag\tdisapear\tand\tthe\tneedle\tshows\tthe\tplane\theight\t\nabove ground.\nradio-altimeters work below 5000 ft. Above, it will automatically \nswitch off. when the plane will return back below 5000 ft, the \ninstrument will need to be switched on once again.\nThe knob/light at the lower left corner of the instrument allows to \nset the decision height bug. when the plane will descent below the \ndecision height, the amber light will be on.\nAt least one radio-altimeter should be on to activate the rising \nrunway of AD200 and for ILS autopilot glideslope mode (if an \nILS frequency is available).\nvOr-rADIO MAgNETIC INDICATOr, rADIO-ALTIMETEr\nOFF\tflag:\t\nheading is \nnot available\nvOr 2 \nbearing\nvOr 1 \nbearing\nHDg  bug \n(reminder)\nCI 601 rMI\nrADIO-ALTIMETEr\nHDg bug \nsetting knob\ndecision height \nsetting knob\nOFF\tflag\ndecision height \nlight\ndecision height \nbug\nradio-altitude\n(height \nabove \nground)\nON / OFF \nbutton / \nlight\nP 43  GAURANT 2026 - 05\nFOKKER F27-500 (AIR INTER) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 47,
+          "text": "vARiOUs insTRUMenTs\nAirspeed indicator has 2 bugs as reference speeds reminders.\nThey can be set manually (click and drag) or automatically by \nclicking\tat\tthe\tcenter\tof\tthe\tinstrument:\tdepending\tof\tplane\t\nconfiguration\t(on\tground\tor\tin\tflight),\tthey\twill\tbe\tset\tto\ttake\toff\t\nspeeds\tV1\t&\tV2\t(VR:\trotation\tspeed\tis\tbetween\tthem)\tor\tlanding\t\nspeeds\tVRF\t(reference\tspeed\t=\tapproach\tspeed\twith\tflaps\t26°5\tor\t\n40°) & vrF + 20 (initial approach speed).\nIn case of excessive weight for take of or landing, automatic bugs \nsetting will not occur and the center of the instrument will light on \nwhen clicking.\nOverspeed (227kts ias) is warned by a klaxon sound.\nAltimeter shows barometric pressure both in inHg and mb. \nThose can be set with the knob located at the lower left corner \nof the instrument (clicking on the knob sets altimeter to standard \nbarometric pressure). In case of negative altitude (wrong baro \nsetting)\ta\tred\tflag\tappears.\tIf\tthe\tinstrument\tis\tnot\tpowered,\tstriped\t\nflags\tappear.\tThe\tyellow\taltitude\twarning\tlight\tin\tthe\tupper\tleft\t\ncorner is not operativ.\nOutside temperature (°C) could be seen with the indicator is located \nin the lower part of the main panel.\nAIrSPEED, ALTITUDE & TEMPErATUrE \nspeed \nbug 1\nspeed \nbug 2\nAIrSPEED vErTICAL SPEED \nINDICATOr\nALTIMETEr\nTEMPErATUrE\nairspeed (IAS)\n(hundred)\nvertical speed\n(ft / min / 1000)\naltitude \nlight (inop.)\nno power \nflags\nbarometric \npressure \nsetting knob\noutside air \ntemperature \n(°C)\nbarometric pressure \nin inHg and mb\naltitude in \nfeet\naltitude\tflag\t\n< 10000 ft\naltitude \n(hundred \nfeet)\nairspeed (IAS)\n(ten)\nP 47  GAURANT 2026 - 05\nFOKKER F27-500 (AIR INTER) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 49,
+          "text": "AUTOPilOT & FlighT DiReCTOR\nAutopilot on Air Inter planes was TAPIr 1b (SFENA).\nA control unit is located on the pedestal and 2 alarm panels are \nlocated in front of each pilot.\nAlarm panel warning lights can be dimmed at night with the day/\nnight\t(\"jour/nuit\")\tswitch.\tSome\tof\tthem\tcan\tbe\trearmed\tby\tclicking\t\non the SUPPR. push button. They all could be tested by clicking on \nthe TEST push button. \nSome lights were inoperative on AIr INTEr version.\nOperative\twarnings\tlights\tshow\t(from\tleft\tto\tright)\t:\n- vOr/LOC and gS coupling (green lights)\n- LOC & gS excessive beam deviation (amber arrows)\n- AP disengage (red round light)\n- trim failure (amber light)\nAutopilot\tand\tflight\tdirector\tmodes\tare\tlinked\tto\tAD200\t(ADI,\ttrend\t\nbars and glideslope bug) and rD200 (HSI, course, deviation, \nheading and glideslope bug).\nAutopilot\tchanel\tswitches:\tyaw,\troll,\tpicth\tand\ttrim\t(located\tat\tleft\tof\t\nthe control unit) should be on (MARCHE), to allow autopilot to work.\nTo\tswitch\ton\tflight\tdirector,\tmove\tthe\tDV switch (click) located at the \nright of the control unit (on the pedestal).\nTo switch on autopilot, move the PA switch (click) located at the left \nof the control unit (on the pedestal).\nwhen autopilot is switched off (deliberately or not), the red PA light \ncomes on (on the warning panel). To turn it off, click on SUPPR. or \nactivate\tthe\tjoystick\tbrake\tcontrols\tbutton\t(in\treality,\ta\tpush\tbutton\t\nlocated\ton\tthe\tyoke\tallows\tto\tconfirm\tand\tswitch\toff\tthe\tred\tPA\tlight\t\nmore easily than pushing the warning panel SUPPr. button).\nCONTrOLS & wArNINgS\ninop.\nyaw\nAUTOPILOT \nCHANEL SwITCHES\nAUTOPILOT \nCONTrOL UNIT\nAUTOPILOT ALArM PANEL\nroll pitch\ninop.\nTEST \nbutton\nJOUr / NUIT \n(day/night) switch\n(dimming)\nSUPPr. \nbutton\ntrim \nfailure\nvOr-LOC \ncoupling\ngS \ncoupling\nLOC \nexcessive \nbeam\ngS \nexcessive \nbeam\nAP OFF \nlight\nP.A. switch (autopilot \nmaster switch)\nD.v. switch\n(flight\tdirector)\ntrim\nP 49  GAURANT 2026 - 05\nFOKKER F27-500 (AIR INTER) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 51,
+          "text": "AUTOPilOT & FlighT DiReCTOR\nTAPIr autopilot has CAT III capability (full autoland), but it was only \nCAT\tI\tor\tII\tcertified\tin\tthis\tversion\tin\tassociation\twith\tAD200\tand\t\nRD200\t(Sperry).\tFinal\tapproach\twas\tflyed\tmanually\t(IFR:\tfollowing\t\ninstruments indications).\nPrecision\tapproach\tsequences\tare\tthe\tfollowing:\n-  select an ILS frequency (NAv 1) & runway heading and engage \nVOR.APP. mode (only or in additon with CAP. (hdg) and/or ALT.\n-  intercept runway heading with an angle of 50° maximum\n-  when LOC coupling is active, the green horizontal light is on, \nCAP. (hdg) mode disengages, 2 excessive deviation amber lights \nare on\n- once aligned on runway axis, the LOC excessiv deviation light is off\n-\t\treduce\tspeed\tfor\tfinal\tapproach\tand\tset\tflaps\tas\trequired\n-\t\t1\tdot\tbefore\tglide:\tgear\tdown,\tset\tflaps\tto\t26°5,\tamber\tglideslope\t\nexcessive deviation lights turn off\n-  when glideslope coupling is active, the green vertical light is on, \nALT. mode disengages\n-  around 1500 ft,\tonce\taligned\ton\tboth\taxes:\tdisengage AP\n- final approach standard config = flaps 26°5 at VRF + 15\n-  at 900 ft (radio-altimeter height), the red TEST AMV warning lights \nup,\tthen\tclick\ton\tthe\tlight\t/\tpush\tbutton\tto\tstart\tthe\ttest:\tall\tautopilot\t\nwarning light up a few seconds.\n-  below 200 ft, AD200 rising runway starts to climb and shows the \nlast heights until reaching the plane symbol when touching ground \n(radio-altimeter must be on).\nAt least one Radio-Altimeter must be ON to allow automatic \nglideslope following.\nPrECISION APPrOACH\nrising runway at 100 ft\nAP / FD \nin precision \napproach \nconfiguration\nLOC & gS \ncoupling are \nactive\nTEST A.M.v. \nwarning light\n(height.\t<\t900\tft, \n1 click to start \nthe test)\nrising runway at 50 ft rising runway on ground\nP 51  GAURANT 2026 - 05\nFOKKER F27-500 (AIR INTER) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 52,
+          "text": "50° max.\nAP/FD:\nVOR.APP.\nAP: OFF\nFD: VOR.APP.\nIAS = 150 kt\n* click on the center of the airspeed indicator to set bugs to Vapp (=Vref ) and Vref + 25 (depends on plane weight and /f_laps position)\nIAS = Vapp*IAS = 120 ktIAS = 140 kt\nHSI:\nCOURSE = runway heading\nHDG SEL = angle of interception\nHSI:\naligned on\nloc beam\nPA/DV alarms:\nHSI:\n2 dots\nbefore glide\nHSI:\n1 dot\nbefore glide\nhdg bug set to\ngo around heading\n/f_laps : 16°5\ngear down /f_laps 26°5\nNOSE GEAR\nON GROUND:\npropellers =\nground /f_ine pitch\n/f_laps 0°\nHSI:\naligned on\nglideslope\nADI:\nrising runway\nat half course\n900 ft : DECISION HEIGHT\n(100 ft) :\n«runway in sight»\nor «go around»\n50 ft :\nreduce throttles\nand /f_lare\nTEST\nAMV\n-5°\nAUTOPilOT & FlighT DiReCTOR\nPRECISION\tAPPROACH:\tPATTERN\nP 52  GAURANT 2026 - 05\nFOKKER F27-500 (AIR INTER) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 56,
+          "text": "5°\n7.5° IAS = 138 kts\nvz > 0 :\ngear up\n400 ft :\nthrottles = 14200 rpm\nFuel trim: position max.\nto keep TGT < 730°C or 755°CIAS = V3\nFlaps = 0°\nV1\nVR :\nrotation\n5°\nFlYing The FOKKeR F27-500\nThose\treference\tspeeds\tand\tfigures\tare\tF27-500\treal\tones\t\naccording to Air Inter documentation and procedures. Plane \nbehavior\tin\tFS\tcould\tbe\tslighty\tdifferents\tbecause\tof\tfly\tdynamics\t\nand MSFS limitations...\nTake\toff\tspeeds\tdepend\ton\tplane\tweight\tbased\ton\tfly\tdynamics\tand\t\nfuel quantity on board.\nClick at the center of speed indicator when on ground to set \nspeed bugs for take off (v1 and v2, vr is between those 2 one). \nA reference speed (vrF) depends on plane weight, other one are \ncomputed from this one.\nvS =  Stall speed\nvrEF = 1.3 vS\nv1 \t =\tdecision\tspeed\t(no\trejected\ttake\toff\tbeyond\tV1)\nvr =  rotation speed, depends on plane weight, pilot pull on yoke \nto take off when this speed is reached\nv2  = 1.2 to 1.3 vS (optimum take off speed)\nv3\t\t =\tflaps\tup\tspeed\t(see\ttables\tin\tthe\tfollowing\tpages)\nvAPP = approach speed\nNOrMAL TAKE OFF\nP 56  GAURANT 2026 - 05\nFOKKER F27-500 (AIR INTER) V2.3 FOR MSFS"
+        }
+      ]
+    },
+    {
+      "file": "fokker-f27-inspection/bgt-f27500-v2/Documentation/f27500it-bgt_v23_doc_en2.pdf",
+      "sha256": "f37493d12841bfa31c90e6c8c7a4a4c28adec60b2ad5f083f485591410838ae0",
+      "pages": 65,
+      "reviewedRelevantPages": [
+        {
+          "pdfPage": 30,
+          "text": "pull (click on) the shut \noff valve lever\nactive one extinguisher \nby setting the selector \non left or right position\nengine FiRe\nIn case of engine fire, the audible warning bell rings and the \ncorresponding red warning light is on (located on the upper center \npart of the main panel).\n- feather the propeller (see propellers chapter)\n- pull (click on) the shut off valve lever (below the warning light)\n- open the guard located behind the shut off valve lever and set the \nselector on 1 or 2 position to active one of the two extinguishers\n- switch off the corresponding fuel tanks pumps (failed engine side)\n- switch off the corresponding water/methanol pump\n- switch off the corresponding alternator\n- switch off the corresponding engine de-ice\nALArMS & CONTrOLS \nstbd\tengine\tfire\t\nwarning light\nfeather the \npropeller\nP 30  GAURANT 2026 - 05\nFOKKER F27-500 (COCKPIT IN ENGLISH) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 43,
+          "text": "nAvigATiOn\nA radio magnetic indicator (CI 601) shows vOr 1 & 2 bearings with \n2 pointers.\nA \"SET\" knob (at the lower left part of the instrument) allows to set \nan heading bug. It is used as a reminder only (not linked to any \nautopilot mode).\nradio-altimeter should be manually switched on to be active.\nTo switch on the instrument, \"turn\" to the right the knob/light located \non the upper right corner of the instument. \"Turn\" the same knob to \nthe left to switch off. Once the instrument is powered, the green light \nis on (dim) a few seconds. when the radio-altimeter is alive, the light \nis\toff,\tthe\tred\tflag\tdisapear\tand\tthe\tneedle\tshows\tthe\tplane\theight\t\nabove ground.\nradio-altimeters work below 5000 ft. Above, it will automatically \nswitch off. when the plane will return back below 5000 ft, the \ninstrument will need to be switched on once again.\nThe knob/light at the lower left corner of the instrument allows to \nset the decision height bug. when the plane will descent below the \ndecision height, the amber light will be on.\nAt least one radio-altimeter should be on to activate the rising \nrunway of AD200 and for ILS autopilot glideslope mode (if an \nILS frequency is available).\nvOr-rADIO MAgNETIC INDICATOr, rADIO-ALTIMETEr\nCI 601 rMI\nrADIO-ALTIMETEr\nOFF\tflag:\t\nheading is \nnot available\nvOr 2 \nbearing\nvOr 1 \nbearing\nHDg  bug \n(reminder)\nHDg bug \nsetting knob\nrADIO-ALTIMETEr\ndecision height \nsetting knob\nOFF\tflag\ndecision height \nlight\ndecision height \nbug\nradio-altitude\n(height \nabove \nground)\nON / OFF \nbutton / \nlight\nP 43  GAURANT 2026 - 05\nFOKKER F27-500 (COCKPIT IN ENGLISH) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 47,
+          "text": "vARiOUs insTRUMenTs\nAirspeed indicator has 2 bugs as reference speeds reminders.\nThey can be set manually (click and drag) or automatically by \nclicking\tat\tthe\tcenter\tof\tthe\tinstrument:\tdepending\tof\tplane\t\nconfiguration\t(on\tground\tor\tin\tflight),\tthey\twill\tbe\tset\tto\ttake\toff\t\nspeeds\tV1\t&\tV2\t(VR:\trotation\tspeed\tis\tbetween\tthem)\tor\tlanding\t\nspeeds\tVRF\t(reference\tspeed\t=\tapproach\tspeed\twith\tflaps\t26°5\tor\t\n40°) & vrF + 20 (initial approach speed).\nIn case of excessive weight for take of or landing, automatic bugs \nsetting will not occur and the center of the instrument will light on \nwhen clicking.\nOverspeed (227kts ias) is warned by a klaxon sound.\nAltimeter shows barometric pressure both in inHg and mb. \nThose can be set with the knob located at the lower left corner \nof the instrument (clicking on the knob sets altimeter to standard \nbarometric pressure). In case of negative altitude (wrong baro \nsetting)\ta\tred\tflag\tappears.\tIf\tthe\tinstrument\tis\tnot\tpowered,\tstriped\t\nflags\tappear.\tThe\tyellow\taltitude\twarning\tlight\tin\tthe\tupper\tleft\t\ncorner is not operativ.\nOutside temperature (°C) could be seen with the indicator is located \nin the lower part of the main panel.\nAIrSPEED, ALTITUDE & TEMPErATUrE \nspeed \nbug 1\nspeed \nbug 2\nAIrSPEED vErTICAL SPEED \nINDICATOr\nTEMPErATUrE\nairspeed (IAS)\n(hundred)\nvertical speed\n(ft / min / 1000)\noutside air \ntemperature \n(°C)\nairspeed (IAS)\n(ten)\nALTIMETEr\naltitude \nlight (inop.)\nno power \nflags\nbarometric \npressure \nsetting knob barometric pressure \nin inHg and mb\naltitude in \nfeet\naltitude\tflag\t\n< 10000 ft\naltitude \n(hundred \nfeet)\nP 47  GAURANT 2026 - 05\nFOKKER F27-500 (COCKPIT IN ENGLISH) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 49,
+          "text": "AUTOPilOT & FlighT DiReCTOR\nAutopilot on Air Inter planes was TAPIr 1b (SFENA).\nA control unit is located on the pedestal and 2 alarm panels are \nlocated in front of each pilot.\nAlarm panel warning lights can be dimmed at night with the \"day/\nnight\" switch. Some of them can be rearmed by clicking on the \nCANCEL push button. They all could be tested by clicking on the \nTEST push button. \nSome lights were inoperative on AIr INTEr version.\nOperative\twarnings\tlights\tshow\t(from\tleft\tto\tright)\t:\n- vOr/LOC and gS coupling (green lights)\n- LOC & gS excessive beam deviation (amber arrows)\n- AP disengage (red round light)\n- trim failure (amber light)\nAutopilot\tand\tflight\tdirector\tmodes\tare\tlinked\tto\tAD200\t(ADI,\ttrend\t\nbars and glideslope bug) and rD200 (HSI, course, deviation, \nheading and glideslope bug).\nAutopilot\tchanel\tswitches:\tyaw,\troll,\tpicth\tand\ttrim\t(located\tat\tleft\tof\t\nthe control unit) should be ON, to allow autopilot to work.\nTo\tswitch\ton\tflight\tdirector,\tmove\tthe\tFD switch (click) located at the \nright of the control unit (on the pedestal).\nTo switch on autopilot, move the AP switch (click) located at the left \nof the control unit (on the pedestal).\nwhen autopilot is switched off (deliberately or not), the red AP light \ncomes on (on the warning panel). To turn it off, click on CANCEL or \nactivate\tthe\tjoystick\tbrake\tcontrols\tbutton\t(in\treality,\ta\tpush\tbutton\t\nlocated\ton\tthe\tyoke\tallows\tto\tconfirm\tand\tswitch\toff\tthe\tred\tAP\tlight\t\nmore easily than pushing the warning panel CANCEL button).\nCONTrOLS & wArNINgS\ninop.\nyaw\nAUTOPILOT \nCHANEL SwITCHES\nAUTOPILOT \nCONTrOL UNIT\nAUTOPILOT ALArM PANEL\nroll pitch\ntrim\ninop.\nTEST \nbutton\nNIgHT / DAy \nswitch (dimming)\nCANCEL \nbutton\ntrim \nfailure\nvOr-LOC \ncoupling\ngS \ncoupling\nLOC \nexcessive \nbeam\ngS \nexcessive \nbeam\nAP OFF \nlight\nAP switch (autopilot \nmaster switch)\nFD switch\n(flight\tdirector)\nP 49  GAURANT 2026 - 05\nFOKKER F27-500 (COCKPIT IN ENGLISH) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 51,
+          "text": "AUTOPilOT & FlighT DiReCTOR\nTAPIr autopilot has CAT III capability (full autoland), but it was only \nCAT\tI\tor\tII\tcertified\tin\tthis\tversion\tin\tassociation\twith\tAD200\tand\t\nRD200\t(Sperry).\tFinal\tapproach\twas\tflyed\tmanually\t(IFR:\tfollowing\t\ninstruments indications).\nPrecision\tapproach\tsequences\tare\tthe\tfollowing:\n-  select an ILS frequency (NAv 1) & runway heading and engage \nVOR.APP. mode (only or in additon with HDG and/or ALT.\n-  intercept runway heading with an angle of 50° maximum\n-  when LOC coupling is active, the green horizontal light is on, HDG \nmode disengages, 2 excessive deviation amber lights are on\n- once aligned on runway axis, the LOC excessiv deviation light is off\n-\t\treduce\tspeed\tfor\tfinal\tapproach\tand\tset\tflaps\tas\trequired\n-\t\t1\tdot\tbefore\tglide:\tgear\tdown,\tset\tflaps\tto\t26°5,\tamber\tglideslope\t\nexcessive deviation lights turn off\n-  when glideslope coupling is active, the green vertical light is on, \nALT. mode disengages\n-  around 1500 ft,\tonce\taligned\ton\tboth\taxes:\tdisengage AP\n- final approach standard config = flaps 26°5 at VRF + 15\n-  at 900 ft (radio-altimeter height), the red TEST AMV warning lights \nup,\tthen\tclick\ton\tthe\tlight\t/\tpush\tbutton\tto\tstart\tthe\ttest:\tall\tautopilot\t\nwarning light up a few seconds.\n-  below 200 ft, AD200 rising runway starts to climb and shows the \nlast heights until reaching the plane symbol when touching ground \n(radio-altimeter must be on).\nAt least one Radio-Altimeter must be ON to allow automatic \nglideslope following.\nPrECISION APPrOACH\nrising runway at 100 ft\nAP / FD \nin precision \napproach \nconfiguration\nLOC & gS \ncoupling are \nactive\nTEST A.M.v. \nwarning light\n(height.\t<\t900\tft, \n1 click to start \nthe test)\nrising runway at 50 ft rising runway on ground\nP 51  GAURANT 2026 - 05\nFOKKER F27-500 (COCKPIT IN ENGLISH) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 52,
+          "text": "50° max.\nAP/FD:\nVOR.APP.\nAP: OFF\nFD: VOR.APP.\nIAS = 150 kt\n* click on the center of the airspeed indicator to set bugs to Vapp (=Vref ) and Vref + 25 (depends on plane weight and /f_laps position)\nIAS = Vapp*IAS = 120 ktIAS = 140 kt\nHSI:\nCOURSE = runway heading\nHDG SEL = angle of interception\nHSI:\naligned on\nloc beam\nPA/DV alarms:\nHSI:\n2 dots\nbefore glide\nHSI:\n1 dot\nbefore glide\nhdg bug set to\ngo around heading\n/f_laps : 16°5\ngear down /f_laps 26°5\nNOSE GEAR\nON GROUND:\npropellers =\nground /f_ine pitch\n/f_laps 0°\nHSI:\naligned on\nglideslope\nADI:\nrising runway\nat half course\n900 ft : DECISION HEIGHT\n(100 ft) :\n«runway in sight»\nor «go around»\n50 ft :\nreduce throttles\nand /f_lare\nTEST\nAMV\n-5°\nAUTOPilOT & FlighT DiReCTOR\nPRECISION\tAPPROACH:\tPATTERN\nP 52  GAURANT 2026 - 05\nFOKKER F27-500 (COCKPIT IN ENGLISH) V2.3 FOR MSFS"
+        },
+        {
+          "pdfPage": 56,
+          "text": "5°\n7.5° IAS = 138 kts\nvz > 0 :\ngear up\n400 ft :\nthrottles = 14200 rpm\nFuel trim: position max.\nto keep TGT < 730°C or 755°CIAS = V3\nFlaps = 0°\nV1\nVR :\nrotation\n5°\nFlYing WiTh The FOKKeR F27-500\nThose\treference\tspeeds\tand\tfigures\tare\tF27-500\treal\tones\t\naccording to Air Inter documentation and procedures. Plane \nbehavior\tin\tFS\tcould\tbe\tslighty\tdifferents\tbecause\tof\tfly\tdynamics\t\nand MSFS limitations...\nTake\toff\tspeeds\tdepend\ton\tplane\tweight\tbased\ton\tfly\tdynamics\tand\t\nfuel quantity on board.\nClick at the center of speed indicator when on ground to set \nspeed bugs for take off (v1 and v2, vr is between those 2 one). \nA reference speed (vrF) depends on plane weight, other one are \ncomputed from this one.\nvS =  Stall speed\nvrEF = 1.3 vS\nv1 \t =\tdecision\tspeed\t(no\trejected\ttake\toff\tbeyond\tV1)\nvr =  rotation speed, depends on plane weight, pilot pull on yoke \nto take off when this speed is reached\nv2  = 1.2 to 1.3 vS (optimum take off speed)\nv3\t\t =\tflaps\tup\tspeed\t(see\ttables\tin\tthe\tfollowing\tpages)\nvAPP = approach speed\nNOrMAL TAKE OFF\nP 56  GAURANT 2026 - 05\nFOKKER F27-500 (COCKPIT IN ENGLISH) V2.3 FOR MSFS"
+        }
+      ]
+    },
+    {
+      "file": "fokker-f27-inspection/bgt-f27500-v2/Documentation/f27500it-bgt_v23_doc_fr.pdf",
+      "sha256": "44458d7980296827e0aeb5ae7fb640b2c8e760509801be20ccf4b9df3c7f90ba",
+      "pages": 65,
+      "reviewedRelevantPages": [
+        {
+          "pdfPage": 30,
+          "text": "FEU MOTEURS\nEn cas de feu d'un moteur, la sonnerie retentit et le voyant rouge \ndu moteur correspondant s'allume (situé sur le auvent en haut au \ncentre de la planche principale).\n- mettre l'hélice en drapeau (voir chapitre hélices)\n- tirer (cliquer) sur le robinet coupe-feu\n-  ouvrir le cache situé sous le robinet coupe-feu et placer le \nsélecteur sur la position 1 ou 2 pour percuter l'un des 2 extincteurs.\n- couper les pompes carburant du coté du moteur atteint\n- couper la pompe eau/méthanol\n- couper l'alternateur\n- couper le dégivrage moteur\nALArMES & COMMANDES \nvoyant alarme feu \nmoteur droit\ntirer (cliquer sur) le \nrobinet coupe-feu une \nfois l'hélice en drapeau\npercuter l'un des 2 \nexincteurs en plaçant \nle sélecteur à droite \nou à gauche\npasser l'hélice \nen drapeau\nP 30  GAURANT 05-2026\nFOKKER F27-500 (AIR INTER) V2.3 POUR MSFS"
+        },
+        {
+          "pdfPage": 43,
+          "text": "NAVIgATION\nUn compas (CI 601) muni de 2 aiguilles indique, le cap magnétique \nde l'avion, les gisements vOr 1 et 2 entrés dans les fréquences \nNAv 1 et 2.\nUn bouton SET (en bas à gauche de l'instrument) permet de régler \nun index de cap. Cet index n'est relié à aucune fonction, il peut être \nutlisé en aide mémoire.\nLe radio-altimètre doit être allumé manuellement pour être actif.\nPour l'allumer, \"tourner\" vers la droite le bouton/voyant situé en haut \nà droite de l'instrument. Tourner le bouton dans l'autre sens pour \néteindre. Une fois l'instrument alimenté, le voyant vert s'allume en \ndemi-brillance quelques temps. quand l'instrument devient actif \nil s'éteint, le flag rouge disparaît et l'aiguille indique la hauteur de \nl'avion par rapport au sol.\nLe radio-altimètre est gradué jusqu'à 3000 ft mais fonctionne \njusqu'à 5000 ft. Au delà, il s'éteint automatiquement. Lorsque l'avion \nreviendra en dessous de 5000 ft, il devra de nouveau être allumé \npour fonctionner.\nLe bouton/voyant situé en bas à gauche de l'instrument permet \n(en le \"tournant\") de régler la hauteur de décision confirmée par un \nindex jaune.\nLe voyant ambre s'allume quand l'avion passe sous cette hauteur.\nLe radio-altimètre doit être allumé pour que la fonction verticale \nde la piste mobile du AD200 soit active et pour les approches \nGlideslope en pilote automatiques (fréquence ILS nécessaire).\nCOMPAS gYrO vOr (rMI), rADIO-ALTIMèTrE\nflag OFF :\nle cap n'est \npas valide\ngisement \nvOr 2\ngisement \nvOr 1\nrepère \nHDg \nCOMPAS CI 601\nrADIO-ALTIMèTrE\nbouton de \nréglage de \nl'index HDg\nbouton de réglage \nde l'index hauteur \nde décision\nflag OFF\nvoyant hauteur \nde décision\nindex hauteur \nde décision\nradio-altitude\n(hauteur par \nrapport au \nsol survolé)\nbouton et \nvoyant vert\nON / OFF\nP 43  GAURANT 05-2026\nFOKKER F27-500 (AIR INTER) V2.3 POUR MSFS"
+        },
+        {
+          "pdfPage": 47,
+          "text": "ANéMOMéTRIE\nL'anémomètre comporte 2 index aide mémoire.\nIls peuvent être réglés manuellement (par cliqué-glissé) ou \nautomatiquement en cliquant (1 clic) au centre de l'instrument. \nSuivant la configuration (au sol ou en vol), ils afficheront les vitesses \nde décollage v1 et v2 (vr étant située entre les 2) ou celles \nd'atterrissage VRF (vitesse d'approche finale volets 26°5 ou 40°) et \nvrF + 20 (vitesse d'approche initiale).\nEn cas de masse excessive pour le décollage ou l'atterrissage, \npas de réglage automatique des index et le centre de l'instrument \ns'allumera temporairement au moment du clic.\nUne alarme sonore retentit en cas de vitesse excessive (227kts ias).\nL'altimètre affiche la pression barométrique à la fois en pouces \nde mercure (hg) et en millibars (mb). Elle se règle avec le bouton \nsitué en bas à gauche (cliquer sur le bouton permet de recaler \nl'altimètre à la pression barométrique standard). En cas d'altitude \nnégative (pression mal réglée) un flag rouge apparaît. En cas de \ndéfaut d'alimentation, des flags rayés apparaissent. Le voyant jaune \nd'alerte altitude en haut à gauche est inactif.\nUn indicateur de température extérieure (en °C) est situé en bas au \ncentre de la planche principale.\nvITESSE, ALTITUDE ET TEMPÉrATUrE \nindex \nrepère 1\nindex \nrepère 2\nANEMOMèTrE vArIOMèTrE\nALTIMèTrE\nTEMPÉrATUrE\nvitesse air (IAS)\n(centaines)\nvitesse verticale\n(ft / min / 1000)\nvoyant\ndésactivé\nflags OFF\nbouton de \nréglage de \nla pression \nbarométrique\ntempérature \nextérieure \n(en °C)\npression barométrique\nen pouces de mercure \net milibars\naltitude en \npieds (ft)\nflag altitude \n< 10000 ft\ncentaines \nde pieds de \nl'altitude\nvitesse air (IAS)\n(dizaines)\nP 47  GAURANT 05-2026\nFOKKER F27-500 (AIR INTER) V2.3 POUR MSFS"
+        },
+        {
+          "pdfPage": 49,
+          "text": "trim\nPIlOTE AUTOMATIQUE & DIRECTEUR DE VOl\nLe pilote automatique installé sur cette version est le TAPIr 1b \n(fabriqué par SFENA).\nIl comprend une boîte de commande située sur le pylône ainsi que \ndeux panneaux d'alarmes constitués de 10 voyants situés face à \nchaque pilote.\nLes voyants d'alarme peuvent être atténués la nuit avec le sélecteur \njour / nuit. Certains peuvent être réarmés en appuyant sur le bouton \nSUPPR.. Ils sont tous testables ensemble en appuyant sur le bouton \nTEST.\nCertains voyants sont désactivés sur la version AIr INTEr.\nLes alarmes actives signalent (de gauche à droite) :\n- les couplages vOr/LOC et gS (voyants verts)\n- les écarts excessifs LOC et GS (flèches ambres)\n- le debrayage du PA (rond rouge)\n- la panne de trim (voyant ambre)\nLes fonctions du pilote automatique et du directeur de vol sont \nconnectées aux AD200 (ADI : barres de tendances et index glide) et \nrD200 (HSI : radiale, cap et index glide).\nPour que le pilote automatique et le directeur de vol soient \nalimentés, les interrupteurs de chaîne PA doivent être sur MARCHE \n(à gauche de la boîte de commande du PA).\nPour activer le directeur de vol, enclencher l'interrupteur DV situé à \ndroite de la boîte de commande (sur le pylône).\nPour activer le pilote automatique, enclencher l'interrupteur PA situé \nà gauche de la boîte de commande (sur le pylône).\nquand le pilote automatique est débrayé (volontairement ou non), \nle voyant rouge PA s'allume sur la boîte d'alarmes. Pour l'éteindre, \ncliquer sur SUPPR. ou sur la commande de freins du joystick (dans \nla réalité un bouton sur le manche permet de confirmer l'action en \néteignant le voyant sans avoir à appuyer sur le bouton SUPPR).\nCOMMANDES & ALArMES\ninactif\ndirection\nINTErrUPTEUrS \nCHAÎNE P.A.\nBOÎTE DE COMMANDE DU \nPILOTE AUTOMATIqUE\nroulis profondeur\ninactif\nbouton \nTEST\nsélecteur \nJOUr / NUIT\n(atténue les \nvoyants)\nbouton \nSUPPr.\npanne \ntrim\ncouplage \nvOr-LOC\ncouplage \ngS\nécart \nexcessif \nLOC\nécart \nexcessif \ngS\nPA \ndébrayé\ninterrupteur PA \n(pilote automatique)\ninterrupteur Dv\n(directeur de vol)\nPANNEAU D'ALArMES P.A.\nP 49  GAURANT 05-2026\nFOKKER F27-500 (AIR INTER) V2.3 POUR MSFS"
+        },
+        {
+          "pdfPage": 51,
+          "text": "PIlOTE AUTOMATIQUE & DIRECTEUR DE VOl\nLe pilote automatique TAPIr est capable de réaliser des \natterrissages CAT III (entièrement automatique), il n'était toutefois \ncertifié sur cette version et utilisé qu'en CAT I ou II associé aux \ninstruments AD200 et RD200 (Sperry), l'approche finale s'effectuant \nen pilotage manuel aux instruments.\nPour les approches de précision :\n-  sélectionner une fréquence ILS et une radiale puis enclencher le \nmode VOR.APP. seul ou associé au mode CAP. et/ou ALT.\n-  intercepter l'axe de piste (qFU) avec un angle de 50° maximum\n-  quand le couplage avec le LOC s'opère, le voyant vert horizontal \ns'allume, le mode CAP. se désactive, les 2 voyants ambres \nd'écarts excessifs s'allument\n- une fois aligné sur l'axe, le voyant d'écart excessif LOC s'éteint\n-  ajuster la vitesse en regression pour l'approche finale et sortir les \nvolets\n-  à 1 point du glide : sortir le train, abaisser les volets à 26°5, le \nvoyant ambre d'écart excessif gS s'éteint\n-  quand le couplage avec la pente GS (glideslope) s'opère, le voyant \nvert vertical s'allume, le mode ALT. se désactive\n-  à 1500 ft environ, une fois l'avion aligné sur les 2 axes : débrayer \nle PA\n-  l'approche finale s'effectue avec les volets en position 26°5, \nà VRF + 15\n-  à 900 ft (hauteur du radio-altimètre), le voyant rouge TEST AMV \ns'allume, cliquer alors sur le voyant pour effectuer le test : tous les \nvoyants d'alarmes s'allument temporairement.\n-  sous 200 ft la piste mobile de l'AD200 s'élève pour indiquer les \ndernières hauteurs jusqu'à atteindre la maquette au toucher des \nroues (un des radio-altimètres doit être actif).\nAu moins un radio-altimètre doit être allumé pour le suivi \nautomatique du glideslope.\nAPPrOCHE DE PrÉCISION\npiste mobile à 100 ft\nPA / Dv \nen mode \nd'approche \nde précision\ncouplages \nLOC et gS \nactifs\nvoyant \nTEST A.M.v.\n(h. < 900 ft, \n1 clic pour \neffectuer le test)\npiste mobile à 50 ft piste mobile au sol\nP 51  GAURANT 05-2026\nFOKKER F27-500 (AIR INTER) V2.3 POUR MSFS"
+        },
+        {
+          "pdfPage": 52,
+          "text": "50° max.\nPA/DV :\nVOR.APP.\nPA : OFF\nDV : VOR.APP.\nIAS = 150 kt\n* cliquer au centre de l’indicateur de vitesse pour régler les index sur  Vapp (= Vref ) et Vref + 25 (dépend du poids et de la position des volets)\nIAS = Vapp*IAS = 120 ktIAS = 140 kt\nHSI :\nCOURSE = axe (QFU) de la piste\nHDG SEL = cap d’interception\nHSI :\naligné sur\nl’axe du loc\nalarmes PA/DV :\nHSI :\n2 pts du glide\nHSI :\n1 pt du glide\nréglage index hdg\nsur cap GA\nvolets : 16°5\ntrain sorti volets 26°5 TRAIN AVANT\nAU SOL :\nhélices PPS\nvolets 0°\nHSI :\naligné sur\nle glide\nADI :\npiste mobile\nà mi-parcours\n900 ft : HAUTEUR DE\nDÉCISION (100 ft) :\n«piste en vue»\nou «remise de gaz»\n50 ft :\nréduction\npuis\narrondi\nTEST\nAMV\n-5°\nPIlOTE AUTOMATIQUE & DIRECTEUR DE VOl\nAPPrOCHE DE PrÉCISION : SCHÉMATIqUE\nP 52  GAURANT 05-2026\nFOKKER F27-500 (AIR INTER) V2.3 POUR MSFS"
+        },
+        {
+          "pdfPage": 56,
+          "text": "5°\n7.5° IAS = 138 kts\nvario positif :\ntrain rentré\n400 ft :\npuissance de montée\n14200 rpm\nFuel trim : position max.\npour TGT < 730° ou 755°\nIAS = V3\nVolets = 0°\nV1\nVR :\nrotation\n5°\nVOlER AVEC lE FOKKER F27-500\nLes chiffres ci-après sont ceux du F27-500 suivant la documentation \net les procédures d'Air Inter. Le comportement de l'avion dans le \nsimulateur peut s'en éloigner suivant la dynamique de vol et les \nlimites de MSFS....\nLes vitesses de décollage dépendent du poids de l'avion en fonction \nde la dynamique de vol et du carburant.\nCliquer au centre de l'anémomètre quand l'avion est au sol pour \nrégler les index sur v1 et v2 (vr se situe entre les 2, les volets \ndoivent préalablement être dans la bonne position). Une vitesse \nde référence (vrF) est fonction du poids, les autres vitesses en \ndécoulent.\nvS =  Stall speed (vitesse de décrochage pour une configuration \ndonnée)\nvrEF = 1.3 vS\nv1  = vitesse de décision (décollage obligatoire au-delà de V1)\nvr =  vitesse de rotation, dépend de la masse de l'avion, c'est la \nvitesse à laquelle le pilote tire sur le manche pour amorcer \nle décollage\nv2  = 1.2 à 1.3 VS (vitesse de décollage optimale)\nv3  = vitesse de rentrée des volets (voir tableaux ci-après)\nvAPP = vitesse d'approche\nDÉCOLLAgE NOrMAL\nP 56  GAURANT 05-2026\nFOKKER F27-500 (AIR INTER) V2.3 POUR MSFS"
+        }
+      ]
+    }
+  ],
+  "soundXml": {
+    "file": "fokker-f27-inspection/bgt-f27500-v2/SimObjects/Airplanes/Bgt_F27500v2/sound/sound.xml",
+    "sha256": "405fe9a68e80db9a8465c7c4955ae678400fb618e4f732bfafdbefa483caabc6",
+    "allEventNames": [
+      "wind_sound",
+      "LEFT_TOUCHDOWN",
+      "RIGHT_TOUCHDOWN",
+      "GROUND_ROLL",
+      "stall_warning",
+      "OVERSPEED_WARNING_SOUND",
+      "SwClickSnd",
+      "SwClickSndLight",
+      "SwCapOpen",
+      "SwCapClose",
+      "SwClickSmall",
+      "SwClickD",
+      "SwClickBtn",
+      "LeverMvt1",
+      "LeverMvt2",
+      "SwFeather1",
+      "SwFeather2",
+      "LevPb1",
+      "LevPb2",
+      "LevPb3",
+      "LevShort",
+      "Lever3",
+      "Lever4a",
+      "Lever4b",
+      "Combustion",
+      "Combustion",
+      "Combustion",
+      "Combustion",
+      "Starter",
+      "Shutdown",
+      "Combustion",
+      "Combustion",
+      "Combustion",
+      "Combustion",
+      "Starter",
+      "Shutdown",
+      "eng1_prop",
+      "eng2_prop",
+      "eng1_combustion_start",
+      "eng2_combustion_start",
+      "FireRing",
+      "HornCont",
+      "SwHi",
+      "SwLo",
+      "eng1_roar",
+      "eng2_roar",
+      "BrakesInt",
+      "BrakesExt",
+      "CDoorOpenInt",
+      "CDoorCloseInt",
+      "GpuOnExt",
+      "GpuOnInt",
+      "Inverters",
+      "SwAPSnd",
+      "SwFeather1",
+      "SwFeather2",
+      "LeverMvt1",
+      "LeverMvt2",
+      "GEAR_MOVEMENT"
+    ],
+    "voiceOrMinimumBindingsFound": false
+  },
+  "bankMedia": {
+    "method": "Wwise FNV-1 lowercase namespace match to extracted bank events and sample cues",
+    "identified": [
+      {
+        "soundXmlEvent": "stall_warning",
+        "hashInput": "play_bgt_f27500v2_stall_warning",
+        "eventId": 3378484594,
+        "bankMatch": {
+          "id": 3378484594,
+          "matchedSourceNameCandidates": [],
+          "variants": [
+            {
+              "cues": [
+                {
+                  "sample": 463686891,
+                  "loop": false,
+                  "sourceModifiers": "#s40 #e"
+                }
+              ],
+              "rules": [
+                {
+                  "kind": "statechunks",
+                  "value": "(4185053780=3553349781)"
+                },
+                {
+                  "kind": "master volume",
+                  "value": "auto (1.0dB)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "soundXmlEvent": "OVERSPEED_WARNING_SOUND",
+        "hashInput": "play_bgt_f27500v2_overspeed_warning_sound",
+        "eventId": 3589142331,
+        "bankMatch": null
+      },
+      {
+        "soundXmlEvent": "HornCont",
+        "hashInput": "play_bgt_f27500v2_horncont",
+        "eventId": 124318328,
+        "bankMatch": {
+          "id": 124318328,
+          "matchedSourceNameCandidates": [],
+          "variants": [
+            {
+              "cues": [
+                {
+                  "sample": 922392798,
+                  "loop": false,
+                  "sourceModifiers": "#s80 #e"
+                }
+              ],
+              "rules": [
+                {
+                  "kind": "master volume",
+                  "value": "auto (-4.0dB)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "soundXmlEvent": "FireRing",
+        "hashInput": "play_bgt_f27500v2_firering",
+        "eventId": 2757188285,
+        "bankMatch": {
+          "id": 2757188285,
+          "matchedSourceNameCandidates": [],
+          "variants": [
+            {
+              "cues": [
+                {
+                  "sample": 616154136,
+                  "loop": false,
+                  "sourceModifiers": "#s55 #e"
+                }
+              ],
+              "rules": [
+                {
+                  "kind": "master volume",
+                  "value": "auto (-10.0dB)"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "soundXmlEvent": "SwAPSnd",
+        "hashInput": "play_bgt_f27500v2_swapsnd",
+        "eventId": 523786983,
+        "bankMatch": {
+          "id": 523786983,
+          "matchedSourceNameCandidates": [],
+          "variants": [
+            {
+              "cues": [
+                {
+                  "sample": 497346625,
+                  "loop": true,
+                  "sourceModifiers": "#s45 #i"
+                }
+              ],
+              "rules": [
+                {
+                  "kind": "master volume",
+                  "value": "auto (10.0dB)"
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ],
+    "limitation": "No speech recordings identified. Do not equate HornCont and OVERSPEED_WARNING_SOUND; do not infer speech from numeric media IDs."
+  },
+  "publicSources": [
+    {
+      "url": "https://www.faa.gov/documentLibrary/media/Advisory_Circular/AC_120-71B.pdf",
+      "file": "f27-integration/research/f27-v4-callouts/FAA-AC-120-71B.pdf",
+      "sha256": "5cec8425626e7f5bed41eb1e9ff24e8119585469a9b76d2361e6536be2264855",
+      "sections": [
+        "1.1 guidance not regulation",
+        "6.6.1 and 6.6.2.1 operator establishes required callouts and timing"
+      ],
+      "limitation": "No F27-specific voice schedule established."
+    },
+    {
+      "url": "https://www.ecfr.gov/current/title-14/chapter-I/subchapter-F/part-97/subpart-A/section-97.3",
+      "finding": "RA means radio altimeter setting height; HAT is height above touchdown. Do not substitute MSL for RA."
+    }
+  ],
+  "implementationScope": "Generic browser assistance only. Original add-on voice package not evidenced. 900 ft is TEST AMV, not fixed DH; 200 ft is rising runway onset, not fixed minimum."
+}

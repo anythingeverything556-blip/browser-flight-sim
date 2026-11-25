@@ -1,0 +1,24 @@
+<!doctype html>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>F27 production flap selector regression fixture</title>
+<link rel="stylesheet" href="/src/style.css">
+<style>body{display:block!important;overflow:auto!important;margin:20px}main{max-width:360px}#view{position:static!important;width:100%;height:65px;margin:10px 0;display:block;border:2px solid #59d1e8;cursor:pointer}#flap-proof{white-space:pre-wrap}h1{font-size:20px}</style>
+<main><h1>F27 flap controls regression</h1><p>Actual production selector, keyboard handlers and F27 flight model; no WebGL renderer needed. Click the flight-focus area for F / Shift+F.</p><div id="view" tabindex="0">Flight focus — click here, then press / release F or Shift+F</div><div id="selector"></div><pre id="flap-proof">Loading…</pre></main>
+<script type="module">
+import * as THREE from '/node_modules/three/build/three.module.js';
+import {Controls} from '/src/controls.js';
+import {F27Model,F27,F27_FLAP_DEG,F27_GEAR} from '/src/f27.js';
+const [html,{default:source}]=await Promise.all([fetch('/index.html').then(r=>r.text()),import('/src/main.js?raw')]);
+const doc=new DOMParser().parseFromString(html,'text/html'),host=document.querySelector('#selector');
+for(const selector of ['[aria-label="Flap selector"]','#f27-flap-status','#f27-flap-help'])host.append(doc.querySelector(selector));
+const fdm=new F27Model(),controls=new Controls(),state={started:true,pending:null};
+fdm.reset(new THREE.Vector3(0,-F27_GEAR[1].p.y,0),90,0,true);fdm.setEngines(0);fdm.crashOff=true;fdm.parkingBrake=true;
+const body=source.slice(source.indexOf('// The selector shows the commanded detent'),source.indexOf("controls.on('recover'"));
+const args={IS_F27:true,IS_C172:false,IS_DA40:false,IS_SF50:false,IS_HEAVY:false,F27,F27_FLAP_DEG,controls,fdm,document,state,$:id=>document.getElementById(id),toast:()=>{},casMs:()=>0,KT:1.943844};
+const sync=new Function(...Object.keys(args),body+'\nreturn syncF27Flaps;')(...Object.values(args));
+document.querySelector('#view').addEventListener('click',e=>e.currentTarget.focus());
+const zero=new THREE.Vector3();let previous=performance.now(),steps=0;
+function frame(now){let dt=Math.min(.1,(now-previous)/1000);previous=now;while(dt>0){const d=Math.min(1/120,dt);fdm.step(d,()=>0,zero);dt-=d;steps++;}sync();document.querySelector('#flap-proof').textContent='Real F27 simulation running · command '+fdm.flapCmd+' · physics steps '+steps+'\nViewport '+innerWidth+' × '+innerHeight+' · selector width '+Math.round(host.getBoundingClientRect().width)+' px';requestAnimationFrame(frame);}
+window.__flapFixture={fdm,controls,state,sync};
+requestAnimationFrame(frame);
+</script>

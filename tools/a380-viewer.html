@@ -1,0 +1,28 @@
+<!doctype html><html><head><meta charset="utf-8"><link rel="icon" href="data:,"><title>FlyByWire original A380X — source fidelity inspection</title>
+<style>body{margin:0;background:#101824;color:#fff;font:14px system-ui}canvas{display:block}#status{position:fixed;top:12px;left:12px;background:#111c;padding:12px;max-width:650px;white-space:pre-wrap}nav{position:fixed;bottom:12px;left:12px}button{padding:12px;margin-right:8px}</style></head><body><div id="status">Loading original FlyByWire A380X…</div><nav><button id="exterior">Exterior</button><button id="cockpit">Cockpit</button><button id="cabin">Passenger cabin</button></nav>
+<script type="module">
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {configureA380TextureManager,applyA380NativeMaterials} from './a380-native-textures.mjs';
+import {decodeA380SkinPalettes} from '../src/a380xskin.js';
+const el=document.querySelector('#status');const params=new URLSearchParams(location.search);const interior=params.get('model')==='interior';const initialView=interior&&params.get('view')==='cabin'?'cabin':interior?'cockpit':'exterior';
+let renderer;try{renderer=new THREE.WebGLRenderer({antialias:true});}catch(e){el.textContent='Browser rendering unavailable: '+e.message+'\nDecoded source fidelity is separately verified. A desktop WebGL2 context is required.';throw e;}renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.25;document.body.append(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color('#7894ac');scene.add(new THREE.HemisphereLight(0xdceaff,0x6a6259,3));
+const sun=new THREE.DirectionalLight(0xffffff,4);sun.position.set(40,80,70);scene.add(sun);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,0.03,500);const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=false;
+function view(mode){if(mode==='exterior'){camera.position.set(90,32,103);controls.target.set(0,2,0)}if(mode==='cockpit'){camera.position.set(0.65,3.4,31.9);controls.target.set(0,2.8,35)}if(mode==='cabin'){camera.position.set(1.35,2.55,12.5);controls.target.set(1.35,2.4,-5)}controls.update();renderer.render(scene,camera);}
+for(const id of ['exterior','cockpit','cabin'])document.querySelector('#'+id).onclick=()=>view(id);
+view(initialView);window.a380={renderer,scene,camera,controls,loaded:false};
+let done=0;const manager=configureA380TextureManager(renderer);manager.onProgress=(url,n,total)=>{done=n;el.textContent='Loading full original 4K assets '+n+'/'+total+'\n'+url.split('/').at(-1)};manager.onError=url=>{window.a380.error='Texture/buffer load failed '+url;el.textContent=window.a380.error;};
+const required=['EXT_texture_compression_bptc','EXT_texture_compression_rgtc'];const support=Object.fromEntries(required.map(k=>[k,renderer.extensions.has(k)]));window.a380.support=support;
+if(Object.values(support).some(x=>!x)){el.textContent='Native compressed texture support unavailable: '+JSON.stringify(support);throw Error(el.textContent);}
+const url='/models/a380x/'+(interior?'a380_cockpit':'a380_exterior')+'.native.gltf';
+try{const g=await new GLTFLoader(manager).loadAsync(url);decodeA380SkinPalettes(g.scene);applyA380NativeMaterials(g.scene);scene.add(g.scene);scene.updateMatrixWorld(true);
+g.scene.traverse(o=>{if(o.isMesh){o.frustumCulled=true;const mats=Array.isArray(o.material)?o.material:[o.material];for(const m of mats)for(const k of ['map','normalMap','metalnessMap','roughnessMap','emissiveMap','aoMap'])if(m[k]?.isCompressedTexture&&m[k].mipmaps.length===1)m[k].minFilter=THREE.LinearFilter;}});
+let mesh=0,triangles=0;g.scene.traverse(o=>{if(o.isMesh){mesh++;triangles+=(o.geometry.index?.count||o.geometry.attributes.position.count)/3;}});
+window.a380.loaded=true;window.a380.gltf=g;window.a380.meshes=mesh;window.a380.triangles=triangles;view(initialView);
+el.textContent='FlyByWire A380X — '+(interior?'original cockpit AND passenger cabin':'original exterior')+'\n'+mesh+' mesh instances · '+triangles.toLocaleString()+' triangles · '+g.animations.length+' retained animations\nOriginal full-resolution DDS bytes · no decimation/downsampling\nCC BY-NC 4.0 · Modified browser conversion · No endorsement';window.a380.renderInfo=renderer.info.render;
+}catch(e){el.textContent='LOAD ERROR '+e.message;window.a380.error=e.stack;}
+controls.addEventListener('change',()=>renderer.render(scene,camera));window.addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);renderer.render(scene,camera)});
+</script></body></html>

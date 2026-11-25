@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+const headers = readFileSync('public/_headers', 'utf8');
+const policy = headers.match(/\/models\/\*\n\s+Cache-Control:\s*([^\n]+)/)?.[1];
+assert.ok(policy, 'model path has an explicit policy');
+assert.match(policy, /max-age=0\b/);
+assert.match(policy, /must-revalidate/);
+assert.doesNotMatch(policy, /immutable|stale-while-revalidate/);
+assert.match(headers, /\/assets\/\*\n\s+Cache-Control: public, max-age=31536000, immutable/);
+console.log('PASS fixed-name models revalidate every load; hashed assets remain immutable');

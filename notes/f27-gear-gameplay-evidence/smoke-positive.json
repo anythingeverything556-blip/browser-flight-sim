@@ -1,0 +1,528 @@
+{
+  "transfer": {
+    "exteriorOnly": false,
+    "requests": [
+      "/models/f27/f27-white-ext-v3.glb",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T2_albd.webp",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T3_albd.webp",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T4_albd.webp",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T5_albd.webp",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T6_albd.webp",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T7_albd.webp",
+      "/models/f27/f27-white-vc-v2.glb",
+      "/models/f27/audio/manifest.json",
+      "/models/f27/audio/899279545.m4a",
+      "/models/f27/audio/492811497.m4a",
+      "/models/f27/audio/1006268785.m4a",
+      "/models/f27/audio/726197048.m4a",
+      "/models/f27/audio/866213173.m4a",
+      "/models/f27/audio/33411684.m4a",
+      "/models/f27/audio/107501689.m4a",
+      "/models/f27/audio/1046894101.m4a",
+      "/models/f27/audio/882352813.m4a",
+      "/models/f27/audio/894211077.m4a",
+      "/models/f27/audio/489513703.m4a",
+      "/models/f27/audio/672585564.m4a",
+      "/models/f27/audio/246027030.m4a",
+      "/models/f27/audio/25363776.m4a",
+      "/models/f27/audio/240433614.m4a",
+      "/models/f27/audio/464063563.m4a",
+      "/models/f27/audio/857651507.m4a",
+      "/models/f27/audio/692109284.m4a",
+      "/models/f27/audio/298342448.m4a",
+      "/models/f27/audio/667788613.m4a",
+      "/models/f27/audio/254797084.m4a",
+      "/models/f27/audio/1043442738.m4a"
+    ],
+    "bytes": 7683552,
+    "exteriorViewRequests": [
+      "/models/f27/f27-white-ext-v3.glb",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T2_albd.webp",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T3_albd.webp",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T4_albd.webp",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T5_albd.webp",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T6_albd.webp",
+      "/models/f27/liveries/air-inter-1980/f275bgt_T7_albd.webp",
+      "/models/f27/f27-white-vc-v2.glb",
+      "/models/f27/audio/manifest.json",
+      "/models/f27/audio/899279545.m4a",
+      "/models/f27/audio/492811497.m4a",
+      "/models/f27/audio/1006268785.m4a",
+      "/models/f27/audio/726197048.m4a",
+      "/models/f27/audio/866213173.m4a",
+      "/models/f27/audio/33411684.m4a",
+      "/models/f27/audio/107501689.m4a",
+      "/models/f27/audio/1046894101.m4a",
+      "/models/f27/audio/882352813.m4a",
+      "/models/f27/audio/894211077.m4a",
+      "/models/f27/audio/489513703.m4a",
+      "/models/f27/audio/672585564.m4a",
+      "/models/f27/audio/246027030.m4a",
+      "/models/f27/audio/25363776.m4a",
+      "/models/f27/audio/240433614.m4a",
+      "/models/f27/audio/464063563.m4a",
+      "/models/f27/audio/857651507.m4a",
+      "/models/f27/audio/692109284.m4a",
+      "/models/f27/audio/298342448.m4a",
+      "/models/f27/audio/667788613.m4a",
+      "/models/f27/audio/254797084.m4a",
+      "/models/f27/audio/1043442738.m4a"
+    ],
+    "exteriorModelBytes": 1480596
+  },
+  "softwareRendering": "Chrome / ANGLE SwiftShader (not real GPU/phone)",
+  "syntheticWorld": true,
+  "f27Checks": {
+    "audio": {
+      "status": "ready",
+      "decoded": 22,
+      "expected": 22,
+      "decodeErrors": [],
+      "peak": 0.07000291347503662,
+      "voices": [
+        {
+          "engine": 1,
+          "view": "inside",
+          "layers": 4,
+          "active": false
+        },
+        {
+          "engine": 2,
+          "view": "inside",
+          "layers": 4,
+          "active": false
+        },
+        {
+          "engine": 1,
+          "view": "outside",
+          "layers": 4,
+          "active": true
+        },
+        {
+          "engine": 2,
+          "view": "outside",
+          "layers": 4,
+          "active": true
+        }
+      ]
+    },
+    "lighting": {
+      "opened": true,
+      "beams": [
+        0.742,
+        0.742,
+        0.602
+      ],
+      "pressed": true,
+      "instrument": true,
+      "off": true,
+      "control": 1,
+      "newPrograms": 0,
+      "pool": [
+        5,
+        2
+      ]
+    },
+    "runwayContact": {
+      "visible": true,
+      "collisionToInfillM": 0.0000013842210435655034,
+      "grounded": true,
+      "tireToInfillM": [
+        0.005838449867075823,
+        -0.0006243757751729362,
+        -0.000625399586205333
+      ]
+    },
+    "runwayBlendBothWays": true,
+    "cockpit": {
+      "seatChange": -0.12000000000000022,
+      "defaultOffsetY": -0.1600000000000004,
+      "stored": -12,
+      "range": [
+        -25,
+        18
+      ],
+      "pilotPitch": -0.25,
+      "panelPitch": -0.5,
+      "panelRatio": 0.7497,
+      "pilotYoke": true,
+      "panelYoke": false,
+      "target": 0.7497,
+      "loaded": true,
+      "visible": true
+    },
+    "gauges": {
+      "animatedClipCount": 111,
+      "checkedAirData": true,
+      "rpmTravel": 1.0286533130811084,
+      "independentRpm": true,
+      "heading": 0.5916666666666667,
+      "gear": true
+    },
+    "pilotControls": {
+      "initial": {
+        "pose": [
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ],
+          [
+            0,
+            0,
+            0,
+            1
+          ]
+        ],
+        "axes": {
+          "pitch": 0,
+          "roll": 0,
+          "yaw": 0
+        }
+      },
+      "held": {
+        "pose": [
+          [
+            -0.061583747778732406,
+            0,
+            0,
+            0.9981019390447134
+          ],
+          [
+            0,
+            0,
+            0.26634543449224746,
+            0.9638776732602132
+          ],
+          [
+            0,
+            0,
+            0.26634543449224746,
+            0.9638776732602132
+          ],
+          [
+            0.13324029322812117,
+            0,
+            0,
+            0.9910837630037808
+          ],
+          [
+            -0.13324029322812117,
+            0,
+            0,
+            0.9910837630037808
+          ],
+          [
+            0.13324029322812117,
+            0,
+            0,
+            0.9910837630037808
+          ],
+          [
+            -0.13324029322812117,
+            0,
+            0,
+            0.9910837630037808
+          ]
+        ],
+        "axes": {
+          "pitch": 0.8826808339057493,
+          "roll": 0.8826808339057493,
+          "yaw": 0.5104583404430469
+        }
+      }
+    },
+    "paint": {
+      "visitedWhite": true,
+      "restored": true,
+      "sameVersion": true,
+      "saved": "air-inter-1980",
+      "bindings": 32
+    },
+    "viewSwitch": {
+      "resizes": 0,
+      "outside": "orbit",
+      "inside": "cockpit",
+      "frames": 68,
+      "states": [
+        "shown",
+        "shown"
+      ],
+      "ready": true
+    },
+    "rundown": {
+      "before": {
+        "rpm": [
+          651,
+          651
+        ],
+        "lit": [
+          true,
+          true
+        ],
+        "phase": [
+          0.34496445686900146,
+          0.34496445686900146
+        ],
+        "cabin": [
+          0.06674876809120178,
+          0.06635487079620361
+        ]
+      },
+      "immediate": {
+        "rpm": [
+          651,
+          651
+        ],
+        "lit": [
+          false,
+          false
+        ],
+        "phase": [
+          0.34496445686900146,
+          0.34496445686900146
+        ],
+        "cabin": [
+          0.06674876809120178,
+          0.06635487079620361
+        ]
+      },
+      "tail": {
+        "rpm": [
+          612.7680664088007,
+          612.7680664088007
+        ],
+        "lit": [
+          false,
+          false
+        ],
+        "phase": [
+          0.6715098100436544,
+          0.6715098100436544
+        ],
+        "cabin": [
+          0.06658068299293518,
+          0.06618781387805939
+        ]
+      },
+      "winding": {
+        "rpm": [
+          401.9722904304169,
+          401.9722904304169
+        ],
+        "lit": [
+          false,
+          false
+        ],
+        "phase": [
+          0.963856746983742,
+          0.963856746983742
+        ],
+        "cabin": [
+          0.046652115881443024,
+          0.046376824378967285
+        ]
+      },
+      "late": {
+        "rpm": [
+          40.23393994220402,
+          40.23393994220402
+        ],
+        "lit": [
+          false,
+          false
+        ],
+        "phase": [
+          0.09954625813217448,
+          0.09954625813217448
+        ],
+        "cabin": [
+          0.0007674646913073957,
+          0.0007629356696270406
+        ]
+      }
+    },
+    "gear": {
+      "ground": {
+        "position": 1,
+        "command": true,
+        "status": "Gear down and locked. G toggles gear; extension 7 s, retraction 17 s.",
+        "pill": "GEAR DOWN",
+        "lever": 1
+      },
+      "extending": {
+        "position": 0.4999999999999985,
+        "command": true,
+        "status": "Gear extending · 50% down · 4 s remaining. G toggles gear; extension 7 s, retraction 17 s.",
+        "pill": "GEAR ▼",
+        "lever": 1
+      },
+      "reversed": {
+        "position": 0,
+        "command": false,
+        "status": "Gear up and stowed. G toggles gear; extension 7 s, retraction 17 s.",
+        "pill": "GEAR UP",
+        "lever": 0
+      },
+      "down": {
+        "position": 1,
+        "command": true,
+        "status": "Gear down and locked. G toggles gear; extension 7 s, retraction 17 s.",
+        "pill": "GEAR DOWN",
+        "lever": 1
+      },
+      "up": {
+        "position": 0,
+        "command": false,
+        "status": "Gear up and stowed. G toggles gear; extension 7 s, retraction 17 s.",
+        "pill": "GEAR UP",
+        "lever": 0
+      },
+      "reversalStart": 0.4999999999999985,
+      "staticLeafMeshes": 848
+    },
+    "approach": {
+      "gear": true,
+      "flaps": 26.5,
+      "modeledVref": 97.45422442520048,
+      "approxIas": 112.45336680415932,
+      "gamma": -3
+    }
+  },
+  "injected": false,
+  "report": {
+    "webgl2": true,
+    "renderer": "ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero) (0x0000C0DE)), SwiftShader driver)",
+    "started": true,
+    "pending": false,
+    "aircraft": "f27",
+    "modelTriangles": null,
+    "pilotDisplay": null,
+    "view": "cockpit",
+    "renderFrame": 371,
+    "contextEvents": [],
+    "shaderErrors": [],
+    "frameError": null,
+    "drawCalls": 820,
+    "programs": 83,
+    "failedPrograms": 0,
+    "events": [
+      {
+        "name": "start_screen_viewed",
+        "category": "screen"
+      },
+      {
+        "name": "start_clicked",
+        "category": "custom"
+      },
+      {
+        "name": "cockpit_reached",
+        "category": "flight"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": "flight",
+      "open": true,
+      "active": true
+    },
+    {
+      "id": "airports",
+      "open": true,
+      "active": true
+    },
+    {
+      "id": "map",
+      "open": true,
+      "active": true
+    },
+    {
+      "id": "ap",
+      "open": true,
+      "active": true
+    },
+    {
+      "id": "env",
+      "open": true,
+      "active": true
+    },
+    {
+      "id": "settings",
+      "open": true,
+      "active": true
+    },
+    {
+      "id": "help",
+      "open": true,
+      "active": true
+    }
+  ],
+  "gameplayChecks": [
+    {
+      "view": "orbit",
+      "before": {
+        "frame": 105,
+        "fuel": 2999.9777988000224
+      },
+      "after": {
+        "frame": 110,
+        "fuel": 2999.9297964000707,
+        "view": "orbit",
+        "frameError": null,
+        "calls": 256
+      },
+      "passed": true
+    },
+    {
+      "view": "cockpit",
+      "before": {
+        "frame": 217,
+        "fuel": 2999.6951952003024
+      },
+      "after": {
+        "frame": 218,
+        "fuel": 2999.6555952003423,
+        "view": "cockpit",
+        "frameError": null,
+        "calls": 1024
+      },
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "expectedCancellations": [],
+  "missingLocal": [],
+  "mockedExternalPageRequests": 16
+}

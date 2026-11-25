@@ -1,0 +1,1130 @@
+[
+  {
+    "script": "test/embed-policy-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.08
+  },
+  {
+    "script": "test/documented-defaults-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/model-textures-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/selected-model-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/logbook-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/panel-defaults-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/rail-label-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/flight-hud-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/aircraft-art-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/c172-lesson-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.07
+  },
+  {
+    "script": "test/quick-start-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/models-cache-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.05
+  },
+  {
+    "script": "test/touch-controls-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/startup-fallback-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.09
+  },
+  {
+    "script": "test/cloudshadow-glsl-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.14
+  },
+  {
+    "script": "test/dem-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.29
+  },
+  {
+    "script": "test/fdm-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.21
+  },
+  {
+    "script": "test/controls-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.05
+  },
+  {
+    "script": "test/missions-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/ew-guidance-regressions-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.11
+  },
+  {
+    "script": "test/ew-guidance-dateline-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.1
+  },
+  {
+    "script": "test/tutorial-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/autopilot-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.21
+  },
+  {
+    "script": "test/workstats-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/trees-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/metar-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/atc-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/traffic-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.11
+  },
+  {
+    "script": "test/adsbmap-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.32
+  },
+  {
+    "script": "test/systems-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/landing-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.24
+  },
+  {
+    "script": "test/mach-dial-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/occlusion-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/dynres-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/climb-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.6
+  },
+  {
+    "script": "test/imagery-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/imagery-sources-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.13
+  },
+  {
+    "script": "test/validation-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.52
+  },
+  {
+    "script": "test/buildcollide-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.11
+  },
+  {
+    "script": "test/no-airbrake-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.14
+  },
+  {
+    "script": "test/relay-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.11
+  },
+  {
+    "script": "test/airdata-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/climb-profile-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.29
+  },
+  {
+    "script": "test/fixes-p0-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.11
+  },
+  {
+    "script": "test/airportdb-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.24
+  },
+  {
+    "script": "test/api-proxy-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.18
+  },
+  {
+    "script": "test/atc-arrival-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 4.27
+  },
+  {
+    "script": "test/atc-audio-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.67
+  },
+  {
+    "script": "test/audio-sched-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.16
+  },
+  {
+    "script": "test/buildcollide-broad-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 2.84
+  },
+  {
+    "script": "test/buildings-upload-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.11
+  },
+  {
+    "script": "test/ditch-radius-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.07
+  },
+  {
+    "script": "test/fdm-reset-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.11
+  },
+  {
+    "script": "test/flight-alloc-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.17
+  },
+  {
+    "script": "test/geo-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/map-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.1
+  },
+  {
+    "script": "test/nav-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.05
+  },
+  {
+    "script": "test/particles-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.1
+  },
+  {
+    "script": "test/systems-reset-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.05
+  },
+  {
+    "script": "test/aircraft-merge-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 2.81
+  },
+  {
+    "script": "test/controls-input-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/crash-split-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 7.34
+  },
+  {
+    "script": "test/flare-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.2
+  },
+  {
+    "script": "test/takeoff-stop-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.07
+  },
+  {
+    "script": "test/terrain-select-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 2.4
+  },
+  {
+    "script": "test/terrain-bench.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 2.35
+  },
+  {
+    "script": "test/gpuclass-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/cloud-steps-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/cloud-anchor-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/touchdown-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.26
+  },
+  {
+    "script": "test/cloud-texoffset-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/landing-ref-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.07
+  },
+  {
+    "script": "test/taxi-creep-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.48
+  },
+  {
+    "script": "test/wreck-start-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 2.23
+  },
+  {
+    "script": "test/crash-prepare-moving-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 2.27
+  },
+  {
+    "script": "test/depth-decode-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/cloud-halfrate-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.07
+  },
+  {
+    "script": "test/crash-warm-pieces-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.18
+  },
+  {
+    "script": "test/terrain-fade-coverage-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 5.47
+  },
+  {
+    "script": "test/c172-fdm-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.4
+  },
+  {
+    "script": "test/c172-visual-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.77
+  },
+  {
+    "script": "test/keymap-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/c172-handsoff-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.27
+  },
+  {
+    "script": "test/voicewarn-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/explosion-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.12
+  },
+  {
+    "script": "test/sf50-fdm-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.06
+  },
+  {
+    "script": "test/sf50-handsoff-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.31
+  },
+  {
+    "script": "test/sf50-quality-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/sf50-visual-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.77
+  },
+  {
+    "script": "test/sf50-wiring-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.16
+  },
+  {
+    "script": "test/sf50-autopilot-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 3.08
+  },
+  {
+    "script": "test/callouts-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/c172-autotrim-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.12
+  },
+  {
+    "script": "test/chute-tear-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 2.48
+  },
+  {
+    "script": "test/cockpitmap-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.08
+  },
+  {
+    "script": "test/runway-lights-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.16
+  },
+  {
+    "script": "test/landing-forgiveness-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.18
+  },
+  {
+    "script": "test/difficulty-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.61
+  },
+  {
+    "script": "test/handsoff-option-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.12
+  },
+  {
+    "script": "test/autobrake-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.05
+  },
+  {
+    "script": "test/il76-fdm-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.45
+  },
+  {
+    "script": "test/il76-glb-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.05
+  },
+  {
+    "script": "test/il76-visual-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.42
+  },
+  {
+    "script": "test/il76-wiring-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.49
+  },
+  {
+    "script": "test/existing-aircraft-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.36
+  },
+  {
+    "script": "test/test-runner-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.42
+  },
+  {
+    "script": "test/telemetry-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/controllers-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/hero-media-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/ew-12-15-traffic-reliability-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.2
+  },
+  {
+    "script": "test/ew17-explosion-boundary-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.08
+  },
+  {
+    "script": "test/ew41-ew43-radio-regression-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/ew42-ew44-voice-regression-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/qa-flight-state-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.11
+  },
+  {
+    "script": "test/imagery-notice-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.11
+  },
+  {
+    "script": "test/qa-controls-ew-regression-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.03
+  },
+  {
+    "script": "test/a380x-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.34
+  },
+  {
+    "script": "test/a380x-assets-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.13
+  },
+  {
+    "script": "test/a380x-skin-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.07
+  },
+  {
+    "script": "test/a380x-transport-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.19
+  },
+  {
+    "script": "test/a380x-partition-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.18
+  },
+  {
+    "script": "test/da40-assets-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.19
+  },
+  {
+    "script": "test/da40-normal-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.04
+  },
+  {
+    "script": "test/da40-fdm-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.25
+  },
+  {
+    "script": "test/da40-performance-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.28
+  },
+  {
+    "script": "test/da40-visual-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.62
+  },
+  {
+    "script": "test/da40-wiring-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/f27-fdm-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.55
+  },
+  {
+    "script": "test/f27-wiring-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.12
+  },
+  {
+    "script": "test/f27-ground-prop-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.24
+  },
+  {
+    "script": "test/f27-gear-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.4
+  },
+  {
+    "script": "test/f27-audio-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.26
+  },
+  {
+    "script": "test/f27-camera-v3-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/f27-spool-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.08
+  },
+  {
+    "script": "test/f27-lights-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.09
+  },
+  {
+    "script": "test/f27-cockpit-gauges-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.91
+  },
+  {
+    "script": "test/f27-warm-textures-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.23
+  },
+  {
+    "script": "test/f27-livery-v4-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 1.11
+  },
+  {
+    "script": "test/f27-callouts-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.06
+  },
+  {
+    "script": "test/f27-view-v4-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.17
+  },
+  {
+    "script": "test/f27-manual-flight-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.27
+  }
+]

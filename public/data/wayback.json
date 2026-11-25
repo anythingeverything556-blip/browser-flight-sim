@@ -1,0 +1,14 @@
+{"generated": "2026-11-08T11:05:46Z", "source": "Esri World Imagery Wayback (waybackconfig.json)", "template": "https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/default028mm/MapServer/tile/{release}/{z}/{y}/{x}",
+ "areas": [
+  {"id": "CYVR", "name": "Vancouver", "bbox": [-123.2355, 49.1664, -123.1335, 49.2119], "release": 48232, "res": 0.1, "cur": 0.34, "date": "2021-04-13"},
+  {"id": "EGSS", "name": "London Stansted", "bbox": [0.1908, 51.8571, 0.2792, 51.9131], "release": 17825, "res": 0.31, "cur": 0.5, "date": "2019-09-21"},
+  {"id": "EPKK", "name": "Krak\u00f3w John Paul II", "bbox": [19.7401, 50.0574, 19.8309, 50.0982], "release": 42403, "res": 0.25, "cur": 0.46, "date": "2019-08-26"},
+  {"id": "FALE", "name": "King Shaka", "bbox": [31.087, -29.6431, 31.1517, -29.5804], "release": 16245, "res": 0.1, "cur": 0.34, "date": "2020-01-15"},
+  {"id": "FAOR", "name": "O.R. Tambo", "bbox": [28.2143, -26.1643, 28.2668, -26.09], "release": 16245, "res": 0.1, "cur": 0.5, "date": "2019-01-15"},
+  {"id": "KBDL", "name": "Bradley", "bbox": [-72.7208, 41.914, -72.6479, 41.9687], "release": 15423, "res": 0.15, "cur": 0.31, "date": "2019-03-24"},
+  {"id": "KBOS", "name": "Boston Logan", "bbox": [-71.0422, 42.3366, -70.9673, 42.3923], "release": 49059, "res": 0.07, "cur": 0.15, "date": "2023-05-22"},
+  {"id": "KONT", "name": "Ontario", "bbox": [-117.6447, 34.038, -117.5613, 34.0749], "release": 49849, "res": 0.3, "cur": 1.0, "date": "2024-02-12"},
+  {"id": "KSMF", "name": "Sacramento", "bbox": [-121.6245, 38.6658, -121.568, 38.7253], "release": 6863, "res": 0.07, "cur": 0.31, "date": "2018-03-26"},
+  {"id": "OISS", "name": "Shiraz Shahid Dastghaib", "bbox": [52.5494, 29.5149, 52.6318, 29.5673], "release": 19187, "res": 0.31, "cur": 0.5, "date": "2019-07-11"},
+  {"id": "SEGU", "name": "Jos\u00e9 Joaqu\u00edn de Olmedo", "bbox": [-79.9079, -2.1862, -79.8592, -2.1286], "release": 44710, "res": 0.31, "cur": 0.46, "date": "2021-09-29"}
+]}

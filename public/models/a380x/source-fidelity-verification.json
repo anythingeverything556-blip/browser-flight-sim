@@ -1,0 +1,59 @@
+{
+  "status": "pass",
+  "geometry": [
+    {
+      "model": "a380_exterior",
+      "sourceAndOutputIdenticalFor": [
+        "positions",
+        "decodedUVs",
+        "decodedColors",
+        "normals",
+        "tangents",
+        "skinJoints",
+        "skinWeights",
+        "primitiveIndices",
+        "allAnimationSamples",
+        "inverseBindMatrices",
+        "allNodeNamesAndTransforms",
+        "materialAssignments"
+      ],
+      "uniqueAttributeArraysCompared": 9456,
+      "primitives": 1556,
+      "triangles": 2839665,
+      "animations": 106,
+      "nodes": 2197,
+      "status": "pass"
+    },
+    {
+      "model": "a380_cockpit",
+      "sourceAndOutputIdenticalFor": [
+        "positions",
+        "decodedUVs",
+        "decodedColors",
+        "normals",
+        "tangents",
+        "skinJoints",
+        "skinWeights",
+        "primitiveIndices",
+        "allAnimationSamples",
+        "inverseBindMatrices",
+        "allNodeNamesAndTransforms",
+        "materialAssignments"
+      ],
+      "uniqueAttributeArraysCompared": 43118,
+      "primitives": 7187,
+      "triangles": 8157039,
+      "animations": 1064,
+      "nodes": 8510,
+      "status": "pass"
+    }
+  ],
+  "originalDDSTexturesSHA256Verified": 377,
+  "originalDDSBytes": 3464549464,
+  "qualityChanges": {
+    "decimation": false,
+    "resizing": false,
+    "lossyTextureReencoding": false
+  },
+  "browserRendering": "separate verification required"
+}

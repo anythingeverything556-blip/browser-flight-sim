@@ -1,0 +1,27 @@
+Fokker F27 Mk500 — browser simulator integration, revision 6
+
+Select Fokker F27 Mk500 in Flight setup, or use /?aircraft=f27 and Start flight.
+The default aircraft and all other aircraft remain available. The 1.48 MB exterior and optional 0.96 MB Air Inter paint
+load first; the 4.49 MB English cockpit stages in the background
+unless Data Saver is enabled. V changes views. The F27 button opens lighting,
+seat-height, starter, door and landing-gear controls. G toggles gear from its
+current position (7 s extension / 17 s retraction); Systems shows progress and
+remaining time. Ground retraction stays locked. Browser sound needs an interaction and
+uses selected original add-on samples, not synthesized Dart engine audio.
+Select the Rain weather preset to see animated water on the F27 windshield.
+See F27-V6-COCKPIT-RAIN.md for rendering changes and verification.
+
+Source tree: run `npm ci`, `npm ci --prefix tools/da40-tooling`, then `npm test`
+and `npm run build`. Browser regression: `SMOKE_AIRCRAFT=f27 npm run test:smoke`
+with Chrome installed (set CHROME_PATH if necessary); that test uses a local
+production build with synthetic terrain, not the public Pages deployments.
+
+If you have the Earthwing overlay instead of the Blackbird owner ZIP, extract
+it over the matching Earthwing game source. It is not a standalone project or
+a Cloudflare deploy ZIP. Remove f27-white-ext-v1.glb and f27-white-vc-v1.glb
+and f27-white-ext-v2.glb from public/models/f27/ if you had applied an older overlay.
+
+See notes/F27-PREVIEW-V4.md for the changes and notes/F27-VALIDATION.md for type
+references and game-model limitations. This is not a validated aircraft trainer
+or a substitute for an approved Flight Manual. Read public/models/f27/NOTICE.md
+and the base project's LICENSE for terms before copying, hosting, or sharing.

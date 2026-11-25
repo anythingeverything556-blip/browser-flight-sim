@@ -1,0 +1,9 @@
+# Fokker F27 Mk500 · asset provenance
+
+The white passenger exterior, cockpit, animation keyframes, and material textures are adapted from Benoît Gaurant’s Fokker F27 Mk500 Friendship MSFS freeware, supplied with this integration by the operator. Original listing: <https://flightsim.to/addon/84997/fokker-f27-mk500>. Original creator credit: Benoît Gaurant (bgaurant). The cockpit is the English Classic configuration. The browser includes the author’s original White Classic and Air Inter Classic 1980 (F-BPNB; `texture.it80`) color maps. This does not recreate the Air Inter avionics or any separate airline operating procedures. No cargo livery is shipped.
+
+The source archive is identified by SHA-256 `6a7710dd4455ee34335d98e0cff175175f9e7e74b2883dc3470d3e2baeb73d50`. The bundled manual (v2.3, p. 65) states that the model, dynamics, cockpit, panel and sounds are strictly freeware and any commercial, business, or payware use of the archive or parts of it is not allowed. The original terms are not replaced by this notice. This adaptation was prepared privately; public redistribution or deployment is not authorized by this handoff. Obtain any permissions needed for your intended use. The host simulator’s `LICENSE` is separate, including its private-use and no-publishing terms.
+
+MSFS-only XML/WASM logic and special rendering effects are not redistributed in the runtime. GLB conversion uses standard web formats and reconstructions of selected visuals; it is not a certified representation or a source for real flight operations.
+
+The v2 runtime also includes selected engine and cockpit recordings from the supplied Bgt_F27500v2 Fokker.bnk, converted to browser-playable media. `audio/manifest.json` records the source sample IDs and delivered hashes. The original Wwise bank and extraction tooling are not included. The original creator is credited for the source artwork and audio; the browser mix is an adaptation, not the original MSFS/Wwise runtime.

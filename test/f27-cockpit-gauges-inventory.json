@@ -1,0 +1,1330 @@
+{
+  "model": "public/models/f27/f27-white-vc-v2.glb",
+  "totalSourceClips": 624,
+  "instrumentClips": 261,
+  "live": 108,
+  "optional": 12,
+  "unimplemented": 141,
+  "annunciators": {
+    "x0_GearInd_w_gr_p_on": false,
+    "x0_GearInd_w_red_p_on": true,
+    "x0_GearInd_w_gr_c_on": false,
+    "x0_GearInd_w_red_c_on": true,
+    "x0_GearInd_w_gr_s_on": false,
+    "x0_GearInd_w_red_s_on": true,
+    "x0_WarnRect_Door_On": false,
+    "x0_WarnRect_PrPnm01_On": true,
+    "x0_Warn_FeatherBtn01_on": false,
+    "x0_Warn_Fire01_On": false,
+    "x0_WarnRect_PrPnm02_On": false,
+    "x0_Warn_FeatherBtn02_on": false,
+    "x0_Warn_Fire02_On": false
+  },
+  "inventory": [
+    {
+      "name": "x0_Trim_Rud_Ind",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FuelDatum_Aig1",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FuelDatum_Aig2",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Trim_Ail_Aig",
+      "status": "live",
+      "duration": 0.0833333358168602
+    },
+    {
+      "name": "x0_SteerW_ind01",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_SteerW_ind02",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Trim_Pitch_ind",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Pressu_Press_Aig1",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Pressu_Press_Aig2",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Deice_Wing_Suc_Aig",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Deice_Wing_Press_Aig",
+      "status": "unimplemented",
+      "duration": 1.6666666269302368
+    },
+    {
+      "name": "x0_Pressu_Press_Card",
+      "status": "unimplemented",
+      "duration": 1.375
+    },
+    {
+      "name": "x0_Pressu_CabAltCtrl_Aig",
+      "status": "unimplemented",
+      "duration": 2.2916667461395264
+    },
+    {
+      "name": "x0_Elec_AMPS_02_Aig",
+      "status": "unimplemented",
+      "duration": 0.0833333358168602
+    },
+    {
+      "name": "x0_ADI_01_BarH",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_BarV",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_flag_ATT",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_flag_FD",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_flag_GSL",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_flag_RWY",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_gs",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_runway2",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_runway",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_runway1b",
+      "status": "unimplemented",
+      "duration": 1.25
+    },
+    {
+      "name": "x0_ADI_01_Turn",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_Bille",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_Test",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_Sphere_Roll",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_BakSphereSup",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_01_Sphere",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_BakSphereSup",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_Sphere",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_BarH",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_BarV",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_gs",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_runway2",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_runway",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_runway1b",
+      "status": "unimplemented",
+      "duration": 1.25
+    },
+    {
+      "name": "x0_ADI_02_Sphere_Roll",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_Test",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_Turn",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_flag_ATT",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_flag_FD",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_flag_GSL",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_flag_RWY",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HorizSec_Carre",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HorizSec_Cylindre",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HorizSec_Flag",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HorizSec_Maq",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HorizSec_Knob",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HorizSec_index",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADI_02_Bille",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_Aig",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_alt_n_Diz",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_alt_n_Hun",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_alt_n_TenThou",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_alt_n_Thou",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_Flag_Neg",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_Flag_Elec",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_Flag_TenThou",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_inhg_n_Diz",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_inhg_n_Thou",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_inhg_n_Hun",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_inhg_n_Unit",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_Knob",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_mb_n_Diz",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_mb_n_Thou",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_mb_n_Hun",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_01_mb_n_Unit",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_02_AigHun",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_02_AigTenThou",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_02_AigThou",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_02_Knob",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_02_mb_n_Diz",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_02_mb_n_Thou",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_02_mb_n_Hun",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ALTI_02_mb_n_Unit",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_ADF1",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_HSI_01_ADF2",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_HSI_01_dme_n_Diz",
+      "status": "optional-system-feed",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_dme_n_Hun",
+      "status": "optional-system-feed",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_dme_n_Unit",
+      "status": "optional-system-feed",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_Flag_DME",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_Flag_GS",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_Flag_HDG",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_GS_ind",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_ROSE",
+      "status": "live",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_HSI_01_HDG",
+      "status": "live",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_HSI_01_Plateau",
+      "status": "optional-system-feed",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_HSI_01_Flag_Nav1",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_Flag_Nav2",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_Flag_Off",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_OBI_Dev",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_01_ToFrom",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_ADF1",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_HSI_02_ADF2",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_HSI_02_dme_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_dme_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_dme_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_Flag_DME",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_Flag_GS",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_Flag_HDG",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_GS_ind",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_ROSE",
+      "status": "live",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_HSI_02_HDG",
+      "status": "live",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_HSI_02_Plateau",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_HSI_02_Flag_Nav1",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_Flag_Nav2",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_Flag_Off",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_OBI_Dev",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_HSI_02_ToFrom",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_IAS_01_Aig1",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_IAS_01_Aig2",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_IAS_01_Index",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_IAS_02_Aig1",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_IAS_02_Aig2",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_IAS_02_index",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_IAS_01_Index2",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_IAS_02_index2",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_01_Aig",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_01_Flag",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_01_index",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_01_PushKOnOff",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_01_KnobOnOff",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_01_PushKindex",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_01_KnobIndex",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_02_Aig",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_02_Flag",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_02_index",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_02_PushKOnOff",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_02_KnobOnOff",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_02_PushKindex",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RALT_02_KnobIndex",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_VSI_01_Aig",
+      "status": "live",
+      "duration": 5
+    },
+    {
+      "name": "x0_VSI_02_Aig",
+      "status": "live",
+      "duration": 5
+    },
+    {
+      "name": "x0_VOR_01_Aig1",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_VOR_01_Aig2",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_VOR_01_Rose",
+      "status": "live",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_VOR_01_Flag",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_VOR_01_Knob_hdg",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_VOR_01_hdgindex",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_VOR_02_Aig1",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_VOR_02_Aig2",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_VOR_02_Rose",
+      "status": "live",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_VOR_02_Flag",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_VOR_02_Knob_hdg",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_VOR_02_hdgindex",
+      "status": "unimplemented",
+      "duration": 1.5
+    },
+    {
+      "name": "x0_Clock_01_Aig_Hour",
+      "status": "live",
+      "duration": 0.5
+    },
+    {
+      "name": "x0_Clock_01_Aig_Min",
+      "status": "live",
+      "duration": 0.5
+    },
+    {
+      "name": "x0_Clock_01_Aig_Sec",
+      "status": "live",
+      "duration": 0.5
+    },
+    {
+      "name": "x0_Clock_02_Aig_Hour",
+      "status": "live",
+      "duration": 0.5
+    },
+    {
+      "name": "x0_Clock_02_Aig_Min",
+      "status": "live",
+      "duration": 0.5
+    },
+    {
+      "name": "x0_Clock_02_Aig_Sec",
+      "status": "live",
+      "duration": 0.5
+    },
+    {
+      "name": "x0_PressPneu_Freins_Aig",
+      "status": "unimplemented",
+      "duration": 1.6666666269302368
+    },
+    {
+      "name": "x0_PressPneu_Ppl_Aig",
+      "status": "live",
+      "duration": 1.6666666269302368
+    },
+    {
+      "name": "x0_PressPneu_Sec_Aig",
+      "status": "unimplemented",
+      "duration": 1.6666666269302368
+    },
+    {
+      "name": "x0_Temp_Aig",
+      "status": "live",
+      "duration": 4.5
+    },
+    {
+      "name": "x0_Surf_Rud",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Surf_Ail",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Surf_Elev",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_CRS_01_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_CRS_01_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_CRS_01_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_CRS_02_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_CRS_02_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_CRS_02_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADF_01_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADF_01_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADF_01_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADF_01_Tune_Aig",
+      "status": "unimplemented",
+      "duration": 0.0833333358168602
+    },
+    {
+      "name": "x0_ADF_02_Tune_Aig",
+      "status": "unimplemented",
+      "duration": 0.0833333358168602
+    },
+    {
+      "name": "x0_ADF_02_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADF_02_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ADF_02_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_NAV_01_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_NAV_01_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_NAV_01_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_NAV_01_n_DecimD",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_NAV_01_n_DecimU",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_COM_01_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_COM_01_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_COM_01_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_COM_01_n_DecimD",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_COM_01_n_DecimU",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_NAV_02_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_NAV_02_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_NAV_02_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_NAV_02_n_DecimD",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_NAV_02_n_DecimU",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_COM_02_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_COM_02_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_COM_02_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_COM_02_n_DecimD",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_COM_02_n_DecimU",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_DME_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_DME_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_DME_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_DME_n_DecimD",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_DME_n_DecimU",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_TSP_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_TSP_n_Thou",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_TSP_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_TSP_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Pressu_Alti_Aig_A",
+      "status": "live",
+      "duration": 1.25
+    },
+    {
+      "name": "x0_Pressu_Alti_Aig_C",
+      "status": "unimplemented",
+      "duration": 1.25
+    },
+    {
+      "name": "x0_Pressu_Vario_Aig",
+      "status": "unimplemented",
+      "duration": 5
+    },
+    {
+      "name": "x0_FuelPress_Aig1",
+      "status": "optional-system-feed",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FuelPress_Aig2",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_OilPress_Aig1",
+      "status": "optional-system-feed",
+      "duration": 1.6666666269302368
+    },
+    {
+      "name": "x0_OilPress_Aig2",
+      "status": "unimplemented",
+      "duration": 1.6666666269302368
+    },
+    {
+      "name": "x0_OilTemp_Aig1",
+      "status": "optional-system-feed",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_OilTemp_Aig2",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Sync_Aig",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RPM_01_Aig",
+      "status": "live",
+      "duration": 0.8333333134651184
+    },
+    {
+      "name": "x0_RPM_01_AigDecim",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_RPM_02_Aig",
+      "status": "live",
+      "duration": 0.8333333134651184
+    },
+    {
+      "name": "x0_RPM_02_AigDecim",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_Torq_01_Aig",
+      "status": "optional-system-feed",
+      "duration": 2.5
+    },
+    {
+      "name": "x0_Torq_02_Aig",
+      "status": "unimplemented",
+      "duration": 2.5
+    },
+    {
+      "name": "x0_G_Ind_Aig",
+      "status": "unimplemented",
+      "duration": 2.0833332538604736
+    },
+    {
+      "name": "x0_ExhTemp_01_Aig",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_ExhTemp_02_Aig",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_01_Aig",
+      "status": "live",
+      "duration": 2.9166667461395264
+    },
+    {
+      "name": "x0_FFFU_01_n_Diz",
+      "status": "optional-system-feed",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_01_n_Hun",
+      "status": "optional-system-feed",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_01_n_Thou",
+      "status": "optional-system-feed",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_01_n_Unit",
+      "status": "optional-system-feed",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_01_Reset",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_01_Aig_lbs",
+      "status": "live",
+      "duration": 0.6666666865348816
+    },
+    {
+      "name": "x0_FFFU_02_Aig",
+      "status": "live",
+      "duration": 2.9166667461395264
+    },
+    {
+      "name": "x0_FFFU_02_n_Diz",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_02_n_Hun",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_02_n_Thou",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_02_n_Unit",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_02_Reset",
+      "status": "unimplemented",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FFFU_02_Aig_lbs",
+      "status": "live",
+      "duration": 0.6666666865348816
+    },
+    {
+      "name": "x0_Flaps_Aig",
+      "status": "live",
+      "duration": 4.166666507720947
+    },
+    {
+      "name": "x0_FuelQtty_01_Aig",
+      "status": "live",
+      "duration": 1.8333333730697632
+    },
+    {
+      "name": "x0_FuelQtty_02_Aig",
+      "status": "live",
+      "duration": 1.8333333730697632
+    },
+    {
+      "name": "x0_FuelQtty_01_Aig_lbs",
+      "status": "live",
+      "duration": 2.0833332538604736
+    },
+    {
+      "name": "x0_FuelQtty_02_Aig_lbs",
+      "status": "live",
+      "duration": 2.0833332538604736
+    },
+    {
+      "name": "x0_Elec_Volt_AC_Aig",
+      "status": "unimplemented",
+      "duration": 0.125
+    },
+    {
+      "name": "x0_WaterMeth_Aig01",
+      "status": "unimplemented",
+      "duration": 0.125
+    },
+    {
+      "name": "x0_WaterMeth_Aig02",
+      "status": "unimplemented",
+      "duration": 0.125
+    },
+    {
+      "name": "x0_Deice_Windshield_ind02",
+      "status": "unimplemented",
+      "duration": 0.0416666679084301
+    },
+    {
+      "name": "x0_Deice_Windshield_ind01",
+      "status": "unimplemented",
+      "duration": 0.0416666679084301
+    },
+    {
+      "name": "x0_Elec_Volt_ALT01_Aig",
+      "status": "unimplemented",
+      "duration": 0.125
+    },
+    {
+      "name": "x0_Elec_Volt_ALT02_Aig",
+      "status": "unimplemented",
+      "duration": 0.125
+    },
+    {
+      "name": "x0_Elec_Volt_DC_Aig",
+      "status": "unimplemented",
+      "duration": 0.125
+    },
+    {
+      "name": "x0_Elec_AMPBAT01_Aig",
+      "status": "unimplemented",
+      "duration": 0.1666666716337204
+    },
+    {
+      "name": "x0_Elec_AMPBAT02_Aig",
+      "status": "unimplemented",
+      "duration": 0.1666666716337204
+    },
+    {
+      "name": "x0_Elec_AMPS_01_Aig",
+      "status": "unimplemented",
+      "duration": 0.0833333358168602
+    },
+    {
+      "name": "x0_DeIce_AMPS_01_Aig",
+      "status": "unimplemented",
+      "duration": 0.2083333283662796
+    },
+    {
+      "name": "x0_DeIce_AMPS_02_Aig",
+      "status": "unimplemented",
+      "duration": 0.2083333283662796
+    },
+    {
+      "name": "x0_Chrono01_Needle_Hour",
+      "status": "unimplemented",
+      "duration": 0.1666666716337204
+    },
+    {
+      "name": "x0_Chrono01_Needle_Min",
+      "status": "unimplemented",
+      "duration": 0.1666666716337204
+    },
+    {
+      "name": "x0_Chrono01_Needle_Sec",
+      "status": "unimplemented",
+      "duration": 0.1666666716337204
+    },
+    {
+      "name": "x0_Chrono02_Needle_Hour",
+      "status": "unimplemented",
+      "duration": 0.1666666716337204
+    },
+    {
+      "name": "x0_Chrono02_Needle_Min",
+      "status": "unimplemented",
+      "duration": 0.1666666716337204
+    },
+    {
+      "name": "x0_Chrono02_Needle_Sec",
+      "status": "unimplemented",
+      "duration": 0.1666666716337204
+    },
+    {
+      "name": "x0_Compass_Wheel",
+      "status": "live",
+      "duration": 1.5
+    }
+  ]
+}

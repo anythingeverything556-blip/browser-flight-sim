@@ -1,0 +1,19 @@
+PASS F27 full 7s/17s gear cycle at 30/60/120 Hz, reversal, ground/pressure lock, both decoded GLBs, neutral/directional steering, no half-cycle snap and identical static world transforms
+{
+  "ext": {
+    "gearClips": 51,
+    "steeringCases": 15,
+    "repeatCycles": 25
+  },
+  "vc": {
+    "gearClips": 27,
+    "steeringCases": 15,
+    "repeatCycles": 25
+  },
+  "cockpit": {
+    "staticLeafMeshes": 848,
+    "optimizedComposes": 1807,
+    "baselineComposes": 3503,
+    "savedComposes": 1696
+  }
+}

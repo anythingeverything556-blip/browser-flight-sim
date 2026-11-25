@@ -1,0 +1,45 @@
+DA40 source package — start here
+
+This archive includes the DA40 GLB, rig, picker, integration code, tests,
+license notices, and conversion scripts. The DA40 material and FlightGear
+components have their own GPL terms; read public/models/da40/NOTICE.md,
+public/models/da40/COPYING, notes/DA40-NG.md, and the upstream notices before
+distributing. Consult qualified counsel where necessary; these instructions
+are not a determination of license compliance.
+
+The multi-gigabyte A380 model pack is not included. A380X is disabled in
+this edition and is excluded from the standard build even if the pack exists.
+Its small fixtures, transport code and previously verified restoration
+instructions remain for archival use only; see A380X-START-HERE.txt.
+
+From the project root, install the separately locked base/aircraft tools and run tests:
+
+  npm ci
+  npm ci --prefix tools/da40-tooling
+  npm test
+  node test/intro-layout-browser-test.mjs
+
+The last command requires Chrome/Chromium. Set CHROME_PATH if it is not at
+/usr/bin/google-chrome. The converter and asset tests use the local tools lock.
+
+The normal npm run build and the isolated node tools/da40-qa-build.mjs both
+exclude the A380 directory. See notes/DA40-NG.md for preview and browser smoke
+instructions. Deployment is a separate step.
+
+Corresponding-source and rebuild instructions (run from the project root):
+
+  mkdir -p .scratch/da40/source
+  curl -fL https://codeload.github.com/sryu1/DA40/tar.gz/0d50a457edb203b9ac6058b41cac1b33922acf28 -o .scratch/da40/da40.tgz
+  echo 'eb8ce8950d7fe7d344012f1635e46d154e9f28496786f08f13699a8da643d64d  .scratch/da40/da40.tgz' | sha256sum -c -
+  tar -xzf .scratch/da40/da40.tgz --strip-components=1 -C .scratch/da40/source
+  base=https://gitlab.com/flightgear/fgdata/-/raw/7e1ac500e30645871e55a9c61e441d0763edabd5
+  for file in Aircraft/Instruments-3d/FG1000/GDU104X/GDU-1040.1.xml Aircraft/Instruments-3d/FG1000/GDU104X/Model/GDU-104X.1.gltf Aircraft/Instruments-3d/FG1000/GDU104X/Model/GDU-104X.1.bin Aircraft/Instruments-3d/FG1000/GDU104X/Model/FG1000.png Aircraft/Instruments-3d/FG1000/GDU104X/Model/screen.png Aircraft/Instruments-3d/FG1000/GDU104X/Textures/GDU-104X.png Aircraft/Instruments-3d/FG1000/GMA1347/GMA1347.xml Aircraft/Instruments-3d/FG1000/GMA1347/GMA1347.ac Aircraft/Instruments-3d/FG1000/GMA1347/GMA1347.png; do
+    mkdir -p ".scratch/da40/source/$(dirname "$file")"
+    curl -fL "$base/$file" -o ".scratch/da40/source/$file" || exit 1
+  done
+  node tools/da40-convert.mjs
+  node test/da40-assets-test.mjs
+
+The converter overwrites the shipped GLB and rig; back them up first if needed.
+See tools/da40-README.md for details and source license/attribution links.
+The nine pinned FlightGear component downloads are referenced, not included.

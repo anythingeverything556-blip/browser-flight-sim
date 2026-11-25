@@ -1,0 +1,41 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
+import * as T from 'three';
+import { loadModel } from './_glb-node.mjs';
+import { createF27Livery, f27PaintChoice, F27_PAINT_DEFAULT } from '../src/f27livery.js';
+const ID=F27_PAINT_DEFAULT;
+assert.equal(f27PaintChoice(null,null),ID);
+assert.equal(f27PaintChoice('unknown','white'),'white');
+assert.equal(f27PaintChoice('white',ID),'white');
+const ext=await loadModel('f27/f27-white-ext-v3'),vc=await loadModel('f27/f27-white-vc-v2');
+function collect(g){const a=new Set();g.scene.traverse(o=>{if(o.isMesh)for(const m of (Array.isArray(o.material)?o.material:[o.material]))a.add(m);});return [...a];}
+const ext0=collect(ext),vc0=collect(vc),all=[...ext0,...vc0];
+const baseline=new Map(all.map(m=>[m,{map:m.map,roughness:m.roughnessMap,metalness:m.metalnessMap,version:m.version}]));
+const maps=[],warmed=[];
+const livery=createF27Livery({base:'/sim/',load:async u=>{maps.push(u);return new T.Texture();},warm:async maps=>{warmed.push(maps.size);}});
+await livery.prepare(ext.scene);assert.equal(livery.bindings,6);
+assert.equal(await livery.set(ID),true);assert.equal(livery.current,ID);
+assert.equal(maps.length,6);assert.ok(maps.every(u=>u.startsWith('/sim/models/f27/liveries/air-inter-1980/')));
+await livery.prepare(vc.scene);assert.equal(livery.bindings,12);
+assert.equal(maps.length,6,'no duplicate requests when cockpit loads');
+const changed=all.filter(m=>m.map!==baseline.get(m).map);
+assert.equal(changed.length,12);
+for(const m of changed){assert.equal(m.map.flipY,false);assert.equal(m.map.colorSpace,T.SRGBColorSpace);assert.equal(m.map.channel,baseline.get(m).map.channel);}
+assert.equal(vc0.find(m=>m.name==='WINDSHIELD.001').map,baseline.get(vc0.find(m=>m.name==='WINDSHIELD.001')).map);
+for(const m of all) {assert.equal(m.version,baseline.get(m).version);assert.equal(m.roughnessMap,baseline.get(m).roughness);assert.equal(m.metalnessMap,baseline.get(m).metalness);}
+assert.equal(warmed.reduce((a,b)=>a+b,0)>=6,true);
+await livery.set('white');assert.ok(all.every(m=>m.map===baseline.get(m).map));
+await livery.set(ID);assert.equal(maps.length,6);await livery.set('white');
+let pending=[];
+const race=createF27Livery({load:()=>new Promise(resolve=>pending.push(resolve))});
+await race.prepare(ext.scene); const slow=race.set(ID);await race.set('white');pending.forEach(resolve=>resolve(new T.Texture()));
+assert.equal(await slow,false);assert.ok(all.every(m=>m.map===baseline.get(m).map));
+let attempts=0;
+const flaky=createF27Livery({load:async url=>{if(attempts++<6&&url.includes('T2'))throw Error('404');return new T.Texture();}});
+await flaky.prepare(ext.scene);await assert.rejects(flaky.set(ID),/Incomplete/);assert.equal(flaky.current,'white');
+assert.equal(await flaky.set(ID),true);
+const folder=new URL('../public/models/f27/liveries/air-inter-1980/',import.meta.url);
+const paintBytes=(await Promise.all(maps.map(u=>readFile(new URL(u.split('/').pop(),folder))))).reduce((a,buf)=>{assert.equal(buf.subarray(8,12).toString(),'WEBP');assert.ok(createHash('sha256').update(buf).digest('hex').length===64);return a+buf.length;},0);
+assert.ok(paintBytes<1_000_000);assert.ok(paintBytes+1_480_596<2_500_000);
+console.log(`PASS 12 actual GLB materials, six sRGB WebPs (${paintBytes} bytes), matching cockpit/exterior, white restored, lighting/shaders unmodified, stale switch/failure retried`);

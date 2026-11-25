@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import { TakeoffAid } from '../src/autotakeoff.js';
+const ok = (n, c, i = '') => { assert.ok(c, `${n} ${i}`); console.log(`PASS  ${n} ${i}`); };
+const t = new TakeoffAid();
+ok('stop() on an idle aid returns off', t.stop() === 'off' && !t.on);
+t.start(90); ok('stop() during the roll returns roll', t.stop() === 'roll' && !t.on && t.phase === 'off');
+t.start(90); t.phase = 'rotate'; ok('stop() in the rotation returns rotate', t.stop() === 'rotate');
+t.start(90); t.phase = 'climb'; ok('stop() in the climb returns climb', t.stop() === 'climb');
+ok('a second stop() is harmless', t.stop() === 'off');
+console.log('all take-off stop tests passed');

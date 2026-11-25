@@ -1,0 +1,144 @@
+/* In-flight layout only. One shared inset/floor for the rail, instruments and overlays.
+   --hud-floor includes the strip's actual bottom inset, not just its nominal height. */
+:root {
+  --sheet-left: calc(max(var(--rail-left), env(safe-area-inset-left, 0px)) + var(--rail-width) + var(--sheet-gap));
+  --hud-top: max(16px, env(safe-area-inset-top, 0px));
+  --hud-right: max(16px, env(safe-area-inset-right, 0px));
+  --hud-bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  --hud-floor: calc(var(--strip-h, 100px) + var(--hud-bottom));
+  --hud-status-bottom: calc(var(--hud-top) + 36px);
+}
+#rail {
+  left: max(var(--rail-left), env(safe-area-inset-left, 0px));
+  max-height: calc(100dvh - var(--hud-top) - var(--hud-bottom));
+  scrollbar-width: thin;
+}
+#status {
+  top: var(--hud-top); right: var(--hud-right);
+  max-width: calc(100% - var(--sheet-left) - var(--hud-right));
+  flex-wrap: wrap; justify-content: flex-end;
+}
+#status .chip { max-width: 100%; }
+#status #st-near { white-space: normal; overflow-wrap: anywhere; }
+#strip {
+  left: var(--sheet-left); right: var(--hud-right); bottom: var(--hud-bottom);
+  width: max-content; max-width: calc(100% - var(--sheet-left) - var(--hud-right));
+  margin-inline: auto; transform: none; flex-wrap: wrap;
+}
+body.sheet-open #strip {
+  left: calc(var(--sheet-left) + 436px); right: var(--hud-right);
+  max-width: calc(100% - var(--sheet-left) - 436px - var(--hud-right));
+}
+#strip .pills { flex-grow: 1; }
+#throttle-lever {
+  right: var(--hud-right);
+  top: calc((var(--hud-status-bottom) + 100dvh - var(--hud-floor)) / 2);
+  max-height: calc(100dvh - var(--hud-floor) - var(--hud-status-bottom) - 24px);
+}
+#throttle-lever .tl-track { flex: 1 1 192px; min-height: 44px; }
+#throttle-lever .tl-cap, #throttle-lever .tl-val { flex-shrink: 0; }
+body.touch-mode #throttle-lever { display: none; }
+#touch-controls { right: var(--hud-right); bottom: calc(var(--hud-floor) + 12px); }
+#coach {
+  left: var(--sheet-left); top: calc(var(--hud-status-bottom) + 12px);
+  width: min(360px, calc(100% - var(--sheet-left) - var(--hud-right) - 80px));
+  max-height: calc(100dvh - var(--hud-status-bottom) - var(--hud-floor) - 24px);
+}
+#guide {
+  left: calc((var(--sheet-left) + 100% - var(--hud-right) - 80px) / 2);
+  bottom: calc(var(--hud-floor) + 12px);
+  width: min(560px, calc(100% - var(--sheet-left) - var(--hud-right) - 104px));
+  max-height: calc(100dvh - var(--hud-status-bottom) - var(--hud-floor) - 24px);
+}
+.cockpitmap, .cockpitmap.cm-large {
+  bottom: calc(var(--hud-floor) + 12px);
+  max-height: calc(100dvh - var(--hud-status-bottom) - var(--hud-floor) - 24px);
+  min-height: 0;
+}
+/* The live region stays intact; in crowded windows the log scrolls, never sits
+   behind a control. Coordinates are measured by flight-hud.js after each resize. */
+:root body #radio,
+:root body.sheet-open #radio,
+:root body:has(#guide:not([hidden])) #radio,
+:root body:not(.intro):not(.sheet-open):has(.cockpitmap:not([hidden])) #radio,
+:root body:not(.intro):not(.sheet-open):has(.cockpitmap.cm-large:not([hidden])) #radio {
+  left: var(--radio-left, var(--sheet-left)); top: auto;
+  right: auto; bottom: var(--radio-bottom, calc(var(--hud-floor) + 12px));
+  width: var(--radio-width, min(430px, calc(100% - var(--sheet-left) - var(--hud-right))));
+  max-height: var(--radio-height, calc(100dvh - var(--hud-floor) - var(--hud-status-bottom) - 24px));
+  overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin;
+  pointer-events: auto; overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  :root {
+    --hud-top: max(8px, env(safe-area-inset-top, 0px));
+    --hud-right: max(8px, env(safe-area-inset-right, 0px));
+    --hud-bottom: max(8px, env(safe-area-inset-bottom, 0px));
+  }
+  #strip { width: auto; margin: 0; }
+  #guide { width: calc(100% - var(--sheet-left) - var(--hud-right)); left: var(--sheet-left); transform: none; }
+  #coach { width: calc(100% - var(--sheet-left) - var(--hud-right)); }
+  #throttle-lever { transform: translateY(-50%); }
+}
+@media (max-height: 500px) and (min-width: 701px) {
+  /* Keep 44px touch targets; landscape uses a single controller row. */
+  #touch-controls { flex-wrap: nowrap; gap: 12px; }
+  #touch-controls .touch-hint { position: absolute; bottom: 100%; left: 0; right: 0; }
+  #touch-controls .touch-stick { flex-basis: 96px; height: 96px; }
+  #touch-controls .touch-stick i { left: 30px; top: 30px; }
+  #touch-controls .touch-levers { width: 200px; }
+  #touch-controls .touch-buttons { max-width: 300px; }
+}
+
+/* Sheets retain their own scrolling and stay below the wrapping status chips. */
+body:not(.intro) .sheet { top: calc(var(--hud-status-bottom) + 12px); }
+@media (max-width: 760px) {
+  body.sheet-open:not(.sheet-wide):not(.intro) .sheet { bottom: calc(var(--hud-bottom) + min(180px, 30dvh) + 12px); }
+}
+
+/* Long fuel totals and labelled annunciators must wrap as whole instruments. */
+#strip .seg-d { min-width: max-content; flex-grow: 1; }
+@media (max-width: 760px) {
+  #strip .pills { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+@media (max-width: 1240px) {
+  body.sheet-open #strip .pills { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+/* Full-map sheets own the viewport; the separate lever returns on close. */
+body.sheet-wide #throttle-lever { display: none; }
+@media (min-width: 701px) and (min-height: 561px) {
+  body:has(#coach:not([hidden])) .cockpitmap {
+    left: calc(var(--sheet-left) + 372px);
+    max-width: calc(100% - var(--sheet-left) - 372px - var(--hud-right) - 80px);
+  }
+  body:has(.cockpitmap:not([hidden])) #guide:not([hidden]) {
+    left: calc(var(--sheet-left) + 332px); transform: none;
+    width: min(560px, calc(100% - var(--sheet-left) - 332px - var(--hud-right) - 92px));
+  }
+}
+
+#rail[data-scroll] { overflow-y: auto; }
+#rail button { max-width: 100%; }
+#rail .brand { flex-shrink: 0; }
+
+/* Discovery help stays below status, above map traffic, and left of the lever. */
+#throttle-lever .tl-hint { position: absolute; top: calc(var(--hud-status-bottom) + 12px - var(--hud-lever-top, 0px)); right: 80px; }
+#throttle-lever .tl-hint::after { display: none; }
+
+@media (max-width: 360px) {
+  /* Preserve readable digits and 44px sliders on small phones. */
+  #strip .seg-d { padding-block: 4px; }
+  #touch-controls .touch-levers label { grid-template-columns: 52px minmax(0, 1fr); align-items: center; }
+}
+@media (min-width: 701px) and (min-height: 561px) {
+  /* Expanded moving maps share available width with an open first-flight guide. */
+  body:has(#guide:not([hidden])) { --hud-guide-map-width: min(320px, calc((100vw - var(--sheet-left) - var(--hud-right) - 104px) / 2)); }
+  body:has(#guide:not([hidden])):has(.cockpitmap.cm-large:not([hidden])) { --hud-guide-map-width: min(560px, calc((100vw - var(--sheet-left) - var(--hud-right) - 104px) / 2)); }
+  body:has(#guide:not([hidden])) .cockpitmap { width: var(--hud-guide-map-width); }
+  body:has(.cockpitmap:not([hidden])) #guide:not([hidden]) {
+    left: calc(var(--sheet-left) + var(--hud-guide-map-width) + 12px);
+    width: min(560px, calc(100% - var(--sheet-left) - var(--hud-guide-map-width) - var(--hud-right) - 104px));
+  }
+}
+body:has(#coach:not([hidden])) .tl-hint { display: none !important; }

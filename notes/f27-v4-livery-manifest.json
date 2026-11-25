@@ -1,0 +1,254 @@
+{
+  "version": 1,
+  "id": "air-inter-1980",
+  "label": "Air Inter 1980 Classic",
+  "author": "Benoit Gaurant (Bgt)",
+  "registration": "F-BPNB",
+  "cfgRegistration": "F-BPNA",
+  "cfg": "aircraft.cfg [FLTSIM.1]",
+  "registrationNote": "Supplied painted atlas reads F-BPNB; cfg atc_id is F-BPNA. Keep the original painted registration; no invented correction.",
+  "rights": "Supplied freeware only; no commercial/business/payware/shareware use. Not an open license; no claim of commercial redistribution permission.",
+  "base": {
+    "file": "models/f27/f27-white-ext-v3.glb",
+    "bytes": 1480596,
+    "sha256": "378cad53adef273825b66a38b10c5999ca67a9f1fe384877f16f646778e86c98",
+    "geometryChanged": false
+  },
+  "maps": [
+    {
+      "key": "f275bgt_T2_albd",
+      "file": "assets/air-inter-1980/f275bgt_T2_albd.webp",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 284954,
+      "sha256": "e442877851dfcf83a58ea494b47cd41f0642a5ccdc9f14bdab3763edb2d313ff",
+      "source": "texture.it80/F275BGT_T2_ALBD.PNG.DDS",
+      "sourceSHA256": "761973a55ec98d469081ef3f6669d8e40a1e6b234e4bf454cdca4866c5135b63",
+      "orientation": "same",
+      "scores": {
+        "same": 2.07307497660319,
+        "flipY": 87.09407170613606,
+        "flipX": 75.4013303120931
+      },
+      "psnrDB": 40.5503787325981,
+      "bindings": {
+        "exterior": [
+          {
+            "index": 1,
+            "material": "ext_T2_Details_Int"
+          }
+        ],
+        "cockpit": [
+          {
+            "index": 13,
+            "material": "ext_T2_Details_Int_int"
+          }
+        ]
+      }
+    },
+    {
+      "key": "f275bgt_T3_albd",
+      "file": "assets/air-inter-1980/f275bgt_T3_albd.webp",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 85516,
+      "sha256": "f7fe56ebf6e5ae78778126d8508433903a7f43b3c9f6c66c595c16b3e6d89aa3",
+      "source": "texture.it80/F275BGT_T3_ALBD.PNG.DDS",
+      "sourceSHA256": "3d92a042948b85d07774859c4685db6efbc3314662c534aadba400b6d89e8cd5",
+      "orientation": "same",
+      "scores": {
+        "same": 1.2155370712280273,
+        "flipY": 38.459102948506676,
+        "flipX": 29.02283000946045
+      },
+      "psnrDB": 43.40284037252751,
+      "bindings": {
+        "exterior": [
+          {
+            "index": 5,
+            "material": "ext_T3_WingLeft"
+          }
+        ],
+        "cockpit": [
+          {
+            "index": 5,
+            "material": "ext_T3_WingLeft_int"
+          }
+        ]
+      }
+    },
+    {
+      "key": "f275bgt_T4_albd",
+      "file": "assets/air-inter-1980/f275bgt_T4_albd.webp",
+      "width": 1024,
+      "height": 1024,
+      "bytes": 86000,
+      "sha256": "db2a8c96873d48b295d0a097e1ce4bfc3867d9f717f7f9f99878bb69cbc7e9b1",
+      "source": "texture.it80/F275BGT_T4_ALBD.PNG.DDS",
+      "sourceSHA256": "3d8d51f61951a579d6648eae8a0038e33648b92f1860e06545e8a89c5c15b4a7",
+      "orientation": "same",
+      "scores": {
+        "same": 1.2013460795084636,
+        "flipY": 37.60201072692871,
+        "flipX": 28.354246775309246
+      },
+      "psnrDB": 42.748743781697726,
+      "bindings": {
+        "exterior": [
+          {
+            "index": 6,
+            "material": "ext_T4_WingRight"
+          }
+        ],
+        "cockpit": [
+          {
+            "index": 4,
+            "material": "ext_T4_WingRight_int"
+          }
+        ]
+      }
+    },
+    {
+      "key": "f275bgt_T5_albd",
+      "file": "assets/air-inter-1980/f275bgt_T5_albd.webp",
+      "width": 2048,
+      "height": 2048,
+      "bytes": 224292,
+      "sha256": "fbe5ebab6441ea3fd17f71ad47579fb6aa06d28cf804f22b3e532375ca972698",
+      "source": "texture.it80/F275BGT_T5_ALBD.PNG.DDS",
+      "sourceSHA256": "1d16a690d37106c946a86c57c30b124e415bccc6e475f1a7ac859844c6812f53",
+      "orientation": "same",
+      "scores": {
+        "same": 0.7870322863260905,
+        "flipY": 13.760226408640543,
+        "flipX": 14.203463872273764
+      },
+      "psnrDB": 44.044214704077326,
+      "bindings": {
+        "exterior": [
+          {
+            "index": 2,
+            "material": "ext_T5_Fuselage"
+          },
+          {
+            "index": 9,
+            "material": "ext_T5_FuselageInt"
+          }
+        ],
+        "cockpit": [
+          {
+            "index": 7,
+            "material": "ext_T5_Fuselage_int"
+          }
+        ]
+      }
+    },
+    {
+      "key": "f275bgt_T6_albd",
+      "file": "assets/air-inter-1980/f275bgt_T6_albd.webp",
+      "width": 2048,
+      "height": 2048,
+      "bytes": 249916,
+      "sha256": "7f767bcd6874f5904c8183cf2679f8daddac9d7e7c574ff9d01c8bbb16a40993",
+      "source": "texture.it80/F275BGT_T6_ALBD.PNG.DDS",
+      "sourceSHA256": "d902bd979f8ac2a44076dfdc484e2cac3cdb0d5246d2d1b2029b637f742196d3",
+      "orientation": "same",
+      "scores": {
+        "same": 0.8625134627024332,
+        "flipY": 30.845966577529907,
+        "flipX": 30.534741163253784
+      },
+      "psnrDB": 41.76930879187283,
+      "bindings": {
+        "exterior": [
+          {
+            "index": 4,
+            "material": "ext_T6_Tail"
+          }
+        ],
+        "cockpit": [
+          {
+            "index": 6,
+            "material": "ext_T6_Tail_int"
+          }
+        ]
+      }
+    },
+    {
+      "key": "f275bgt_T7_albd",
+      "file": "assets/air-inter-1980/f275bgt_T7_albd.webp",
+      "width": 512,
+      "height": 512,
+      "bytes": 31396,
+      "sha256": "832ec011d7a5802861aaecd9856b24ebd564e4d402ebf4b7be683a4b47e342a3",
+      "source": "texture.it80/F275BGT_T7_ALBD.PNG.DDS",
+      "sourceSHA256": "6bcbb1576716861b85e3dbf99268ceff3a1bac37565e1f7a5c8d96709aa47738",
+      "orientation": "same",
+      "scores": {
+        "same": 1.3011678059895833,
+        "flipY": 43.656689961751304,
+        "flipX": 40.241658528645836
+      },
+      "psnrDB": 42.67924202005902,
+      "bindings": {
+        "exterior": [
+          {
+            "index": 7,
+            "material": "ext_T7_Engines"
+          }
+        ],
+        "cockpit": [
+          {
+            "index": 8,
+            "material": "ext_T7_Engines_int"
+          }
+        ]
+      }
+    }
+  ],
+  "incrementalBytes": 962074,
+  "sourceAudit": [
+    {
+      "file": "F275BGT_T2_ALBD.PNG.DDS",
+      "identicalToWhite": false,
+      "sourceBytes": 699192,
+      "sourceSHA256": "761973a55ec98d469081ef3f6669d8e40a1e6b234e4bf454cdca4866c5135b63"
+    },
+    {
+      "file": "F275BGT_T3_ALBD.PNG.DDS",
+      "identicalToWhite": false,
+      "sourceBytes": 699192,
+      "sourceSHA256": "3d92a042948b85d07774859c4685db6efbc3314662c534aadba400b6d89e8cd5"
+    },
+    {
+      "file": "F275BGT_T4_ALBD.PNG.DDS",
+      "identicalToWhite": false,
+      "sourceBytes": 699192,
+      "sourceSHA256": "3d8d51f61951a579d6648eae8a0038e33648b92f1860e06545e8a89c5c15b4a7"
+    },
+    {
+      "file": "F275BGT_T5_ALBD.PNG.DDS",
+      "identicalToWhite": false,
+      "sourceBytes": 2796344,
+      "sourceSHA256": "1d16a690d37106c946a86c57c30b124e415bccc6e475f1a7ac859844c6812f53"
+    },
+    {
+      "file": "F275BGT_T6_ALBD.PNG.DDS",
+      "identicalToWhite": false,
+      "sourceBytes": 2796344,
+      "sourceSHA256": "d902bd979f8ac2a44076dfdc484e2cac3cdb0d5246d2d1b2029b637f742196d3"
+    },
+    {
+      "file": "F275BGT_T7_ALBD.PNG.DDS",
+      "identicalToWhite": false,
+      "sourceBytes": 174904,
+      "sourceSHA256": "6bcbb1576716861b85e3dbf99268ceff3a1bac37565e1f7a5c8d96709aa47738"
+    },
+    {
+      "file": "F275BGT_PROP_ALBD.PNG.DDS",
+      "identicalToWhite": true,
+      "sourceBytes": 87536,
+      "sourceSHA256": "e63b20a98163946ed8de9af029749432cc0dca995788db48fee23ce91fd343e4"
+    }
+  ]
+}

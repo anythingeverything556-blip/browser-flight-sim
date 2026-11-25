@@ -1,0 +1,422 @@
+--- /dev/null
++++ b/src/f27view.js
+@@ -0,0 +1,118 @@
++// F27 ONLY. No renderer sizing, persistent extra scene pass, or lighting changes.
++// Asset preparation runs with the old view active. Activation happens at the top
++// of a normal frame, not inside a promise callback midway through frame setup.
++export function createF27ViewTransition({ getView, prepare, apply, cover = () => {}, timeoutMs = 15000 }) {
++  let serial = 0, pending = null, covered = false, displayed = getView();
++  const settle = (job, status, error) => {
++    clearTimeout(job.timer);
++    job.resolve({ status, view: job.view, ...(error ? { error } : {}) });
++  };
++  const failed = (job, error) => {
++    pending = covered ? { id: serial, view: displayed, phase: 'ready', prepared: false, resolve() {} } : null;
++    settle(job, 'failed', error);
++  };
++  return {
++    get pending() { return pending?.view ?? null; },
++    get active() { return pending?.phase === 'frame'; },
++    request(view) {
++      const id = ++serial;
++      if (pending) settle(pending, 'superseded');
++      const promise = new Promise(resolve => {
++        const job = pending = { id, view, resolve, phase: 'loading', prepared: false };
++        // Even selecting the current view after cancelling another request must
++        // go through one fresh frame if a covered target was already activated.
++        job.timer = setTimeout(() => {
++          if (pending !== job || job.phase !== 'loading') return;
++          failed(job, new Error('F27 view assets timed out; last displayed view retained.'));
++        }, timeoutMs);
++        Promise.resolve().then(() => prepare(view)).then(() => {
++          if (pending !== job || serial !== id) return;
++          clearTimeout(job.timer); job.phase = 'ready';
++        }, error => {
++          if (pending !== job) return;
++          failed(job, error);
++        });
++      });
++      return promise;
++    },
++    beginFrame() {
++      if (pending?.phase === 'frame') pending.prepared = false;
++      if (pending?.phase !== 'ready') return false;
++      const job = pending;
++      cover(true); covered = true; // fail closed if a frame/pipeline later throws or is skipped
++      job.phase = 'frame'; job.from = getView();
++      try { apply(job.view); } catch (error) {
++        // Keep covered: caller may request the source again for safe recovery.
++        failed(job, error); throw error;
++      }
++      return true;
++    },
++    // Before env.update: bypass only its refresh throttles, never fake noon or
++    // change sun/pooled-light intensities during shader compilation.
++    beforeEnvironment(env) {
++      if (pending?.phase !== 'frame') return false;
++      env.lutAt = -Infinity; env.envAt = -Infinity;
++      return true;
++    },
++    // Call only on a drawable frame after target camera + env + scenery + visual
++    // + pooled-light updates; before cloud-shadow/cascade updates.
++    prepareFrame(context) {
++      if (pending?.phase !== 'frame') return false;
++      prepareF27ViewFrame(context); pending.prepared = true;
++      return true;
++    },
++    // Call AFTER main's cadence block (it overwrites renderer.needsUpdate).
++    beforeRender(renderer) {
++      if (pending?.phase === 'frame' && pending.prepared) renderer.shadowMap.needsUpdate = true;
++    },
++    // Only after post.render actually returns, never on a draw=false frame.
++    afterRender(renderer) {
++      if (pending?.phase !== 'frame' || !pending.prepared || renderer.getContext().isContextLost()) return false;
++      const job = pending; pending = null;
++      displayed = job.view; cover(false); covered = false; settle(job, 'shown'); return true;
++    },
++  };
++}
++
++// Neutral opaque cover is only observable on skipped/failed draw frames. It is
++// removed in the same JS task as a successful target render, before browser paint.
++export function createF27ViewCover(canvas) {
++  const el = canvas.ownerDocument.createElement('div');
++  el.setAttribute('role', 'status'); el.textContent = 'Preparing F27 view…';
++  Object.assign(el.style, { position: 'fixed', inset: '0', zIndex: '40', background: '#101820', color: '#fff',
++    display: 'none', placeItems: 'center', font: '16px system-ui', pointerEvents: 'none' });
++  canvas.parentElement.append(el);
++  return { set(active) { el.style.display = active ? 'grid' : 'none'; }, dispose() { el.remove(); } };
++}
++
++// The VC GLB overlaps the exterior, so do NOT reveal both to keep a sun caster.
++// Opaque cockpit geometry casts its OWN self map when that representation is
++// active. Preserve authored/default node visibility and transparent prop/glass.
++export function prepareF27ViewCasters(part) {
++  if (part?.kind !== 'cockpit') return 0;
++  let count = 0;
++  part.root.traverse(o => {
++    const mats = Array.isArray(o.material) ? o.material : [o.material];
++    if (!o.isMesh || !mats.length || !mats.every(m => m && !m.transparent && m.visible !== false)) return;
++    o.castShadow = true; count++;
++  });
++  return count;
++}
++
++export function prepareF27ViewFrame({ renderer, scene, shadows, cloudShadow, vclouds, post, shAt, aoTarget = 0 }) {
++  // Scene matrices must match camera-relative placement and animated light
++  // anchors BEFORE rendering shadows. Nothing here changes light intensity.
++  scene.updateMatrixWorld(true);
++  if (shadows?.fresh) shadows.fresh.fill(false); // all configured cascades, once
++  if (shAt) shAt.v = null; // integrate with main's self-shadow dirty signature
++  renderer.shadowMap.needsUpdate = true;
++  if (cloudShadow) {
++    cloudShadow.map.w = 0; cloudShadow.map2.w = 0;
++    cloudShadow.old.valid = false; cloudShadow.mix = 1;
++  }
++  // A first target frame must march, not reproject the old view/depth/lighting.
++  if (vclouds) vclouds._marchedAt = null;
++  // AO is current-depth, not temporal; the old scalar is what caused settling.
++  if (post?.enabled) post.aoStrength = aoTarget;
++  return aoTarget; // assign aoNow too, so main's easing cannot undo the snap
++}
+--- /dev/null
++++ b/test/f27-view-v4-test.mjs
+@@ -0,0 +1,45 @@
++import assert from 'node:assert/strict';
++import * as THREE from 'three';
++import { createF27ViewTransition, prepareF27ViewFrame, prepareF27ViewCasters } from '../src/f27view.js';
++const tick=()=>new Promise(r=>setTimeout(r,0));
++const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};
++let view='orbit', lost=false, prepared=deferred();const covers=[],applied=[];
++const renderer={shadowMap:{needsUpdate:false},getContext:()=>({isContextLost:()=>lost})};
++const controller=createF27ViewTransition({getView:()=>view,prepare:()=>prepared.promise,apply:v=>{view=v;applied.push(v);},cover:x=>covers.push(x),timeoutMs:50});
++const scene=new THREE.Scene(),lamp=new THREE.PointLight(0xff0000,2.75);scene.add(lamp);
++const context={renderer,scene,shadows:{fresh:[true,true,true],every:2},cloudShadow:{map:{w:1},map2:{w:1},old:{valid:true},mix:0.4},vclouds:{_marchedAt:{},halfRate:true,frame:1},post:{enabled:true,aoStrength:0.7},shAt:{v:[1]},aoTarget:0};
++let first=controller.request('cockpit');await tick();
++assert.equal(view,'orbit');assert.equal(controller.beginFrame(),false);assert.deepEqual(covers,[]);
++prepared.resolve();await tick();assert.equal(controller.beginFrame(),true);assert.equal(view,'cockpit');
++assert.equal(controller.afterRender(renderer),false,'activation alone cannot reveal');
++const env={lutAt:123,envAt:456,hour:0};assert.equal(controller.beforeEnvironment(env),true);assert.equal(env.envAt,-Infinity);assert.equal(env.lutAt,-Infinity);assert.equal(env.hour,0);
++assert.equal(controller.prepareFrame(context),true);assert.deepEqual(context.shadows.fresh,[false,false,false]);
++assert.equal(context.shAt.v,null);assert.equal(context.cloudShadow.map.w,0);assert.equal(context.cloudShadow.old.valid,false);
++assert.equal(context.vclouds._marchedAt,null);assert.equal(context.vclouds.halfRate,true);assert.equal(lamp.intensity,2.75);
++assert.equal(context.post.aoStrength,0);assert.equal(context.shadows.every,2);
++controller.beginFrame();assert.equal(controller.afterRender(renderer),false,'skipped draw cannot reuse previous frame preparation');
++controller.prepareFrame(context);renderer.shadowMap.needsUpdate=false;controller.beforeRender(renderer);assert.equal(renderer.shadowMap.needsUpdate,true);
++lost=true;assert.equal(controller.afterRender(renderer),false);lost=false;assert.equal(controller.afterRender(renderer),true);
++assert.equal((await first).status,'shown');assert.deepEqual(covers,[true,false]);
++assert.equal(controller.prepareFrame(context),false,'zero steady-state prep work');
++// Last intent wins during load, including cancellation back to the source.
++prepared=deferred();const abandoned=controller.request('orbit');await tick();
++const latest=controller.request('cockpit');await tick();assert.equal((await abandoned).status,'superseded');
++prepared.resolve();await tick();controller.beginFrame();controller.prepareFrame(context);controller.afterRender(renderer);assert.equal((await latest).status,'shown');assert.equal(view,'cockpit');
++// Failed entry retains the source without a blackout.
++prepared=deferred();const failure=controller.request('orbit');await tick();prepared.reject(new Error('download'));
++assert.equal((await failure).status,'failed');assert.equal(view,'cockpit');assert.equal(controller.active,false);
++// No RAF/idle callback needed for timeout; no unsafe reveal fallback.
++prepared=deferred();assert.equal((await controller.request('orbit')).status,'failed');assert.equal(view,'cockpit');
++// Superseded active target followed by failure rolls back to last DISPLAYED view.
++prepared=deferred();const intermediate=controller.request('orbit');await tick();prepared.resolve();await tick();controller.beginFrame();
++prepared=deferred();const bad=controller.request('cockpit');await tick();prepared.reject(new Error('download'));
++assert.equal((await intermediate).status,'superseded');assert.equal((await bad).status,'failed');assert.equal(controller.pending,'cockpit');
++controller.beginFrame();controller.prepareFrame(context);controller.afterRender(renderer);assert.equal(view,'cockpit');
++const root=new THREE.Group();const opaque=new THREE.Mesh(new THREE.BoxGeometry(),new THREE.MeshStandardMaterial());
++const glass=new THREE.Mesh(opaque.geometry,new THREE.MeshStandardMaterial({transparent:true}));
++const disabled=new THREE.Mesh(opaque.geometry,new THREE.MeshBasicMaterial({visible:false}));root.add(opaque,glass,disabled);root.visible=false;
++assert.equal(prepareF27ViewCasters({kind:'cockpit',root}),1);assert.equal(opaque.castShadow,true);assert.equal(glass.castShadow,false);assert.equal(disabled.castShadow,false);assert.equal(root.visible,false);
++assert.equal(prepareF27ViewCasters({kind:'exterior',root}),0);
++context.aoTarget=0.6;assert.equal(prepareF27ViewFrame(context),0.6);assert.equal(context.post.aoStrength,0.6);
++console.log('PASS F27 V4: first entry, same-frame gate, skipped draw, context loss, rapid intents, timeout/rejection, covered rollback, shadows/cloud/AO and unchanged light intensities');
+--- /dev/null
++++ b/test/f27-view-v4.html
+@@ -0,0 +1,100 @@
++<!doctype html><meta charset="utf-8"><link rel="icon" href="data:,"><title>F27 V4 view lighting freshness verification</title>
++<style>body{margin:0;background:#111923;color:white;font:14px system-ui}canvas{display:block}#label{padding:12px}#result{white-space:pre-wrap;font:12px monospace;padding:12px}</style>
++<canvas></canvas><div id="label">Loading real F27 GLBs…</div><div id="result"></div>
++<script type="module">
++import * as THREE from 'three';
++import { F27Visual } from '/src/f27visual.js';
++import { createF27LightRig, prepareF27Part } from '/src/f27lights.js';
++import { createF27ViewTransition, createF27ViewCover, prepareF27ViewCasters } from '/src/f27view.js';
++import { Environment } from '/src/sky.js';
++import { WorldShadows } from '/src/shadows.js';
++import { PostFX } from '/src/post.js';
++import { VolumetricClouds } from '/src/vclouds.js';
++import { CloudShadow } from '/src/cloudshadow.js';
++try {
++const canvas=document.querySelector('canvas'), gl=canvas.getContext('webgl2',{antialias:false});
++if(!gl)throw Error('WebGL2 unavailable in this browser');
++const renderer=new THREE.WebGLRenderer({canvas,context:gl,antialias:false});
++renderer.setSize(640,400);renderer.setPixelRatio(1);renderer.toneMapping=THREE.ACESFilmicToneMapping;
++renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
++let mainSceneDraws=0;const originalRender=renderer.render.bind(renderer);renderer.render=(s,c)=>{if(s===scene&&c===camera)mainSceneDraws++;return originalRender(s,c);};
++let creates=0;const cp=gl.createProgram.bind(gl);gl.createProgram=()=>{creates++;return cp();};
++const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(58,1.6,0.05,15000),cw=new THREE.Vector3(34,13,28);
++const env=new Environment(scene,renderer);env.envSize=32;env.sun.castShadow=true;env.sun.shadow.mapSize.set(512,512);
++Object.assign(env.sun.shadow.camera,{left:-19,right:19,top:19,bottom:-19,near:40,far:120});env.sun.shadow.camera.updateProjectionMatrix();
++env.update(52,13,0,false);
++const post=new PostFX(renderer);post.configure({enabled:true,ao:0.6,aoSamples:6,bloom:0,smaa:false});post.setSize(640,400);
++const clouds=new VolumetricClouds(renderer);clouds.setQuality({scale:0.25,steps:8,lightSteps:1});clouds.halfRate=true;post.clouds=clouds;clouds.setSize(640,400);
++clouds._noise();while(!clouds.tex)await new Promise(r=>setTimeout(r,50));
++const cloudShadow=new CloudShadow();
++let selfShadowDraws=0;
++const visual=new F27Visual(scene),lightRig=createF27LightRig(scene);
++visual.preparePart=async part=>{part.root.traverse(o=>{if(o.isMesh){const previous=o.onBeforeShadow;o.onBeforeShadow=function(...args){selfShadowDraws++;previous?.apply(this,args);};}});lightRig.attach(part);prepareF27ViewCasters(part);await prepareF27Part(renderer,part,scene,camera);};
++await visual.load('/models/f27/f27-white-ext-v3.glb');
++visual.setLights({instruments:0.6,cockpitDomeRed:0.35,landing:true,taxi:true});
++const floor=new THREE.Mesh(new THREE.PlaneGeometry(250,250),new THREE.MeshStandardMaterial({color:0x575a60,roughness:1}));floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
++const blocker=new THREE.Mesh(new THREE.BoxGeometry(5,10,5),new THREE.MeshBasicMaterial());blocker.layers.set(2);scene.add(blocker);
++const world=new WorldShadows([visual.root,blocker],renderer);world.configure(2,256,[40,150]);world.every=2;
++const shAt={v:[1]},cover=createF27ViewCover(canvas), events=[];let view='orbit',aoNow=0.6;
++const transition=createF27ViewTransition({getView:()=>view,prepare:async v=>{if(v==='cockpit')await visual.preloadCockpit();},apply:v=>{view=v;},cover:active=>{events.push({active,view});cover.set(active);}});
++function pose(){
++ cw.copy(view==='cockpit'?visual.eye:new THREE.Vector3(34,13,28));
++ camera.position.set(0,0,0);camera.lookAt(view==='cockpit'?new THREE.Vector3(10,-0.45,0):new THREE.Vector3(0,1,0).sub(cw));camera.updateMatrixWorld(true);
++ visual.root.position.copy(cw).negate();
++ for(const p of visual.parts){p.root.visible=(p.kind==='cockpit')===(view==='cockpit');if(p.root.visible){p.adapter.setLights(visual.lights);p.adapter.update(0.05);}}
++ floor.position.set(-cw.x,-1.5-cw.y,-cw.z);blocker.position.set(20-cw.x,4-cw.y,-cw.z);
++ visual.root.updateMatrixWorld(true);lightRig.update(visual.parts.find(p=>p.root.visible));
++ env.sun.target.position.copy(visual.root.position);env.sun.position.copy(visual.root.position).addScaledVector(env.sunDir,80);
++ env.sun.updateMatrixWorld();env.sun.target.updateMatrixWorld();env.sun.shadow.updateMatrices(env.sun);
++}
++function pixels(){const data=new Uint8Array(640*400*4);gl.readPixels(0,0,640,400,gl.RGBA,gl.UNSIGNED_BYTE,data);return data;}
++function diff(a,b){let max=0,n=0,sum=0;for(let i=0;i<a.length;i++){const d=Math.abs(a[i]-b[i]);max=Math.max(max,d);if(d)n++;sum+=d;}return{max,changed:n,mean:sum/a.length};}
++function render({fresh=false,skip=false}={}){
++ transition.beginFrame();transition.beforeEnvironment(env);
++ env.update(52,cw.y,0,false);visual.setEnv(scene.environment);pose();
++ const aoTarget=view==='cockpit'?0:0.6;
++ if(transition.active)aoNow=aoTarget; // before main's easing, not after
++ if(skip)return null;
++ if(fresh||transition.active) {
++  if(fresh){world.fresh.fill(false);shAt.v=null;clouds._marchedAt=null;cloudShadow.map.w=0;cloudShadow.old.valid=false;}
++  transition.prepareFrame({renderer,scene,shadows:world,cloudShadow,vclouds:clouds,post,shAt,aoTarget});
++ }
++ cloudShadow.update(renderer,{shape:clouds.tex.shape,cover:0.7,base:1800,top:3500,wind:new THREE.Vector2(),now:10,cam:cw,groundY:-1.5,sunDir:env.sunDir});
++ const drawn=world.stats.drawn;world.update(renderer,scene,camera,cw,10,env.sunDir);
++ renderer.shadowMap.autoUpdate=false;renderer.shadowMap.needsUpdate=fresh||!shAt.v;shAt.v=[1];
++ post.aoStrength=aoNow;
++ post.cloudParams={camAlt:cw.y,camXZ:new THREE.Vector2(cw.x,cw.z),coverage:0.7,base:1800,time:10,wind:new THREE.Vector2()};
++ const before=creates,marches=clouds.marches,sceneBefore=mainSceneDraws,selfBefore=selfShadowDraws,t0=performance.now();let selfCasters=0;
++ visual.parts.find(p=>p.root.visible).root.traverseVisible(o=>{if(o.castShadow)selfCasters++;});
++ transition.beforeRender(renderer);post.render(scene,camera);gl.finish();
++ const sample={mainSceneDraws:mainSceneDraws-sceneBefore,view,hour:env.hour,exposure:renderer.toneMappingExposure,ao:post.aoStrength,worldRedraws:world.stats.drawn-drawn,cloudMarches:clouds.marches-marches,selfRefreshed:selfShadowDraws>selfBefore,selfShadowDraws:selfShadowDraws-selfBefore,selfCasters,programDelta:creates-before,renderMs:performance.now()-t0,size:post.sizes()};
++ const rgba=pixels();transition.afterRender(renderer);return{sample,rgba};
++}
++render({fresh:true});const samples=[];
++for(const [mode,hour] of [['day',12],['dusk',20],['night',0]]){
++ for(const target of ['cockpit','orbit']){
++  env.hour=hour;env.envAt=performance.now();env.lutAt=performance.now(); // deliberately throttle-stale old lighting cache
++  const p=transition.request(target);await new Promise(r=>setTimeout(r,0));
++  // Wait for asset preparation without consuming idle callbacks or switching rig.
++  while(transition.pending===target && !transition.active){
++   render({skip:true}); if(transition.active)break; await new Promise(r=>setTimeout(r,20));
++  }
++  render({skip:true}); // draw=false may never reveal
++  const first=render();await p;
++  const ref=render({fresh:true});const pixelsDiff=diff(first.rgba,ref.rgba);
++  samples.push({mode,...first.sample,pixelsDiff,visibleParts:visual.parts.filter(p=>p.root.visible).map(p=>p.kind)});
++  document.querySelector('#label').textContent='F27 V4 · '+mode+' · '+target+' · first fresh frame equals explicit refresh';
++ }
++}
++// Deliberately reproduce the old path: change model + time without hooks.
++view='orbit';env.hour=12;env.envAt=-Infinity;env.lutAt=-Infinity;render({fresh:true});
++view='cockpit';env.hour=0;env.envAt=performance.now();env.lutAt=performance.now();shAt.v=[1];aoNow=0.6;clouds.frame=1;
++const stale=render();
++const fixedRequest=transition.request('cockpit');await new Promise(r=>setTimeout(r,0));const fixed=render();await fixedRequest;
++const regression={stale:stale.sample,fixed:fixed.sample,pixelsDiff:diff(stale.rgba,fixed.rgba)};
++window.qa={samples,events,regression,renderer:gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL),method:'Actual F27 GLBs + actual Environment/WorldShadows/PostFX/VolumetricClouds/CloudShadow, fixed time, camera-relative fixture scene; first target vs explicit force-fresh pixels. Not full streamed world or hardware FPS.'};
++window.capture=async(mode,target)=>{env.hour=mode==='day'?12:mode==='dusk'?20:0;const p=transition.request(target);await new Promise(r=>setTimeout(r,0));render();await p;document.querySelector('#label').textContent='F27 V4 · '+mode+' · '+target+' · software WebGL proof';};
++document.querySelector('#result').textContent=JSON.stringify(samples.map(s=>({mode:s.mode,view:s.view,ao:s.ao,world:s.worldRedraws,clouds:s.cloudMarches,self:s.selfRefreshed,pixelDelta:s.pixelsDiff.max})),null,2);
++window.ready=true;
++}catch(e){window.failure=e.stack;document.querySelector('#result').textContent=e.stack;}
++</script>
+--- /dev/null
++++ b/test/f27-view-v4-browser.mjs
+@@ -0,0 +1,42 @@
++import assert from 'node:assert/strict';
++import fs from 'node:fs/promises';
++import path from 'node:path';
++import { fileURLToPath } from 'node:url';
++import { createServer } from 'vite';
++import puppeteer from 'puppeteer-core';
++const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
++const out=process.env.F27_VIEWS_OUT||'/home/captures/f27-v4-views';
++await fs.mkdir(out,{recursive:true});
++const server=await createServer({root,configFile:false,server:{host:'127.0.0.1',port:Number(process.env.F27_VIEWS_PORT||5194),strictPort:true,hmr:false,watch:{ignored:['**/*']}},optimizeDeps:{noDiscovery:true,include:['three','earcut']}});
++await server.listen();
++if(process.env.F27_VIEWS_SERVE==='1'){console.log('F27 V4 fixture http://127.0.0.1:'+server.config.server.port+'/test/f27-view-v4.html');}
++else {
++let browser;const report={errors:[]};
++try{
++ browser=await puppeteer.launch({executablePath:'/usr/bin/google-chrome',headless:true,protocolTimeout:240000,args:['--no-sandbox','--disable-gpu-watchdog','--use-angle=swiftshader','--enable-unsafe-swiftshader','--disable-dev-shm-usage']});
++ const page=await browser.newPage();await page.setViewport({width:900,height:720});
++ page.on('pageerror',e=>report.errors.push(e.message));page.on('console',m=>{if(m.type()==='error')report.errors.push(m.text());});
++ await page.goto('http://127.0.0.1:'+server.config.server.port+'/test/f27-view-v4.html',{waitUntil:'domcontentloaded'});
++ await page.waitForFunction(()=>window.ready||window.failure,{timeout:240000,polling:250});
++ const failure=await page.evaluate(()=>window.failure);if(failure)throw Error(failure);
++ Object.assign(report,await page.evaluate(()=>window.qa));
++ for(const mode of ['day','dusk','night'])for(const target of ['cockpit','orbit']){
++  await page.evaluate((mode,target)=>window.capture(mode,target),mode,target);
++  await page.screenshot({path:path.join(out,mode+'-'+target+'.png')});
++ }
++ assert.equal(report.samples.length,6);
++ for(const s of report.samples){
++  assert.equal(s.pixelsDiff.max,0,'first target pixels must equal explicit fresh reference: '+s.mode+' '+s.view);
++  assert.equal(s.mainSceneDraws,1,'one normal main scene draw, not permanent warmup redraw');
++  assert.equal(s.cloudMarches,1,'target must march even with half-rate enabled');
++  assert.equal(s.selfRefreshed,true);assert.ok(s.selfCasters>0,'active representation casts self shadows');
++  assert.equal(s.ao,s.view==='cockpit'?0:0.6);assert.equal(s.visibleParts.length,1);
++ }
++ assert.ok(report.regression.pixelsDiff.changed>0,'old ungated path must differ visibly from corrected frame');
++ assert.equal(report.regression.stale.selfShadowDraws,0);assert.ok(report.regression.fixed.selfShadowDraws>0);
++ assert.equal(report.regression.stale.ao,0.6);assert.equal(report.regression.fixed.ao,0);
++ assert.equal(report.errors.length,0);
++ console.log('PASS F27 V4 real render',JSON.stringify(report.samples.map(s=>({mode:s.mode,view:s.view,diff:s.pixelsDiff,world:s.worldRedraws,clouds:s.cloudMarches,casters:s.selfCasters,programDelta:s.programDelta,ms:s.renderMs}))));
++}catch(e){report.failure=e.stack;console.error(e);process.exitCode=1;}
++finally{await browser?.close();await server.close();await fs.writeFile(path.join(out,'report.json'),JSON.stringify(report,null,2));}
++}
+--- /dev/null
++++ b/F27-V4-VIEWS.md
+@@ -0,0 +1,102 @@
++# F27 V4: target-frame lighting/shadow freshness
++
++## Ownership and delivery boundary
++
++Adds only `src/f27view.js`, `test/f27-view-v4-test.mjs`, `test/f27-view-v4.html`, `test/f27-view-v4-browser.mjs`, this note and evidence under `notes/f27-v4-views-evidence/`. No edits by this helper to main.js, f27visual.js, shared shadow/warmup code, test/scripts.json, dist, package/deploy files. Main integration belongs to the parent.
++
++**Final integration observation:** the parent's concurrently edited main.js now contains beginFrame / beforeEnvironment(env) / prepareFrame / beforeRender / afterRender, with beforeEnvironment immediately before ordinary env.update. This helper did not edit main.js; full main integration execution is the parent's verification boundary. Keep the environment hook: without it, old PMREM/sky LUT may survive their throttles.
++
++## Diagnosis before changes
++
++- main's sun self-map uses a 12-component pose/sun/gear/flap signature and every-24-frame fallback. It does NOT include view/model visibility. Changing representations can sample the old exterior map until another dirty event.
++- F27 loadPart explicitly sets cockpit meshes castShadow=false. Hiding the exterior leaves no current cockpit caster; forcing a redraw alone would just clear its self-map. `prepareF27ViewCasters(part)` enables opaque, material-visible cockpit mesh casters, leaving glass, transparent prop disc/blades, authored node visibility and exterior unchanged. The two representations are never simultaneously shown.
++- WorldShadows cascade 0 draws every drawable frame; cascades 1/2 have 24/90-frame maximum ages (times pressure's every multiplier), plus camera motion/head-turn/FOV, sun and caster-signature triggers. Signature only counts shallow children, not F27 representation swaps. Reset all freshness flags at the boundary; do not permanently set every=0.
++- Scene coordinates are camera-relative: visual.root is aircraft-world minus camera-world; building meshes and tree chunks reposition and distance-cull each ordinary update. Run target rig/camera, terrain, buildings, trees, model pose/visibility and pooled-light updates BEFORE shadow preparation. A second hidden camera draw before those updates would use inconsistent culling and placements.
++- Environment sets toneMappingExposure immediately (0.55 + 0.25*daylight), not an auto-exposure history. BUT sky LUT refresh is throttled 250ms and reflection PMREM is throttled 15s. Bypass only those refresh timestamps for the transition's target frame. Keep the current hour, atmosphere, sun and light intensities; never warm under invented noon.
++- AO has current-depth rendering but its strength eases across frames. Snap aoNow to the actual target once, before the ordinary AO easing assignment.
++- VolumetricClouds half-rate can reproject a prior march. Clear _marchedAt once before target post; leave halfRate configured. CloudShadow uses a 0.35-second update cadence and cross-fades old/current maps over 0.33 seconds. Invalidate both map-valid flags and old.valid so current sun/weather is generated without blending in the source view map.
++- Five spot + two point pooled proxies stay in scene. The controller never changes their count, intensity, castShadow settings or environment material intensity. No resize/setSize/pixel-ratio calls in the implementation. Material preparation remains the existing texture slices + warmLate/compile route, using actual environment and post target variant.
++- Existing F27 parts are not tagged onto world cascade layer 3 by f27visual.js. This patch does not invent that tagging, add a second exterior caster representation or alter global cascade policies. The self-map correction is distinct from streamed-world shadow coverage.
++
++## Exact main hooks
++
++Import:
++
++```js
++import {createF27ViewTransition, createF27ViewCover, prepareF27ViewCasters} from './f27view.js';
++```
++
++Create one controller only for IS_F27, after rig exists. No non-F27 behavior changes:
++
++```js
++const f27Cover = IS_F27 ? createF27ViewCover(canvas) : null;
++const f27View = IS_F27 ? createF27ViewTransition({
++  getView: () => rig.view,
++  prepare: view => view === 'cockpit' ? f27CockpitPreload() : undefined,
++  apply: applyView,
++  cover: active => f27Cover.set(active),
++  timeoutMs: 30000, // parent's asset deadline; module default is 15000
++}) : null;
++```
++
++In the shared cockpit preload promise, call `prepareF27ViewCasters(part)` before texture/shader preparation. It does not reveal the part. Keep the v3.1 active texture slices; keep the existing bounded warmLate wait. Route F27 setView through `f27View.request(v)`, while preserving f27RequestedView + request serial for UI/latest-intent handling. Results resolve to status shown / superseded / failed (error included on failure); they do not reject on a failed asset request.
++
++Per-frame ordering (all are synchronous hooks):
++
++1. After graphicsHold early-return, and only if this frame can actually draw, call `f27View?.beginFrame()` BEFORE the rig update and all camera-dependent work. This activates a prepared target only; while assets load, the old rig remains active. Parent's current canDraw gate is appropriate.
++2. Immediately BEFORE `env.update(...)`, call `f27View?.beforeEnvironment(env)`. It clears only LUT/PMREM refresh throttles. The normal env update does the real current-time lighting and atmosphere work.
++3. Keep ordinary target camera, scenery, visual and pooled-light updates in their usual order.
++4. After visual and pooled-light updates, BEFORE cloudShadow.update and shadows.update:
++
++```js
++const aoTarget = rig.view === 'cockpit' || pressure.level >= 1 ||
++  fdm.pos.y - state.lastGround > 4000 ? 0 : aoBase;
++if (canDraw && f27View?.prepareFrame({
++  renderer, scene, shadows, cloudShadow, vclouds, post, shAt, aoTarget,
++})) aoNow = aoTarget;
++```
++
++This updates scene matrices, invalidates all cascade fresh flags and self signature, drops old cloud map/history, and snaps the post strength. Use the same aoTarget for ordinary easing later; do not redeclare a conflicting highUp target.
++5. Keep the ordinary cloud-shadow/cascade/self-dirty and cockpit mask passes. The dirty block may overwrite renderer.shadowMap.needsUpdate, so call beforeRender after it AND after any mask prepass.
++6. At the existing visible draw, exactly:
++
++```js
++if (draw) {
++  f27View?.beforeRender(renderer);
++  post.render(scene, camera); // existing ONE main scene pass
++  f27View?.afterRender(renderer);
++}
++```
++
++Do not call afterRender on draw=false, in finally, on errors or before the composite is done. It also checks context loss. Renderer canvas/post targets are never resized. No hidden full-scene warmup draw is added.
++
++## Timing and fallback semantics
++
++- Preparation is not a view switch. The source stays active while loading/texture slices/compile run.
++- Once prepared, beginFrame covers and activates the target. A normal same-task render with current lighting/maps removes the neutral opaque cover before browser paint. It is normally not visible; skipped/failed/context-lost frames remain covered.
++- No idle callback is needed to progress the gate; request preparation starts on a microtask, activation is on a normal drawable frame. Existing active texture slices keep their RAF/70ms fallback.
++- The asset deadline fails back to the last displayed view; it never exposes an unrendered target. A late older load completion is ignored. Rapid requests settle older ones as superseded.
++- If a covered active target is superseded then the new load fails, rollback to the last DISPLAYED view is queued and revealed only after its own fresh normal frame. An already-loaded source does not need another download.
++- There is intentionally no timeout that drops the cover over an unrendered target. Rendering errors/context loss must use graphics recovery or a fresh source-view request. This fails closed, rather than showing stale maps.
++- Steady state adds only cheap null/phase checks. The one-time mandatory refresh uses the existing shadow/effect passes; it does not double permanent scene rendering or force every shadow map every frame.
++
++## Verification
++
++Commands (independent strict port; no changes to test registry or app server):
++
++```sh
++node test/f27-view-v4-test.mjs
++node test/f27-view-v4-browser.mjs
++# F27_VIEWS_PORT=5194 by default; F27_VIEWS_OUT can change the evidence directory
++# F27_VIEWS_SERVE=1 node test/f27-view-v4-browser.mjs to expose the fixture only
++```
++
++Pure tests cover first entry, loading leaves source intact, same-frame freshness token, draw=false, context loss, rapid intents, timeout/rejection, covered rollback, caster eligibility, no intensity/cadence mutation and zero steady-state preparation.
++
++Real renderer: actual F27 exterior/VC GLBs, actual Environment, WorldShadows, PostFX/AO, VolumetricClouds with 160x100 march at 640x400 presentation and half-rate ON, CloudShadow, pooled lights and camera-relative scenery fixtures. Day/dusk/night cockpit/exterior cases compare first target pixels against an explicit force-fresh reference. Instrument/dome/landing/taxi circuits stay enabled at fixed authored levels for night proof. onBeforeShadow counts actual caster draws; no inference from dirty flag alone.
++
++Managed Linux Chrome was checked with browser-use and cannot initialize WebGL2 on this runtime. The screen-capture skill capture records that exact blocker. Puppeteer Chrome using SwiftShader executes real software WebGL instead; its six screenshots are NOT managed desktop captures, and timings are NOT hardware FPS. The scene uses synthetic local ground/blocker fixtures, not a streamed terrain/network/production end-to-end run. Full main integration and visual framing remain the parent's checks.
++
++Final measurements and source fingerprints live in evidence/report.json, run.log, pure.log and test-inputs.sha256. The ungated regression fixture deliberately retains old AO, self-map, reflection throttle and half-rate history before applying the correction; it asserts a nonzero image difference plus zero old-path sun caster submissions versus positive corrected submissions. Every prepared first target matches a force-fresh reference exactly (max pixel-channel delta 0), and submits exactly ONE main scene draw.
++
++Cold first cockpit submission can still synchronously link shaders on SwiftShader even when programDelta=0. This is reported explicitly in report.json; the gate prevents stale presentation but is not a zero-hitch guarantee or a target FPS claim.

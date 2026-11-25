@@ -1,0 +1,65 @@
+{
+  "canonical": "f27-release/blackbird/blackbird-owner",
+  "files": [
+    {
+      "path": "index.html",
+      "sha256": "5cc9b6c2e29bc89fc4c322fa2fe2f7e16d10732dadc39ea24a1f98155839e21d"
+    },
+    {
+      "path": "src/f27.js",
+      "sha256": "0e62fb7448259a4016fd6a7c5ccb3a37d3a6a6ed0279f0e96976108e2f1c5ce8"
+    },
+    {
+      "path": "src/f27adapter.js",
+      "sha256": "b46854a7fc443d1e95148229dd03dc6363b3bebef75de4c4be9c3c82188e4740"
+    },
+    {
+      "path": "src/f27visual.js",
+      "sha256": "454725e806166d88e80bc4b7ef3becbf7a54384b4ae32be243635f5bfbbd00ff"
+    },
+    {
+      "path": "src/f27instruments.js",
+      "sha256": "11904b30fb18b033b6096d6008fbe9abd7a2301ea4211bc47ea6a117e5517784"
+    },
+    {
+      "path": "src/main.js",
+      "sha256": "0adee4323a7f2c2d05d74829caa352a6560f77b9137bdb19dfba85bf1a9db72d"
+    },
+    {
+      "path": "test/f27-gear-test.mjs",
+      "sha256": "afd1555a9014b09394210cb46622273189dafd572d4a6c9416566b12d01bf880"
+    },
+    {
+      "path": "test/scripts.json",
+      "sha256": "ca4f285ea82671aefd4ab75bfa6c0edaa5726033babfc5af393f99768e4a56f2"
+    },
+    {
+      "path": "test/f27-view-v4.html",
+      "sha256": "5dd0a28257a8a9f9f30f435b3f9b5ddc422bf0f1c2fff6906c418f3e0b9b5dad"
+    },
+    {
+      "path": "test/f27-view-v4-browser.mjs",
+      "sha256": "cf83899ddaf41f04aa731f6eade9aafe8277e3d8dd53e597263b12bb3a5b1b0c"
+    },
+    {
+      "path": "tools/browser-smoke.mjs",
+      "sha256": "c8d2225d6929521fe6ef317eb254a1c87a8af28604424f2eb9b54660e1fb2caa"
+    },
+    {
+      "path": "CHANGELOG.md",
+      "sha256": "1b85e0f6b1a26a2df2812c10b76c9de7ef80486586753b4f257a165f2ae7f272"
+    },
+    {
+      "path": "F27-START-HERE.txt",
+      "sha256": "f966ba0f0f34100b06ab9675b00df19391bc0ad79f8a853dd21908f94132a73a"
+    },
+    {
+      "path": "notes/F27-PREVIEW-V4.md",
+      "sha256": "0cf9a51553dc8096e18d14c94667476a7de6d83a81429864372fa31781c601e2"
+    },
+    {
+      "path": "notes/F27-GEAR-COCKPIT-FIXES.md",
+      "sha256": "718c821c81d66179dbd8b70c6820b223f4fcd4e08c5ca20fe043f3532756f666"
+    }
+  ]
+}

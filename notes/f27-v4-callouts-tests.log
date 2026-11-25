@@ -1,0 +1,59 @@
+PASS Descending exact crossings; no Airbus RETARD or Five
+PASS No replay from low approach spawn
+PASS Climb, level, rollout and bounce remain silent
+PASS Coarse frame says lowest crossing once
+PASS Missing, busy and warning-blocked events consumed, no backlog
+PASS Height oscillation cannot repeat spoken call
+PASS Go-around and touch-and-go rearm only above 150 ft
+PASS Pause/slew/crash/reset/teleport/gap/NaN never fake crossing
+PASS Invalid/unpowered RA does not speak height
+PASS Explicit radio DH wins simultaneous height; no hardcoded 200 ft
+PASS Barometric DA uses MSL independently of RA
+PASS Changing minimum below aircraft never invents crossing
+PASS No guessed V1/VR callout from taxi/deceleration/missing briefing
+PASS Verified V1/Rotate upward once, no automatic V2 voice, aborted takeoff reset
+PASS Invalid/unverified/missing-source V-speeds remain silent
+PASS Pilot assistance off remains silent
+PASS Documented RA switches off above 5000, requires fresh manual ON
+PASS DH lamp, 900 AMV test, 200 rising runway, 227 klaxon, inactive altitude alert
+PASS F27 has dedicated scheduler, legacy aircraft unchanged
+PASS Existing height sample routed through master-controlled voiceGain
+PASS Callout setting stops current clip
+PASS Mute/zero volume/pause/slew immediately stop speech
+PASS Warning priority drops height, never replays
+PASS Critical warning tone suppresses height even with no warning recording
+PASS All retained height assets exist; no OS speech bypass
+PASS F27 loader requests only six present height clips at the app base
+PASS 26 F27 callout scenarios
+PASS original media hashes, four bank layers, asset budget: 733786 media bytes
+PASS normalized zero-slope joins and original RTPC constant-power crossfades, interpolation and loop seam
+PASS gesture-only loading, original sample playback, twin state, pitch/Doppler, view fades, mute/pause/failure/crash
+PASS per-engine original starter trigger, cutoff, restart/reset and cockpit switch
+PASS missing media stays silent without synthesis and retries only failed samples
+PASS Audio integration: sample-only F27 engine/cabin, shared master mute/pause/reset
+PASS  a normal approach calls 100, 90 ... 10 in order, then Retard
+PASS  Retard repeats while the thrust stays above idle, stops once it is idle
+PASS  a fast descent skips calls it has no time for instead of queueing stale ones
+PASS  nothing below 100 ft unless armed above 150 ft first (a ground start or a low take-off)
+PASS  a go-around re-arms: climbing back above 150 ft and descending again calls again
+PASS  levelling off (no descent) holds the next call; a crash silences it
+PASS  a gentle flare: "Five" comes once, after Retard, with the thrust at idle and the wheels 5 ft up; never with the thrust still up
+PASS  every call-out clip is in public/audio/voice/callouts/
+altitude call-outs OK
+voicewarn-test: ok
+   first frame 104 setTargetAtTime calls, then 2 over 100 steady frames
+PASS  steady state schedules (almost) nothing after the first frame
+PASS  a real change still gets through
+PASS  suspend fades then suspends; init() does not resume a held context; resume() does
+PASS  suspend then resume before the fade ends never suspends
+PASS  master gain comes back after resume
+PASS  resetForSpawn clears the wreck timers, silences the layers and replaces the wreck bus
+PASS  wreck sounds route to the bus, others to the mix
+PASS  four engine voices, no afterburner layers, buzz-saw and core voices on each
+PASS  each engine's fan tone is the blade-passing frequency of its own N1: 716 Hz at idle to 2,387 Hz at take-off
+PASS  the buzz-saw comes in above about 85 % N1; a reverser out is louder and lower and mutes the fan tone
+PASS  four engines schedule (almost) nothing in steady state, and a change in one engine moves only its own voices
+PASS  APU on the ground, spoiler buffet, hydraulic pumps for flaps and cargo, cabin boom and wind scale to the airframe; the Il-76 one-shots and warning tones exist
+all audio scheduling tests passed
+PASS EW-42 full-throttle climb silence, missed-approach latch, rearm and rollout
+PASS EW-44 real source preemption, shared routing, warning priority, phase tracking and spawn reset
