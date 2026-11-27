@@ -20,6 +20,7 @@ t('steps up only after the hold time and with headroom', () => {
   assert.equal(nextScale(S(0.6, 3, 9000), 1 / 120, 1 / 90, 10000, 1), 0.6);
   assert.equal(nextScale(S(0.6, 3, 1000), 1 / 120, 1 / 90, 10000, 1), 0.65);
   assert.equal(nextScale(S(1, 3, 0), 1 / 200, 1 / 150, 10000, 1), 1);
+  assert.equal(nextScale(S(0.95, 3, 0), 1 / 120, 1 / 90, 10000, 1), 1, 'normal cap is reachable');
 });
 t('a hitch (bad p90, fine median) still steps down a little', () => {
   const s = nextScale(S(1), 1 / 62, 1 / 20, 10000, 1);
@@ -75,5 +76,31 @@ t('a preset drop needs two more slow checks after level 3 and fires once', () =>
   p = nextPressure(p, true, 1 / 20); assert.equal(p.drop, true); assert.equal(p.slowN, 0);
   p = nextPressure(p, true, 1 / 20); assert.equal(p.drop, false);
   p = nextPressure({ level: 3, slowN: 3, fastN: 0 }, true, 1 / 50); assert.equal(p.drop, false, 'a recovered frame resets the count');
+});
+t('steady refresh-limited 60 fps restores every pressure cut after consecutive clean checks', () => {
+  for (const fps of [60, 120]) {
+    let p = { level: 3, slowN: 0, fastN: 0 };
+    for (let i = 0; i < 17; i++) p = nextPressure(p, true, 1 / fps, { p90: 1 / fps });
+    assert.equal(p.level, 1, 'six checks per recovery step, not instant restoration');
+    p = nextPressure(p, true, 1 / fps, { p90: 1 / fps });
+    assert.equal(p.level, 0);
+    for (let i = 18; i < 400; i++) p = nextPressure(p, true, 1 / fps, { p90: 1 / fps });
+    assert.equal(p.level, 0);
+  }
+});
+t('pressure recovery rejects interrupted, marginal or hitchy windows', () => {
+  for (const [med, p90] of [[1 / 50, 1 / 50], [1 / 60, 1 / 30]]) {
+    let p = { level: 3, slowN: 0, fastN: 0 };
+    for (let i = 0; i < 400; i++) p = nextPressure(p, false, med, { p90 });
+    assert.equal(p.level, 3);
+  }
+  let p = { level: 2, slowN: 0, fastN: 0 };
+  for (let i = 0; i < 5; i++) p = nextPressure(p, true, 1 / 60);
+  p = nextPressure(p, true, 1 / 50);
+  assert.equal(p.fastN, 0);
+  for (let i = 0; i < 5; i++) p = nextPressure(p, true, 1 / 60);
+  assert.equal(p.level, 2);
+  p = nextPressure(p, true, 1 / 60);
+  assert.equal(p.level, 1);
 });
 console.log('all dynres tests passed');

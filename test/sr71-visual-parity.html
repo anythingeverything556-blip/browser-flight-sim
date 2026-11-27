@@ -1,0 +1,36 @@
+<!doctype html><meta charset="utf-8"><title>SR-71 integration verification — local only</title><style>body{margin:0;background:#17212c;color:white;font:14px system-ui}header{position:fixed;top:10px;left:14px}canvas{display:block}</style><header>Earthwing original SR-71 replacement — automated real-model verification</header><script type="module">
+import * as THREE from 'three';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {SR71Visual} from '/src/sr71visual.js';
+import {SR71Audio} from '/src/sr71audio.js';
+import {FlightModel} from '/src/flight.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#788ea1');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(1200,800);document.body.append(renderer.domElement);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.6;
+scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment()).texture;
+scene.add(new THREE.HemisphereLight(0xffffff,0x687380,3));
+const light=new THREE.DirectionalLight(0xffead1,4);light.position.set(10,25,18);scene.add(light);
+const grid=new THREE.GridHelper(150,30,0x647887,0x647887);grid.position.y=-2.43;scene.add(grid);
+const camera=new THREE.PerspectiveCamera(40,1.5,.02,1000);camera.position.set(30,14,34);camera.lookAt(2,0,0);
+const visual=new SR71Visual(scene),fdm=new FlightModel(),audio=new SR71Audio();fdm.onGround=true;
+const cw=new THREE.Vector3(),axes={pitch:0,roll:0,yaw:0};window.qa={THREE,visual,fdm,audio,axes,scene,renderer,camera,ready:false,errors:[]};
+function draw(){visual.update(0,fdm,cw,visual.view,null,0,null,axes);renderer.render(scene,camera);}
+window.qa.draw=draw;
+window.qa.pose=(name)=>{
+ for(const part of visual.parts){const c=part.clips.get(name);if(!c)continue;
+ return c.tracks.map(t=>{t.binding.bind();const node=t.binding.node;let meshes=0;node?.traverse(o=>{if(o.isMesh)meshes++;});return {node:node?.name,meshes,matrix:node?.matrixWorld.elements.slice()};});}return null;};
+try{await visual.load('',()=>{});draw();window.qa.ready=true;}catch(e){window.qa.errors.push(e.stack);console.error(e);}
+</script>
+<style>#visual-tools{position:fixed;bottom:0;background:#12202de8;padding:8px;display:flex;gap:7px;z-index:3}button{padding:8px}#visual-status{position:fixed;top:40px;left:14px;white-space:pre-wrap;max-width:700px}</style>
+<div id="visual-tools"><button data-scene="canopy">Exterior windows</button><button data-scene="nose">Nose gear</button><button data-scene="tires">Rear tires</button><button data-scene="rear">Exhaust</button><button data-scene="cockpit">Inside</button><button data-mach="0">M0</button><button data-mach="2">M2 · half ejector</button><button data-mach="2.5">M2.5 · full ejector</button><button id="visual-gear">Toggle gear</button></div><div id="visual-status"></div>
+<script type="module">
+const wait=setInterval(()=>{if(!window.qa?.ready)return;clearInterval(wait);qa.visualScene=async name=>{
+ const {camera,visual,fdm,THREE}=qa;visual.view='chase';fdm.onGround=true;fdm.vel.set(0,0,0);fdm.pos.set(0,0,0);fdm.quat.identity();camera.fov=40;
+ if(name==='canopy'){camera.position.set(17,6,7);camera.lookAt(13.2,.7,0);camera.fov=35;}
+ if(name==='nose'){camera.position.set(12,-1.5,4);camera.lookAt(9,-.8,0);camera.fov=45;}
+ if(name==='tires'){camera.position.set(-1,-1,5);camera.lookAt(-2,-1.6,0);camera.fov=45;}
+ if(name==='rear'){camera.position.set(-26,3,8);camera.lookAt(-10,.3,0);camera.fov=45;}
+ if(name==='cockpit'){await visual.ensureView('cockpit');camera.position.copy(visual.eye);camera.lookAt(visual.eye.x+2,visual.eye.y-.47,0);camera.fov=80;}
+ camera.updateProjectionMatrix();qa.draw();document.getElementById('visual-status').textContent=JSON.stringify({view:visual.view,parts:visual.parts.length,triangles:qa.renderer.info.render.triangles,drawCalls:qa.renderer.info.render.calls,ejector:visual.lastPose.ENGINE_L_Ejector_Flaps,tertiary:visual.lastPose.ENGINE_L_Tertiary_Doors,gearPos:fdm.gearPos},null,2);
+};document.querySelectorAll('[data-scene]').forEach(b=>b.onclick=()=>qa.visualScene(b.dataset.scene));document.querySelectorAll('[data-mach]').forEach(b=>b.onclick=()=>{qa.fdm.out={...qa.fdm.out,M:+b.dataset.mach};qa.fdm.engines.forEach(e=>{e.ab=1;e.abLit=true;});qa.visualScene('rear');});document.getElementById('visual-gear').onclick=()=>{qa.fdm.gearPos=1-qa.fdm.gearPos;qa.fdm.gearDown=qa.fdm.gearPos===1;qa.visualScene('nose');};qa.visualScene('canopy');},100);
+</script>

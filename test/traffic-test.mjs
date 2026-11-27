@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { classifyAircraftType, trafficBackoffSeconds, trafficCacheSeconds } from '../src/traffic.js';
+import { Traffic, classifyAircraftType, trafficBackoffSeconds, trafficCacheSeconds } from '../src/traffic.js';
 import { onRequestGet, fromOpenSky, snapTo, providers } from '../functions/api/traffic.js';
 
 assert.deepEqual(classifyAircraftType('A320'), { class: 'narrowbody', size: 1.15 });
@@ -84,3 +84,81 @@ assert.equal(providers(37.5, -122.5, 62, 'https://relay.example').length, 1, 'a 
 }
 globalThis.fetch = oldFetch;
 console.log('traffic providers ok');
+
+// B07: expired primary observations must not stop the provider chain or enter
+// either edge cache as fresh. All HTTP and cache operations are local fixtures.
+{
+  const originalNow = Date.now, originalCaches = globalThis.caches;
+  const now = 1800000000000, aircraft = { hex: 'fresh1', lat: 1, lon: 2, alt_baro: 10000, seen_pos: 2 };
+  const response = (body) => new Response(JSON.stringify(body));
+  Date.now = () => now;
+  try {
+    for (const query of ['lat=1&lon=2&dist=54', 'list=mil']) {
+      for (const expired of [
+        { ac: [aircraft], acquiredAt: now - 91000 },
+        { ac: [aircraft], acquiredAt: now - 91000, stale: true },
+        { ac: [aircraft], now: (now - 91000) / 1000 },
+        { ac: [{ ...aircraft, seen_pos: 31 }], acquiredAt: now - 60000 },
+        { ac: [], acquiredAt: now - 91000 },
+      ]) {
+        const calls = [], puts = [], pending = [];
+        globalThis.caches = { default: { match: async () => null, put: async (key, res) => { puts.push({ url: key.url, body: await res.json() }); } } };
+        globalThis.fetch = async (url) => {
+          const host = new URL(url).hostname; calls.push(host);
+          assert.ok(['api.adsb.lol', 'opendata.adsb.fi'].includes(host), 'no live HTTP');
+          return response(host === 'api.adsb.lol' ? expired : { ac: [aircraft], acquiredAt: now });
+        };
+        const r = await onRequestGet({ request: new Request(`https://sim.test/api/traffic?${query}`), waitUntil: (p) => pending.push(p) });
+        const body = await r.clone().json(); await Promise.all(pending);
+        assert.deepEqual(calls, ['api.adsb.lol', 'opendata.adsb.fi'], `${query}: expired primary must fall through`);
+        assert.equal(r.status, 200); assert.equal(body.source, 'adsb.fi'); assert.equal(body.acquiredAt, now);
+        assert.equal(body.stale, false); assert.equal(body.partial, false);
+        assert.ok(puts.length > 0); assert.ok(puts.every((p) => p.body.source === 'adsb.fi' && p.body.acquiredAt === now));
+        assert.match(r.headers.get('cache-control'), /public/);
+        // The 3-D client must accept the recovered response, not reject it as expired.
+        if (!query.startsWith('list=')) {
+          globalThis.fetch = async () => r.clone();
+          const client = new Traffic({ add() {} }, {}); await client.poll(1, 2);
+          assert.equal(client.fails, 0); assert.equal(client.err, null); assert.equal(client.list.size, 1);
+        }
+      }
+    }
+    // Entries cached before this fix can also outlive the clients' 90-second
+    // lifetime (the configurable area cache TTL is up to 120 seconds).
+    for (const query of ['lat=1&lon=2', 'list=mil']) {
+      let calls = 0;
+      globalThis.caches = { default: {
+        match: async () => response({ aircraft: [aircraft], acquiredAt: now - 91000, source: 'old cache' }),
+        put: async () => {},
+      } };
+      globalThis.fetch = async () => { calls++; return response({ ac: [aircraft], acquiredAt: now }); };
+      const r = await onRequestGet({ request: new Request(`https://sim.test/api/traffic?${query}`) });
+      assert.equal(calls, 1, 'expired cache hit must not bypass provider validation');
+      assert.equal((await r.json()).acquiredAt, now);
+    }
+    // Neither an expired provider nor an expired retained cache is a usable
+    // fallback when every source has aged out. No cache lifetime is renewed.
+    for (const query of ['lat=1&lon=2', 'list=mil']) {
+      const calls = [], puts = [];
+      globalThis.caches = { default: {
+        match: async () => response({ aircraft: [aircraft], acquiredAt: now - 91000, source: 'old cache' }),
+        put: async (key) => puts.push(key.url),
+      } };
+      globalThis.fetch = async (url) => {
+        calls.push(new URL(url).hostname);
+        return response({ ac: [aircraft], states: [], time: (now - 91000) / 1000 });
+      };
+      const r = await onRequestGet({ request: new Request(`https://sim.test/api/traffic?${query}`) });
+      assert.equal(r.status, 502); assert.equal(r.headers.get('cache-control'), 'no-store');
+      assert.deepEqual(calls, query.startsWith('list=')
+        ? ['api.adsb.lol', 'opendata.adsb.fi'] : ['api.adsb.lol', 'opendata.adsb.fi', 'opensky-network.org']);
+      assert.deepEqual(puts, []);
+    }
+    // A current empty snapshot still means no traffic, not provider failure.
+    let calls = 0; globalThis.caches = undefined;
+    globalThis.fetch = async () => { calls++; return response({ ac: [], acquiredAt: now }); };
+    const empty = await onRequestGet({ request: new Request('https://sim.test/api/traffic?lat=1&lon=2') });
+    assert.equal(empty.status, 200); assert.deepEqual((await empty.json()).aircraft, []); assert.equal(calls, 1);
+  } finally { globalThis.fetch = oldFetch; Date.now = originalNow; globalThis.caches = originalCaches; }
+}
+console.log('B07 expired primary / fresh fallback regressions ok');

@@ -57,4 +57,5 @@ function fly(legKm, v, bankDeg, maxS = 4000) {
   const r = fly(20, 128, 25);
   ok('250 kt, 20 km legs: sequenced in order, tight capture', r.seq.slice(0, 3).join() === 'WP1,WP2,WP3' && r.maxXtk < 4e3, `${r.seq.join()} max xtk ${(r.maxXtk / 1000).toFixed(1)} km`);
 }
+await import('./nav-spherical-test.mjs');
 console.log('all nav tests passed');

@@ -4,15 +4,15 @@
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createViteSsr } from './_ac-node.mjs';
+import { makeLegacyCrashFixture } from './_legacy-sr71-regression-fixture.mjs';
 
 const { vite, load } = await createViteSsr();
-const { AircraftVisual } = await load('/src/aircraft.js');
+const { mergeStatic } = await load('/src/aircraft.js');
 const { Wreck } = await load('/src/crash.js');
 
 let fails = 0;
 const check = (name, fn) => { try { fn(); console.log('PASS ', name); } catch (e) { fails++; console.log('FAIL ', name, '-', e.message); } };
-const scene = new THREE.Scene(), visual = new AircraftVisual(scene);
-await visual.load('/models/SR71_sim.glb');
+const scene = new THREE.Scene(), visual = makeLegacyCrashFixture(scene, mergeStatic);
 const sun = new THREE.DirectionalLight(0xffffff, 3); scene.add(sun);
 visual.root.position.set(300, 40, -200); scene.updateMatrixWorld(true);
 const wreck = new Wreck(scene);

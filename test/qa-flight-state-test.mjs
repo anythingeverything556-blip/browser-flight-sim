@@ -11,6 +11,7 @@ import { C172Model } from '../src/c172.js';
 import { AircraftSystems } from '../src/systems.js';
 import { mountGraphicsRecovery } from '../src/graphics-recovery.js';
 import { imageryNotice } from '../src/imagery-notice.js';
+import { effectiveRenderRatio, syncRendererSize } from '../src/renderer-size.js';
 const main = fs.readFileSync('src/main.js', 'utf8');
 const section = (a,b) => main.slice(main.indexOf(a),main.indexOf(b,main.indexOf(a)));
 const setup = { aircraft:'c172', airport:'KBAB', rwy:0, end:1, mode:'approach', mission:'free', weather:'metar', hour:15 };
@@ -24,7 +25,16 @@ const book = () => { const memory = store(); return new FlightLogbook(() => memo
   prefs.begin(); settings.volume=.3; assert.equal(prefs.serialized().metarAuto,true);
   prefs.commit(); assert.equal(prefs.serialized().weather,'clear');
   assert.match(main,/LS.set\('settings', weatherPreferences.serialized\(\)\)/);
-  assert.match(section("$('just-fly').addEventListener",'const missionKindSet'),/weatherPreferences.begin\(\)/);
+  const quickSettings = structuredClone(initialWx), quickPrefs = makeWeatherPreferences(quickSettings), events = [];
+  const context = vm.createContext({ AIRCRAFT:'c172', quickAircraft:'c172', window:{__simReady:true}, state:{started:false,pending:false},
+    homeAirport:()=>({runways:[{}]}), home:{rwy:0,end:0}, missionKind:'', missionKindSet:()=>{}, dep:{}, weatherPreferences:quickPrefs,
+    applyWeather:(kind,save)=>{ events.push([kind,save,quickPrefs.serialized().weather]); Object.assign(quickSettings,{weather:kind,clouds:0}); },
+    env:{},settings:quickSettings,$:()=>({}),syncEnvUi(){},startWarm(){},spawnAt(){},beginFlight(){},showLoadUi(){},freeOrbitBehind(){},setView(){},startMission(){} });
+  vm.runInContext(section('function startQuickFlight(', "$('just-fly').addEventListener"),context);
+  vm.runInContext('startQuickFlight()',context);
+  assert.deepEqual(events,[['clear',false,'metar']]);
+  assert.equal(quickSettings.weather,'clear'); assert.equal(quickSettings.metarAuto,false);
+  assert.deepEqual(quickPrefs.serialized(),initialWx);
   console.log('EW-04: temporary flight weather cannot leak through voice/volume saves');
 }
 {
@@ -41,7 +51,7 @@ const book = () => { const memory = store(); return new FlightLogbook(() => memo
 {
   let resolve, applied=0, saved=0;
   const nodes=new Map();const $=id=>{if(!nodes.has(id))nodes.set(id,{});return nodes.get(id);};
-  const context=vm.createContext({state:{},dep:{apt:{ident:'KBAB'}},BASE:'/', $,weatherPreferences:{commit(){}},liveWeather:()=>new Promise(r=>resolve=r),applyMetarWx(){applied++;saved++;},toast(){},buildAtis(){},atc:{},console});
+  const context=vm.createContext({state:{},dep:{apt:{ident:'KBAB'}},BASE:'/', $,weatherPreferences:{commit(){}},liveWeather:()=>new Promise(r=>resolve=r),applyMetarWx(){applied++;saved++;},syncWeatherStatus(){},toast(){},buildAtis(){},atc:{},console});
   vm.runInContext(section('async function loadMetar(',"$('metar-btn')")+section('function invalidateWeatherRequest()', 'function updateFlightWeather()'),context);
   for(const intent of ['reset','slider','departure','newer request']) {
     const request=vm.runInContext('loadMetar()',context);
@@ -69,9 +79,9 @@ const book = () => { const memory = store(); return new FlightLogbook(() => memo
 }
 {
   const zero=interpretMetar(parseMetar('KBAB 211200Z 00000KT 0000 FG VV001 10/10 Q1013'));
-  assert.equal(zero.sm,0);assert.equal(zero.vis,.3);assert.ok(zero.fog>0);
+  assert.equal(zero.visibilityMeters,50);assert.equal(zero.visibilityQualifier,'less-than');assert.equal(zero.sm,50/1609.344);assert.equal(zero.vis,.3);assert.ok(zero.fog>0);
   for(const visib of [undefined,null,'garbage',NaN,-1])assert.equal(interpretMetar({visib}).sm,10);
-  for(const [visib,want] of [[0,0],['0',0],['.25',.25],['10+',10]])assert.equal(interpretMetar({visib}).sm,want);
+  for(const [visib,want] of [[0,0],['0',0],['.25',.25],['0.25',.25],['10+',10]])assert.equal(interpretMetar({visib}).sm,want);
   console.log('EW-10: zero, missing and malformed visibility remain distinct');
 }
 {
@@ -101,8 +111,8 @@ const book = () => { const memory = store(); return new FlightLogbook(() => memo
   assert.equal(resized,4);console.log('EW-31: disabling adaptive resolution resets every pressure level and stale probe');
 }
 {
-  const vclouds={}, post={setSize(){},msaaMax:0}, renderer={setPixelRatio(){},setSize(){}};
-  const c=vm.createContext({IS_F27:false,innerWidth:800,innerHeight:600,devicePixelRatio:1,dynres:{base:1,scale:1},settings:{dynres:false},rig:{view:'orbit'},renderer,post,vclouds,sizePost(){}});
+  const vclouds={}, post={setSize(){},msaaMax:0}, renderer={width:800,height:600,ratio:1,getSize(target){return target.set(this.width,this.height);},getPixelRatio(){return this.ratio;},setPixelRatio(ratio){this.ratio=ratio;},setSize(width,height){this.width=width;this.height=height;}};
+  const c=vm.createContext({IS_F27:false,innerWidth:800,innerHeight:600,devicePixelRatio:1,dynres:{base:1,scale:1},settings:{dynres:false},rig:{view:'orbit'},renderer,post,vclouds,effectiveRenderRatio,syncRendererSize,sizePost(){}});
   vm.runInContext(section('function viewRenderRatio()', '// Adaptive cloud resolution'),c);vm.runInContext('setRenderScale()',c);assert.equal(vclouds.nativeW,800);
   c.innerWidth=1600;c.innerHeight=1200;vm.runInContext('setRenderScale()',c);assert.equal(vclouds.nativeW,1600);assert.equal(vclouds.nativeH,1200);
   assert.match(main,/addEventListener\('resize', rebase\)/);console.log('EW-32: size-only resize refreshes cloud native pixel limits');

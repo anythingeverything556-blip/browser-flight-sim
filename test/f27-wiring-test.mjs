@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import vm from 'node:vm';
 import * as THREE from 'three';
 import { AIRCRAFT_TYPES, aircraftChoice } from '../src/aircrafts.js';
 import { F27_CG, F27_GEAR, F27_FLAP_DEG } from '../src/f27.js';
@@ -71,6 +72,17 @@ for (const [name, minClips] of [['f27-white-ext-v3.glb',100],['f27-white-vc-v2.g
   assert.ok(json.nodes.some(n=>n.extras?.webDefaultVisible===false));
   assert.ok(json.nodes.some(n=>n.name==='x0_PROPELLER_BLURRED_1'));
 }
-assert.match(main, /if \(IS_F27 && !navigator\.connection\?\.saveData\) void f27CockpitPreload/);
+const extrasStart = main.indexOf('let flightExtrasScheduled = false;'), extrasEnd = main.indexOf('function setView(', extrasStart);
+assert.ok(extrasStart >= 0 && extrasEnd > extrasStart, 'flight extras scheduler exists');
+for (const [isF27, saveData, started, pending, expected] of [[true,false,true,false,1],[true,true,true,false,0],[false,false,true,false,0],[true,false,false,false,0],[true,false,true,true,0]]) {
+  let preloads = 0;
+  const context = vm.createContext({ IS_F27:isF27, AIRCRAFT:'f27', navigator:{connection:{saveData}}, state:{started,pending},
+    setTimeout:fn=>fn(), whenIdle:fn=>fn(), f27CockpitPreload(){preloads++;return Promise.resolve();},
+    visual:{lateReady:Promise.resolve([]),cockpitTextures:()=>[]}, warmTextures(){}, renderer:{}, audio:{init(){}}, console });
+  vm.runInContext(main.slice(extrasStart,extrasEnd) + '\nscheduleFlightExtras();',context);
+  assert.equal(preloads,expected,`prefetch: F27=${isF27}, saveData=${saveData}, started=${started}, pending=${pending}`);
+}
 assert.match(html, /id="f27-panel-light"/); assert.match(html, /id="f27-seat-height"/); assert.match(html, /id="sheet-f27"/);
+// Keep the real-spawn regressions in the normal test manifest via this F27 entry.
+await import('./f27-spawn-regression-test.mjs');
 console.log('PASS F27 registration, isolation, no jet rules, twin controls/audio, cold start, wheel/eye frame, default visibility, RPM modes, decoder support and lazy cockpit loading');

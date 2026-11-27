@@ -63,12 +63,13 @@ const sr71Controls=new Controls();
 new Function('IS_F27','IS_C172','IS_DA40','IS_SF50','IS_HEAVY','controls',body)(false,false,false,false,false,sr71Controls);
 assert.equal(sr71Controls.handlers.flapsDown,undefined,'SR71 has no flaps');
 assert.equal(sr71Controls.handlers.flapsUp,undefined,'SR71 has no flaps');
-const resetBody=main.slice(main.indexOf('  // Free F27 teleports'),main.indexOf('  // SF50.reset intentionally'));
-const apply = new Function('IS_F27','s','fdm','F27_FLAP_DEG',resetBody);
+const resetStart=main.indexOf('  const f27Config ='), resetEnd=main.indexOf('  // SF50.reset intentionally',resetStart);
+assert.ok(resetStart>=0 && resetEnd>resetStart);
+const apply = new Function('IS_F27','s','fdm','meta','THREE','CG_H',main.slice(resetStart,resetEnd));
 for(const notch of [0,1,2,3,4])for(const gearDown of [false,true]){
-  const fdm=new F27Model(),s={ground:false,speed:100/1.943844,gamma:0,config:{flapNotch:notch,gearDown}};
+  const fdm=new F27Model(),s={ground:false,alt:1000,hdg:90,speed:100/1.943844,gamma:0,config:{flapNotch:notch,gearDown}};
   fdm.reset(new THREE.Vector3(0,1000,0),90,s.speed,false);
-  apply(true,s,fdm,F27_FLAP_DEG);assert.equal(fdm.flapCmd,notch);assert.equal(fdm.flaps,F27_FLAP_DEG[notch]);assert.equal(fdm.gearDown,gearDown);
+  apply(true,s,fdm,null,THREE,0);assert.equal(fdm.flapCmd,notch);assert.equal(fdm.flaps,F27_FLAP_DEG[notch]);assert.equal(fdm.gearDown,gearDown);
 }
 assert.match(main,/explicitTeleportConfig = \(\) => IS_F27/);
 assert.match(main,/const flapLimit = IS_F27 \? \[Infinity, F27.VFE, F27.VFE, F27.VFE, F27.VFE\]/);

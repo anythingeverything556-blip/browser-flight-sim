@@ -25,7 +25,7 @@ try {
 
   // the real client against the real proxy, polar to equatorial
   let stationLat = 0;
-  globalThis.fetch = async (u) => (String(u).startsWith('/api/metar') ? metar({ request: new Request('https://sim.test' + u) }) : new Response(JSON.stringify([{ lat: stationLat, lon: 10, icaoId: 'XXXX' }]), { status: 200 }));
+  globalThis.fetch = async (u) => (String(u).startsWith('/api/metar') ? metar({ request: new Request('https://sim.test' + u) }) : new Response(JSON.stringify([{ lat: stationLat, lon: 10, icaoId: 'XXXX', obsTime: Math.floor(Date.now()/1000) - 60 }]), { status: 200 }));
   for (const lat of [0, 52.37, 69.6, 70.1, 75, 78.2, 82, -77.8]) { stationLat = lat; const best = await nearestMetar(lat, 10, '/', 150); assert.equal(best.m.icaoId, 'XXXX', `nearestMetar at ${lat}`); }
   console.log('PASS metar client + proxy: nearestMetar works from -78 to 82 deg latitude');
 

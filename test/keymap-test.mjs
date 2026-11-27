@@ -15,7 +15,8 @@ const iso = (over) => { for (const k of Object.keys(listeners)) listeners[k].len
 const count = (c, ...ids) => { const n = {}; for (const id of ids) { n[id] = 0; c.on(id, () => n[id]++); } return n; };
 
 { // defaults are the original keys
-  check('every action has a default key and the ids are unique', KEY_ACTIONS.every((a) => a.keys.length) && new Set(KEY_ACTIONS.map((a) => a.id)).size === KEY_ACTIONS.length);
+  const unbound = ['sr71Console', 'sr71ADI', 'sr71SpotL', 'sr71SpotR', 'sr71SnakeL', 'sr71SnakeR', 'sr71Thunder'].sort();
+  check('action IDs are unique and only the seven intentional cockpit lights have no default key', new Set(KEY_ACTIONS.map((a) => a.id)).size === KEY_ACTIONS.length && JSON.stringify(KEY_ACTIONS.filter((a) => !a.keys.length).map((a) => a.id).sort()) === JSON.stringify(unbound));
   const c = iso(), n = count(c, 'gear', 'flapsDown', 'flapsUp', 'prevView', 'help');
   tap('KeyG'); tap('KeyF'); tap('KeyF', { shiftKey: true }); tap('KeyV', { shiftKey: true }); tap('Slash', { shiftKey: true });
   check('defaults: G gear, F flaps down, Shift+F flaps up, Shift+V previous view, ? help', n.gear === 1 && n.flapsDown === 1 && n.flapsUp === 1 && n.prevView === 1 && n.help === 1, JSON.stringify(n));
@@ -48,9 +49,9 @@ const count = (c, ...ids) => { const n = {}; for (const id of ids) { n[id] = 0; 
   check('Shift alone only for held controls', !assignKey(t, 'gear', 'Shift').ok && assignKey(t, 'brakes', 'Shift').ok);
 }
 { // overrides save only what changed and survive a round trip
-  const t = resolveKeys(null); assignKey(t, 'map', 'Digit1'); // a key no action uses (N is the moving map since the cockpit map)
+  const t = resolveKeys(null); assignKey(t, 'map', 'F2'); // an unused key (Digit1 now recenters the camera)
   const o = keyOverrides(t);
-  check('only changed actions are saved', Object.keys(o).join() === 'map' && o.map.join() === 'KeyM,Digit1');
+  check('only changed actions are saved', Object.keys(o).join() === 'map' && o.map.join() === 'KeyM,F2');
   check('round trip', JSON.stringify(resolveKeys(JSON.parse(JSON.stringify(o)))) === JSON.stringify(t));
   check('a broken save falls back to the defaults', JSON.stringify(resolveKeys({ gear: 'nope', map: [3, 'KeyM'] }).gear) === JSON.stringify(DEFAULT_KEYS.gear) && resolveKeys({ map: [3, 'KeyM'] }).map.join() === 'KeyM');
 }

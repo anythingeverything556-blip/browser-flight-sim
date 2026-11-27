@@ -1,0 +1,23 @@
+<!doctype html><meta charset="utf-8"><title>SR-71 integration verification — local only</title><style>body{margin:0;background:#17212c;color:white;font:14px system-ui}header{position:fixed;top:10px;left:14px}canvas{display:block}</style><header>Earthwing original SR-71 replacement — automated real-model verification</header><script type="module">
+import * as THREE from 'three';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {SR71Visual} from '/src/sr71visual.js';
+import {SR71Audio} from '/src/sr71audio.js';
+import {FlightModel} from '/src/flight.js';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#788ea1');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});renderer.setSize(1200,800);document.body.append(renderer.domElement);
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.6;
+scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment()).texture;
+scene.add(new THREE.HemisphereLight(0xffffff,0x687380,3));
+const light=new THREE.DirectionalLight(0xffead1,4);light.position.set(10,25,18);scene.add(light);
+const grid=new THREE.GridHelper(150,30,0x647887,0x647887);grid.position.y=-2.43;scene.add(grid);
+const camera=new THREE.PerspectiveCamera(40,1.5,.02,1000);camera.position.set(30,14,34);camera.lookAt(2,0,0);
+const visual=new SR71Visual(scene),fdm=new FlightModel(),audio=new SR71Audio();fdm.onGround=true;
+const cw=new THREE.Vector3(),axes={pitch:0,roll:0,yaw:0};window.qa={visual,fdm,audio,axes,scene,renderer,camera,ready:false,errors:[]};
+function draw(){visual.update(0,fdm,cw,visual.view,null,0,null,axes);renderer.render(scene,camera);}
+window.qa.draw=draw;
+window.qa.pose=(name)=>{
+ for(const part of visual.parts){const c=part.clips.get(name);if(!c)continue;
+ return c.tracks.map(t=>{t.binding.bind();const node=t.binding.node;let meshes=0;node?.traverse(o=>{if(o.isMesh)meshes++;});return {node:node?.name,meshes,matrix:node?.matrixWorld.elements.slice()};});}return null;};
+try{await visual.load('',()=>{});draw();window.qa.ready=true;}catch(e){window.qa.errors.push(e.stack);console.error(e);}
+</script>

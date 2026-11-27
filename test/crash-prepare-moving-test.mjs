@@ -1,19 +1,18 @@
 // Crash split cache vs a moving aircraft (round 5). In a browser Wreck.prepare() builds the fuselage/wing caches in idle slices over many frames
 // while the render loop keeps moving and turning visual.root (camera-relative position, aircraft attitude). The caches used to pair an inverse
 // root matrix taken when prepare() was called with mesh world matrices read frames later, so every impact missed the cache and split ~250k
-// triangles on the spot (1.2-2.0 s of a 1.8-2.6 s wreck.start in a SwiftShader profile). Real GLBs in node; the root is moved between slices.
+// triangles on the spot (1.2-2.0 s of a 1.8-2.6 s wreck.start in a SwiftShader profile). A synthetic legacy rig moves between slices.
 
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createViteSsr } from './_ac-node.mjs';
+import { makeLegacyCrashFixture } from './_legacy-sr71-regression-fixture.mjs';
 
 const { vite, load } = await createViteSsr();
-const { AircraftVisual } = await load('/src/aircraft.js');
+const { mergeStatic } = await load('/src/aircraft.js');
 const { Wreck } = await load('/src/crash.js');
 
-const scene = new THREE.Scene(), visual = new AircraftVisual(scene);
-await visual.load('/models/SR71_sim.glb');
-await new Promise((r) => setTimeout(r, 500));
+const scene = new THREE.Scene(), visual = makeLegacyCrashFixture(scene, mergeStatic);
 
 // the "render loop": a new position and attitude every few ms while the slices run, world matrices brought up to date as a frame would
 let frames = 0;

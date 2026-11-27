@@ -46,8 +46,10 @@ assert.ok(russia.rainIntensity > 0);
 const southAfrica = parseMetar('FAOR 121630Z VRB05KT 1 1/2SM VCTS SCT035 20/09 A3012');
 assert.equal(southAfrica.wdir, 'VRB');
 assert.equal(southAfrica.visibilitySM, 1.5);
-assert.equal(southAfrica.thunder, true);
-assert.equal(southAfrica.rainIntensity, 1);
+// VCTS is a nearby advisory, not a thunderstorm/heavy rain at the station.
+assert.equal(southAfrica.thunder, false);
+assert.equal(southAfrica.vicinityThunder, true);
+assert.equal(southAfrica.rainIntensity, 0);
 
 const fractional = parseMetar('KORD 121651Z 00000KT 1/2SM FG VV003 M01/M03 Q0998');
 assert.equal(fractional.visibilitySM, 0.5);

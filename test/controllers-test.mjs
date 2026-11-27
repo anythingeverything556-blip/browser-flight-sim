@@ -3,7 +3,7 @@ import { createSheetController } from '../src/sheet-controller.js';
 import { activateFlight } from '../src/flight-lifecycle.js';
 import { beginMissionSession, stopMissionSession } from '../src/mission-session.js';
 const classes=(initial=[])=>{const set=new Set(initial);return {contains:x=>set.has(x),add:x=>set.add(x),remove:x=>set.delete(x),toggle:(x,on)=>{if(on)set.add(x);else set.delete(x);}}};
-const panel={classList:classes(['wide'])},button={dataset:{sheet:'map'},classList:classes()},body={classList:classes(['intro'])},seen=[];
+const panel={id:'sheet-map',contains:()=>false,classList:classes(['wide'])},button={dataset:{sheet:'map'},setAttribute(){},classList:classes()},body={classList:classes(['intro'])},seen=[];
 const document={body,getElementById:()=>panel,querySelectorAll:()=>[panel]};
 const open=createSheetController({document,buttons:[button],onOpen:id=>seen.push(id)});
 open('map');assert.ok(panel.classList.contains('open'));assert.ok(body.classList.contains('sheet-wide'));open('map');assert.ok(!panel.classList.contains('open'));open('map',true);open(null);assert.ok(!body.classList.contains('sheet-open'));assert.deepEqual(seen,['map','map']);

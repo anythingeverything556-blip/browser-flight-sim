@@ -66,15 +66,17 @@ for (const change of [(a) => { a.enabled = false; }, (a) => { a.volume = 0; }, (
 }
 // Execute all three actual control entry points rather than only testing a helper in isolation.
 const source = fs.readFileSync(new URL('../src/main.js', import.meta.url), 'utf8');
+const soundHandler = source.slice(source.indexOf('function toggleSound()'), source.indexOf("$('b-pause').addEventListener('click'"));
+assert.match(soundHandler, /^function toggleSound/);
 for (const entry of ["$('vol').addEventListener('input'", "$('b-sound').addEventListener('click'", "controls.on('sound'"]) {
   const { audio, atc } = make(), handlers = {}, elements = {};
-  const $ = (key) => elements[key] ||= { value: '0', classList: { toggle() {} }, addEventListener(event, fn) { handlers[event] = fn; } };
+  const $ = (key) => elements[key] ||= { value: '0', setAttribute() {}, classList: { toggle() {} }, addEventListener(event, fn) { handlers[event] = fn; } };
   const line = source.split('\n').find((text) => text.startsWith(entry)); assert.ok(line, entry);
-  vm.runInNewContext(line, { $, audio, atc, settings: {}, saveSettings() {}, controls: { on(event, fn) { handlers[event] = fn; } } });
+  vm.runInNewContext(soundHandler + '\n' + line, { $, audio, atc, settings: {}, returnFocusAfterPointer() {}, saveSettings() {}, controls: { on(event, fn) { handlers[event] = fn; } } });
   atc.say('Tower', 'active', 'active'); tick(140);
   atc.say('Tower', 'pending', 'pending');
   const before = spoken.length, cancels = cancelled;
-  Object.values(handlers)[0]();
+  Object.values(handlers)[0]({ currentTarget: elements['b-sound'] });
   assert.ok(cancelled > cancels, `${entry} cancels active browser speech`);
   assert.equal(active.length, 0); assert.equal(atc.timers.size, 0);
   tick(5000); assert.equal(spoken.length, before, `${entry} drops delayed speech and readbacks`);

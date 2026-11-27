@@ -1,4 +1,4 @@
-// Drag chute above the limit: it streams out and half-blossoms, then tears loose and the canopy falls away in world space. Below the limit it is unchanged. Real GLB in node.
+// Legacy AircraftVisual drag chute above and below the limit, without loading the removed legacy GLB.
 
 import * as THREE from 'three';
 import { createViteSsr } from './_ac-node.mjs';
@@ -9,8 +9,7 @@ const { FlightModel } = await load('/src/flight.js');
 const ok = (n, c, i = '') => { if (!c) { console.error(`FAIL  ${n} ${i}`); process.exit(1); } console.log(`PASS  ${n} ${i}`); };
 
 const scene = new THREE.Scene(), visual = new AircraftVisual(scene);
-await visual.load('/models/SR71_sim.glb');
-await new Promise((r) => setTimeout(r, 300));
+visual.buildEffects();
 const env = { night: 0, elev: 0.5, sunDir: new THREE.Vector3(0.3, 0.8, 0.2).normalize() }, cam = new THREE.Vector3(), wind = new THREE.Vector3(), DT = 1 / 120;
 
 // flies the model with the chute pulled; returns what the visual showed
@@ -26,7 +25,9 @@ function run(speed, seconds, jettisonAt = -1) {
     for (let i = 0; i < 2; i++) { f.step(DT, () => 0, wind); t += DT; }
     if (jettisonAt >= 0 && t >= jettisonAt && f.chute === 'deployed') f.chute = 'jettisoned';
     const st = f.chute;
-    v.update(DT * 2, f, cams, 'chase', env, 0, null);
+    v.time += DT * 2;
+    v.root.position.copy(f.pos).sub(cams); v.root.quaternion.copy(f.quat);
+    v.updateChute(DT * 2, f, cams);
     for (const e of f.events.splice(0)) if (e === 'chute-fail') { log.failT = t; log.openAtFail = f.chuteOpen; }
     if (st === 'deployed') { log.visibleBeforeFail ||= v.chute.visible; log.maxScaleBeforeFail = Math.max(log.maxScaleBeforeFail, v.chute.scale.y); }
     if (v.torn.age >= 0 && log.tornDist.length < 600) log.tornDist.push({ age: v.torn.age, d: v.tornChute.position.distanceTo(v.root.position), vis: v.tornChute.visible, att: v.chute.visible });

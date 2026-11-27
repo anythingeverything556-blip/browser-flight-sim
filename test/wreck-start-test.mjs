@@ -1,17 +1,16 @@
-// Crash breakup at impact (wreck.start): outside the cockpit view the hidden cockpit interior is not copied into the pieces. Real GLBs in node.
+// Crash breakup at impact (wreck.start): a hidden interior is not copied into the pieces. Uses a synthetic legacy rig.
 
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createViteSsr } from './_ac-node.mjs';
+import { makeLegacyCrashFixture } from './_legacy-sr71-regression-fixture.mjs';
 
 const { vite, load } = await createViteSsr();
-const { AircraftVisual } = await load('/src/aircraft.js');
+const { mergeStatic } = await load('/src/aircraft.js');
 const { __split, Wreck } = await load('/src/crash.js');
 const { addSplitMesh, splitCache, splitAxis, meshRootName } = __split;
 
-const scene = new THREE.Scene(), visual = new AircraftVisual(scene);
-await visual.load('/models/SR71_sim.glb');
-await new Promise((r) => setTimeout(r, 500));
+const scene = new THREE.Scene(), visual = makeLegacyCrashFixture(scene, mergeStatic);
 visual.root.updateMatrixWorld(true);
 const rootInverse = new THREE.Matrix4().copy(visual.root.matrixWorld).invert(), modelBounds = new THREE.Box3().setFromObject(visual.model).applyMatrix4(rootInverse);
 

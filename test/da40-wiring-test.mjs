@@ -5,6 +5,7 @@ import { KEY_ACTIONS } from '../src/controls.js';
 import { landingLimits } from '../src/difficulty.js';
 import { cleanSetup } from '../src/logbook.js';
 import { slewExitSpeed } from '../src/slew.js';
+import { effectiveRenderRatio } from '../src/renderer-size.js';
 
 assert.equal(aircraftChoice({}, '?aircraft=da40'), 'da40');
 assert.equal(aircraftChoice({ aircraft: 'da40' }), 'da40');
@@ -27,7 +28,7 @@ console.log('DA40 selection, controls, flight model, visual, display feed, logbo
 // even if the adaptive controller's scale has stayed unchanged.
 const {runInNewContext} = await import('node:vm');
 const ratioPolicy = main.slice(main.indexOf('function viewRenderRatio()'), main.indexOf('function setRenderScale()'));
-const graphics = {IS_F27:false,devicePixelRatio:1, dynres:{base:1,scale:0.67}, settings:{dynres:true}, rig:{view:'chase'}};
+const graphics = {IS_F27:false,devicePixelRatio:1, dynres:{base:1,scale:0.67}, settings:{dynres:true}, rig:{view:'chase'}, effectiveRenderRatio};
 const ratio = () => runInNewContext(ratioPolicy+'\nviewRenderRatio()', graphics);
 assert.equal(ratio(),0.67);
 graphics.rig.view='cockpit'; assert.equal(ratio(),1);

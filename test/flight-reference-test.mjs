@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import { airData, controlAirspeed, trueAirspeedFromCas } from '../src/airdata.js';
 import { isa } from '../src/atmosphere.js';
 import { meanWindVector } from '../src/turbulence.js';
+import { resolveRunwaySelection } from '../src/home-runway.js';
 import { FlightModel } from '../src/flight.js';
 import { C172Model, C172 } from '../src/c172.js';
 import { DA40Model } from '../src/da40.js';
@@ -77,7 +78,7 @@ for (const [type,Model] of Object.entries(models)) {
     const baseAlt=cruise?24384:3500;
     const r={spawn:()=>({ground,alt:baseAlt,speed:ground?0:92,gamma:ground||cruise?0:-3}),ends:[{ident:'09'}]};
     const scope={IS_C172:type==='c172',IS_DA40:type==='da40',IS_F27:type==='f27',IS_SF50:type==='sf50',IS_HEAVY:type==='il76',IS_IL76:type==='il76',IS_A380X:false,IS_PROP:['c172','da40'].includes(type),
-      AIRCRAFT:type,KT,FT,C172,SF50,F27,f27StallSpeed,isa,airData,trueAirspeedFromCas,
+      AIRCRAFT:type,KT,FT,C172,SF50,F27,f27StallSpeed,isa,airData,trueAirspeedFromCas,resolveRunwaySelection,
       fdm:{payload:3000},settings:{fullTanks:false,weather:'clear'},state:{started:false},missionKind:'free',env:{hour:15},weatherSnapshot:()=>({}),spawn:s=>{actual=s;},toast:()=>{}};
     vm.runInNewContext(`${spawnAt}\nspawnAt(apt,0,0,mode);`,{...scope,apt:{ident:'TEST',runways:[r]},mode});
     const expected = {c172:[65,65,105],da40:[75,75,125],sf50:[110,100,180],il76:[148,148]};

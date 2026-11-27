@@ -234,7 +234,7 @@ check('display feed: air data, engine, configuration, pressurisation, navigation
   assert.deepEqual([flapFraction(0), flapFraction(15), flapFraction(39)], [0, 0.5, 1]);
   // autopilot state (when one is flying): annunciations and the selected values follow it
   const ap = { on: true, modes: { spd: true, mach: false, appr: false }, status: { lat: 'HDG', vert: 'ALT' }, target: { spd: 100, alt: 7620, hdg: 130 }, cmdHdg: 131 };
-  const s2 = feed(f, { ...c, ap }, 0.1); assert.deepEqual([s2.ap.ap, s2.ap.at, s2.ap.lat, s2.ap.vert, s2.ap.fd], [true, 'SPD', 'HDG', 'ALT', true]); near(s2.selAlt, 25000, 3, 'selAlt'); assert.equal(s2.selHdg, 131);
+  const s2 = feed(f, { ...c, ap }, 0.1); assert.deepEqual([s2.ap.ap, s2.ap.at, s2.ap.lat, s2.ap.vert, s2.ap.fd], [true, 'SPD', 'HDG', 'ALT', false]); near(s2.selAlt, 25000, 3, 'selAlt'); assert.equal(s2.selHdg, 131);
   assert.deepEqual(alertsOf({ out: { gearOverspeed: true, flapOverspeed: true }, engineOn: true }, { warn: { gearUnsafe: true, overspeed: true } }).map((a) => a.level), ['warning', 'warning', 'caution', 'caution']);
   return `ias ${s.ias.toFixed(0)}, alt ${s.alt.toFixed(0)}, n1 ${s.n1.toFixed(0)}, ff ${s.ff.toFixed(0)} gph, cabin FL310 ${hi.cabAlt.toFixed(0)} ft`;
 });

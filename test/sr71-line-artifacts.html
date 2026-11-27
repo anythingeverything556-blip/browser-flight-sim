@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><title>SR-71 local line-artifact probe</title>
+<style>body{margin:0;background:#17212c;color:white;font:14px system-ui}header{height:32px;padding:7px 12px;box-sizing:border-box}canvas{display:block}</style>
+<header id="label">SR-71 actual included assets · local isolated raster probe</header>
+<script type="module">
+import * as THREE from 'three';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+import {SR71Visual} from '/src/sr71visual.js';
+import {FlightModel} from '/src/flight.js';
+const mode=new URLSearchParams(location.search).get('depth')||'log';
+const scene=new THREE.Scene();scene.background=new THREE.Color('#788ea1');
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true,logarithmicDepthBuffer:mode==='log',reversedDepthBuffer:mode==='reverse'});
+renderer.setSize(1000,668);document.body.append(renderer.domElement);renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.6;
+scene.environment=new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment()).texture;
+scene.add(new THREE.HemisphereLight(0xffffff,0x687380,3));const sun=new THREE.DirectionalLight(0xffead1,4);sun.position.set(10,25,18);scene.add(sun);
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(180,180),new THREE.MeshStandardMaterial({color:0x63705c}));ground.rotation.x=-Math.PI/2;ground.position.y=-2.43;scene.add(ground);
+const camera=new THREE.PerspectiveCamera(40,1000/668,.05,1.2e7);
+const visual=new SR71Visual(scene),fdm=new FlightModel(),cw=new THREE.Vector3();fdm.onGround=true;
+const qa=window.qa={THREE,scene,renderer,camera,visual,fdm,ready:false,errors:[],mode};
+qa.draw=()=>{visual.update(0,fdm,cw,visual.view,null,0,null,{pitch:0,roll:0,yaw:0});renderer.render(scene,camera);};
+qa.view=async name=>{
+ visual.view='chase';camera.fov=40;
+ const poses={exterior:[[30,14,34],[2,0,0]],port:[[0,7,-28],[0,0,0]],top:[[0,32,2],[0,0,0]],canopy:[[17,6,7],[13.2,.7,0]],nose:[[12,-1.5,4],[9,-.8,0]],tires:[[-1,-1,5],[-2,-1.6,0]],rear:[[-26,3,8],[-10,.3,0]]};
+ if(name.startsWith('cockpit')){await visual.ensureView('cockpit');camera.position.copy(visual.eye);camera.fov=80;const target=visual.eye.clone().add(new THREE.Vector3(2,-.47,0));if(name==='cockpit-left')target.set(13.6,.3,-2);if(name==='cockpit-right')target.set(13.6,.3,2);camera.lookAt(target);}
+ else{camera.position.fromArray(poses[name][0]);camera.lookAt(...poses[name][1]);}
+ camera.updateProjectionMatrix();qa.name=name;document.getElementById('label').textContent=`ACTUAL INCLUDED SR-71 · ${name} · ${mode} depth · unchanged baseline`;qa.draw();
+};
+try{await visual.load();await qa.view('exterior');qa.ready=true;}catch(e){qa.errors.push(e.stack);console.error(e);}
+</script>

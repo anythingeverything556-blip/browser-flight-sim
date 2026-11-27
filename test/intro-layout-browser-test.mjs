@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { createServer } from 'vite';
 import puppeteer from 'puppeteer-core';
+import { chromeExecutable } from '../tools/qa-browser-support.mjs';
 
 const output = process.env.INTRO_SCREENSHOTS || '.scratch/da40/ui-polish';
 await mkdir(output, { recursive: true });
@@ -13,7 +14,7 @@ await server.listen();
 const origin = server.resolvedUrls.local[0];
 let browser;
 try {
-  browser = await puppeteer.launch({ executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome', headless: true, args: ['--no-sandbox', '--disable-webgl', '--disable-dev-shm-usage'] });
+  browser = await puppeteer.launch({ executablePath: chromeExecutable(), headless: true, args: ['--no-sandbox', '--disable-webgl', '--disable-dev-shm-usage'] });
   const page = await browser.newPage();
   await page.emulateMediaFeatures([{ name: 'prefers-reduced-motion', value: 'reduce' }]);
   await page.setRequestInterception(true);
@@ -43,7 +44,8 @@ try {
       return {
         hero: rect('#hero'), heading: rect('#hero h1'), nav: rect('#hero nav'), panel: rect('#sheet-flight'),
         body: rect('#sheet-flight .body'), footer: rect('#sheet-flight .sheet-foot'), start: rect('#start-btn'),
-        picker: rect('#ac-pick'), pickerLabel: rect('#ac-pick > .lbl'), cards: cards.map(card => {
+        picker: rect('#ac-pick'), pickerLabel: rect('#ac-pick > .lbl'), cardOrder: cards.map(card => card.dataset.v),
+        cards: cards.map(card => {
           const box = card.getBoundingClientRect();
           const name = card.querySelector('.ac-name b');
           return { left: box.left, right: box.right, top: box.top, bottom: box.bottom, nameClipped: name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > name.clientHeight + 1 };
@@ -66,8 +68,27 @@ try {
     if (result.wide) {
       assert.ok(result.caption.bottom + 4 <= result.pickerLabel.top, `${tag}: film caption clears picker`);
       assert.ok(result.picker.right <= result.panel.left, `${tag}: picker clears panel`);
-      assert.ok(result.cards.every(card => Math.abs(card.top - result.cards[0].top) < 1), `${tag}: five cards share one row`);
+      assert.deepEqual(result.cardOrder, ['da40', 'sr71', 'c172', 'sf50', 'f27', 'il76'], `${tag}: six aircraft in fleet order`);
+      assert.equal(result.cards.length, 6, `${tag}: six aircraft cards`);
+      for (let i = 0; i < result.cards.length; i++) {
+        const row = Math.floor(i / 3), col = i % 3, card = result.cards[i];
+        assert.ok(Math.abs(card.top - result.cards[row * 3].top) < 1, `${tag}: three cards per row`);
+        if (col) assert.ok(card.left >= result.cards[i - 1].right - 1, `${tag}: cards do not overlap`);
+        if (row) assert.ok(card.top >= result.cards[col].bottom - 1, `${tag}: second row clears first`);
+      }
       assert.ok(result.cards.every(card => !card.nameClipped), `${tag}: full card names visible`);
+    }
+    for (const aircraft of result.cardOrder) {
+      await page.focus(`#ac-cards [data-v="${aircraft}"]`);
+      assert.ok(await page.evaluate(() => {
+        const target = document.activeElement.getBoundingClientRect();
+        const clip = document.querySelector('#ac-pick').parentElement.id === 'hero-ac'
+          ? { top: 0, bottom: innerHeight } : document.querySelector('#sheet-flight .body').getBoundingClientRect();
+        const top = Math.max(target.top, clip.top, 0), bottom = Math.min(target.bottom, clip.bottom, innerHeight);
+        // A short scrollport need not fit an entire card, but its focused control must be visible and unobscured.
+        const hit = document.elementFromPoint((target.left + target.right) / 2, (top + bottom) / 2);
+        return bottom - top >= 24 && target.left >= 0 && target.right <= innerWidth && document.activeElement.contains(hit);
+      }), `${tag}: ${aircraft} reachable by keyboard focus`);
     }
     await page.screenshot({ path: `${output}/${tag}.png` });
   }

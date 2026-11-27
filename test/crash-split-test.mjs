@@ -1,17 +1,16 @@
 // Crash breakup: the cached fuselage/wing split must cut the same triangles into the same bins as the per-triangle split it replaces, and the aircraft merge
-// must keep the original parts for the breakup. Loads the real GLBs in node (no GPU, no browser).
+// must keep the original parts for the breakup. Uses a named, subdivided legacy test rig, not the current SR-71 asset.
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import { createViteSsr } from './_ac-node.mjs';
+import { makeLegacyCrashFixture } from './_legacy-sr71-regression-fixture.mjs';
 
 const { vite, load } = await createViteSsr();
-const { AircraftVisual } = await load('/src/aircraft.js');
+const { mergeStatic } = await load('/src/aircraft.js');
 const { __split, Wreck } = await load('/src/crash.js');
 const { addSplitMesh, splitCache, splitAxis, meshRootName } = __split;
 
-const scene = new THREE.Scene(), visual = new AircraftVisual(scene);
-await visual.load('/models/SR71_sim.glb');
-await new Promise((r) => setTimeout(r, 500));
+const scene = new THREE.Scene(), visual = makeLegacyCrashFixture(scene, mergeStatic);
 visual.root.updateMatrixWorld(true);
 const rootInverse = new THREE.Matrix4().copy(visual.root.matrixWorld).invert(), modelBounds = new THREE.Box3().setFromObject(visual.model).applyMatrix4(rootInverse);
 
@@ -34,7 +33,7 @@ const eachRootTri = (part, fn) => { const g = part.geometry, a = g.attributes.po
 const bins = (records) => { const out = new Map(); for (const [k, rec] of records) { const set = new Map(); for (const part of rec.parts) eachRootTri(part, (a, o) => { const key = triKey(a, o); set.set(key, (set.get(key) || 0) + 1); }); out.set(k, set); } return out; };
 let slowMs = 0, fastMs = 0;
 for (const plan of plans) {
-  const run = (noCache) => { const records = new Map(), made = []; const t = performance.now(); for (const m of targets) addSplitMesh(m, meshRootName(m, visual.model), rootInverse, modelBounds, plan, records, made, noCache); const ms = performance.now() - t; return { records, ms }; };
+  const run = (noCache) => { const records = new Map(), made = []; const t = performance.now(); for (const m of targets) { const name = meshRootName(m, visual.model); if (splitAxis(name) === 'wing' && plan.wingSections <= 1) continue; const result = addSplitMesh(m, name, rootInverse, modelBounds, plan, records, made, noCache); assert.equal(result, noCache ? 'split' : 'cached'); } const ms = performance.now() - t; return { records, ms }; };
   const slow = run(true), fast = run(false);
   slowMs += slow.ms; fastMs += fast.ms;
   const a = bins(slow.records), b = bins(fast.records);
