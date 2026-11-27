@@ -1,0 +1,74 @@
+[
+  {
+    "script": "test/camera-frameperf-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.43
+  },
+  {
+    "script": "test/flight-alloc-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.22
+  },
+  {
+    "script": "test/flight-reference-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.3
+  },
+  {
+    "script": "test/ew-guidance-regressions-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.12
+  },
+  {
+    "script": "test/a380x-assets-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.15
+  },
+  {
+    "script": "test/f27-camera-v3-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.08
+  },
+  {
+    "script": "test/sr71-cockpit-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.78
+  },
+  {
+    "script": "test/sr71-cockpit-lighting-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.1
+  },
+  {
+    "script": "test/sr71-ivsi-test.mjs",
+    "ok": true,
+    "exit": 0,
+    "signal": null,
+    "error": null,
+    "seconds": 0.72
+  }
+]

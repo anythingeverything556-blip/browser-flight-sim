@@ -1,0 +1,167 @@
+{
+  "scope": "Isolated seven-view CameraRig.update fixture only; CPU sampling includes harness warmup/module setup, not a full-game FPS or GC-pause measurement.",
+  "framesPerView": 1966080,
+  "warmupFramesPerView": 32768,
+  "profiles": {
+    "before": {
+      "rawProfileSha256": "45a95d61515968bee38239419f65d8ae0784d5fcbfb166d5bbad45e9bedb0f86",
+      "durationUs": 10189615,
+      "samples": 9044,
+      "gcSamples": 344,
+      "topSelfSamples": [
+        {
+          "function": "v",
+          "file": "camera-baseline-08e7f399.js",
+          "line": 157,
+          "samples": 4188
+        },
+        {
+          "function": "update",
+          "file": "camera-baseline-08e7f399.js",
+          "line": 87,
+          "samples": 646
+        },
+        {
+          "function": "setFromRotationMatrix",
+          "file": "three.core.js",
+          "line": 12785,
+          "samples": 584
+        },
+        {
+          "function": "setFromEuler",
+          "file": "three.core.js",
+          "line": 3702,
+          "samples": 404
+        },
+        {
+          "function": "(garbage collector)",
+          "file": "",
+          "line": 0,
+          "samples": 344
+        },
+        {
+          "function": "invert",
+          "file": "three.core.js",
+          "line": 12018,
+          "samples": 269
+        },
+        {
+          "function": "updateProjectionMatrix",
+          "file": "three.core.js",
+          "line": 21842,
+          "samples": 268
+        },
+        {
+          "function": "setFromRotationMatrix",
+          "file": "three.core.js",
+          "line": 12785,
+          "samples": 243
+        },
+        {
+          "function": "setFromRotationMatrix",
+          "file": "three.core.js",
+          "line": 12785,
+          "samples": 186
+        },
+        {
+          "function": "Vector3",
+          "file": "three.core.js",
+          "line": 4369,
+          "samples": 145
+        },
+        {
+          "function": "makePerspective",
+          "file": "three.core.js",
+          "line": 12410,
+          "samples": 143
+        },
+        {
+          "function": "compose",
+          "file": "three.core.js",
+          "line": 12302,
+          "samples": 143
+        }
+      ]
+    },
+    "after": {
+      "rawProfileSha256": "27765c29c5effa704e76acf4e400ce37329f3785f362bbc16348008cd6c96863",
+      "durationUs": 10626098,
+      "samples": 9654,
+      "gcSamples": 36,
+      "topSelfSamples": [
+        {
+          "function": "v",
+          "file": "camera.js",
+          "line": 169,
+          "samples": 5322
+        },
+        {
+          "function": "setFromRotationMatrix",
+          "file": "three.core.js",
+          "line": 12785,
+          "samples": 903
+        },
+        {
+          "function": "setFromEuler",
+          "file": "three.core.js",
+          "line": 3702,
+          "samples": 457
+        },
+        {
+          "function": "update",
+          "file": "camera.js",
+          "line": 100,
+          "samples": 419
+        },
+        {
+          "function": "setFromRotationMatrix",
+          "file": "three.core.js",
+          "line": 12785,
+          "samples": 347
+        },
+        {
+          "function": "invert",
+          "file": "three.core.js",
+          "line": 12018,
+          "samples": 281
+        },
+        {
+          "function": "setFromRotationMatrix",
+          "file": "three.core.js",
+          "line": 12785,
+          "samples": 263
+        },
+        {
+          "function": "updateProjectionMatrix",
+          "file": "three.core.js",
+          "line": 21842,
+          "samples": 202
+        },
+        {
+          "function": "ground",
+          "file": "camera-frameperf.mjs",
+          "line": 33,
+          "samples": 155
+        },
+        {
+          "function": "compose",
+          "file": "three.core.js",
+          "line": 12302,
+          "samples": 129
+        },
+        {
+          "function": "setFromRotationMatrix",
+          "file": "three.core.js",
+          "line": 3806,
+          "samples": 121
+        },
+        {
+          "function": "makePerspective",
+          "file": "three.core.js",
+          "line": 12410,
+          "samples": 108
+        }
+      ]
+    }
+  }
+}
