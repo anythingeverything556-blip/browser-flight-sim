@@ -70,8 +70,8 @@ export function approachUnstable(m) {
 export class SF50Autoland {
   constructor() { this.reset(); }
   reset() {
-    this.fI = 0; this.de0 = null; this.pApp = 0; this.retard = false; this.armed = false; this.phase = 'off'; this.t = 0; this.tdT = 0; this.prevHdg = null; this.msg = '';
-    this.safeReturn = false; this.attempt = 0; this.unstableT = 0; this.flareT = 0; this.gaT = 0; this.gaReason = ''; this.ap = null;
+    this.fI = 0; this.de0 = null; this.th0 = null; this.pApp = 0; this.retard = false; this.armed = false; this.phase = 'off'; this.t = 0; this.tdT = 0; this.prevHdg = null; this.msg = '';
+    this.safeReturn = false; this.attempt = 0; this.unstableT = 0; this.flareT = 0; this.gaT = 0; this.gaReason = ''; this.missedAlt = null; this.ap = null;
   }
   // attempt: 0 for the first Safe Return approach, +1 for each approach flown again after a go-around
   arm(safeReturn = false, attempt = 0) { this.reset(); this.armed = true; this.phase = 'approach'; this.safeReturn = safeReturn; this.attempt = attempt; }

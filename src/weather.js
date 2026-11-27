@@ -13,6 +13,13 @@ export const WEATHER = {
   windy: { name: 'Gusty', clouds: 0.3, wind: 26, turb: 0.5, vis: 1.2, rain: 0, gloom: 0, fog: 0, bolts: 0 },
 };
 
+// Cosmetic surface-fog layer: full veil near the surface, smoothly absent above
+// 800 m AGL. This does not change the sky/terrain's unrelated distance haze.
+export function surfaceFogFactor(agl) {
+  const t = Math.min(1, Math.max(0, ((Number.isFinite(agl) ? agl : 0) - 150) / 650));
+  return 1 - t * t * (3 - 2 * t);
+}
+
 export class Weather {
   constructor(rainCanvas, gloomEl, fogEl, boltEl) {
     this.cv = rainCanvas; this.x = rainCanvas.getContext('2d'); this.gloom = gloomEl; this.fog = fogEl; this.bolt = boltEl;
@@ -25,7 +32,7 @@ export class Weather {
     if (immediate) {
       this.rain = p.rain; this.gloomV = p.gloom; this.fogV = p.fog;
       if (this.gloom) this.gloom.style.opacity = String(p.gloom);
-      if (this.fog) this.fog.style.opacity = String(p.fog);
+      if (this.fog) this.fog.style.opacity = String(p.fog * (this.fogAltitudeFactor ?? 1));
       if (!p.bolts && this.bolt) { this.boltLevel = 0; this.bolt.style.opacity = '0'; }
     }
   }
@@ -35,7 +42,8 @@ export class Weather {
     const k = 1 - Math.exp(-dt * 0.6);
     this.rain += (this.rainTarget - this.rain) * k; this.gloomV += (this.gloomTarget - this.gloomV) * k; this.fogV += (this.fogTarget - this.fogV) * k;
     if (this.gloom) this.gloom.style.opacity = this.gloomV.toFixed(3);
-    if (this.fog) this.fog.style.opacity = this.fogV.toFixed(3);
+    this.fogAltitudeFactor = surfaceFogFactor(cam?.agl);
+    if (this.fog) this.fog.style.opacity = (this.fogV * this.fogAltitudeFactor).toFixed(3);
     // lightning: a double flash, then thunder after the distance to the strike
     const events = [];
     // inside a thunderstorm cloud the strikes are close and frequent, even when no rain is falling at the ground

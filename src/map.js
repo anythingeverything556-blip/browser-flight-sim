@@ -109,26 +109,34 @@ class MapPanel {
   drawAirports(t = !1) {
     if (!this.db.ready) return;
     const e = this.map.getZoom(),
-      n = this.map.getBounds();
-    if (!t && this.drawn && this.drawn.z === e && this.drawn.b.contains(n)) return;
+      n = this.map.getBounds(),
+      center = this.map.getCenter(),
+      centerLon = Number.isFinite(center.lng) ? center.lng : 0;
+    // Reuse the padded bounds only while every longitude in them is still in
+    // the nearest world copy. A wide view can contain the new bounds even
+    // after the nearest airport copy changes at the center's antipode.
+    if (!t && this.drawn && this.drawn.z === e && this.aptCount === this.db.list.length && this.drawn.b.contains(n) &&
+        !this.drawn.b.contains([center.lat, centerLon - 180]) && !this.drawn.b.contains([center.lat, centerLon + 180])) return;
     const i = n.pad(0.15);
-    if (!this.aptMarks || this.drawn?.z !== e || this.aptCount !== this.db.list.length) { this.aptLayer.clearLayers(); this.aptMarks = new Map(); this.aptCount = this.db.list.length; } // markers depend on the zoom: rebuild only when it changes, otherwise add what scrolled in and drop what scrolled out
+    if (!this.aptMarks || this.drawn?.z !== e || this.aptCount !== this.db.list.length) { this.aptLayer.clearLayers(); this.aptMarks = new Map(); this.aptLons = new Map(); this.aptCount = this.db.list.length; } // markers depend on the zoom: rebuild only when it changes, otherwise add what scrolled in and drop what scrolled out
     this.drawn = { z: e, b: i };
     const want = new Set();
     let r = 0;
     for (const a of this.db.list) {
-      if ((a.type === 2 && e < 8) || (a.type === 1 && e < 6) || (a.type === 0 && e < 5) || !i.contains([a.lat, a.lon])) continue; // below zoom 5 hundreds of rings buried the live traffic
+      if ((a.type === 2 && e < 8) || (a.type === 1 && e < 6) || (a.type === 0 && e < 5)) continue; // below zoom 5 hundreds of rings buried the live traffic
+      const lon = a.lon + 360 * Math.round((centerLon - a.lon) / 360), point = [a.lat, lon];
+      if (!i.contains(point)) continue;
       if (++r > 900) break;
       want.add(a);
-      if (this.aptMarks.has(a)) continue;
+      if (this.aptMarks.has(a)) {
+        if (this.aptLons.get(a) === lon) continue;
+        this.aptLayer.removeLayer(this.aptMarks.get(a));
+      }
       const g = Ue.layerGroup(), l = a.mil ? '#ff8a3d' : a.type === 0 ? '#4fc3ff' : a.type === 1 ? '#8fd18f' : '#c9c9c9';
       if (e >= 10)
         for (const u of a.rawRunways)
           Ue.polyline(
-            [
-              [u[2], u[3]],
-              [u[4], u[5]],
-            ],
+            unwrapMapPath([[u[2], u[3]], [u[4], u[5]]], lon),
             {
               renderer: this.renderer,
               color: l,
@@ -137,7 +145,7 @@ class MapPanel {
               interactive: !1,
             },
           ).addTo(g);
-      const h = Ue.circleMarker([a.lat, a.lon], {
+      const h = Ue.circleMarker(point, {
         renderer: this.renderer,
         radius: a.type === 0 ? 6 : a.type === 1 ? 4.5 : 3.5,
         color: l,
@@ -152,14 +160,15 @@ class MapPanel {
         h.addTo(g),
         e >= 8 &&
           (a.type === 0 || e >= 9) &&
-          Ue.marker([a.lat, a.lon], {
+          Ue.marker(point, {
             icon: Ue.divIcon({ className: 'apt-label', html: esc(a.ident), iconSize: [40, 14], iconAnchor: [-6, 7] }),
             interactive: !1,
           }).addTo(g));
       g.addTo(this.aptLayer);
       this.aptMarks.set(a, g);
+      this.aptLons.set(a, lon);
     }
-    for (const [a, g] of this.aptMarks) if (!want.has(a)) { this.aptLayer.removeLayer(g); this.aptMarks.delete(a); }
+    for (const [a, g] of this.aptMarks) if (!want.has(a)) { this.aptLayer.removeLayer(g); this.aptMarks.delete(a); this.aptLons.delete(a); }
   }
   mapClick(t) {
     const e = document.createElement('div');

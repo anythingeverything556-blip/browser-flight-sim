@@ -129,14 +129,27 @@ function landingPosition(s, arrival) {
 }
 
 // Landing 1 (autopilot to minimums) and Landing 2 (hand-flown). s: { agl, vy, onGround, iasKt, gs, throttle, crashed, gearDown, chute,
-// ilsValid, gsDev (deg, + above), locXtk (m, + right of centre line), thrDist (m, negative past the threshold), apOn }
+// ilsValid, gsDev (deg, + above), locXtk (m, + right of centre line), thrDist (m, negative past the threshold), apOn, apApproach, goAround }
 class Landing {
-  constructor(kind, start) { this.kind = kind; this.arrival = start?.arrival || null; this.phase = 'final'; this.t = 0; this.done = false; this.td = null; this.score = null; this.airborne = false; this.lastVy = 0; this.s = null; }
+  constructor(kind, start) { this.kind = kind; this.arrival = start?.arrival || null; this.phase = 'final'; this.t = 0; this.done = false; this.td = null; this.score = null; this.airborne = false; this.lastVy = 0; this.s = null; this.finalHold = 0; }
+  goAround() {
+    this.phase = 'goaround'; this.td = null; this.score = null; this.finalHold = 0;
+  }
   update(dt, s) {
     this.s = s; this.t += dt;
     if (this.done) return null;
     if (s.crashed) { this.done = true; this.phase = 'crashed'; this.crashWhy = s.crashed; return { event: 'done', text: `Crashed: ${s.crashed}` }; }
     if (!s.onGround) { this.lastVy = s.vy; if (s.agl > 6) this.airborne = true; }
+    // TO/GA is explicit; a hand-flown climb back above 90 m also abandons the flare.
+    // The 60/90 m gap keeps small flare/bounce height changes from toggling phases.
+    if (!s.onGround && (s.goAround || (['flare', 'rollout'].includes(this.phase) && s.agl >= 90 && s.vy > 0.5)) && this.phase !== 'goaround') this.goAround();
+    if (this.phase === 'goaround') {
+      // Do not call a climb, a threshold overflight, or one noisy ILS sample a new final.
+      const final = !s.goAround && !s.onGround && s.agl >= 90 && s.vy < -0.5
+        && s.ilsValid && s.thrDist > 500 && Math.abs(s.locXtk) <= 150 && Math.abs(s.gsDev) <= 1.5;
+      this.finalHold = final ? this.finalHold + dt : 0;
+      if (this.finalHold >= 2) { this.phase = 'final'; this.finalHold = 0; }
+    }
     if (this.phase === 'final' && s.agl < 60) this.phase = 'flare';
     if (s.onGround && this.airborne && !this.td) {
       const position = landingPosition(s, this.arrival);
@@ -153,7 +166,7 @@ class Landing {
   // what the coach card says right now
   coach() {
     const s = this.s; if (!s) return null;
-    const assisted = this.kind === 'landassist', tick = (ok) => (ok ? '✓' : '✗');
+    const assisted = this.kind === 'landassist' && s.apOn !== false && s.apApproach !== false, tick = (ok) => (ok ? '✓' : '✗');
     if (this.phase === 'final') {
       const spdOk = s.iasKt >= 170 && s.iasKt <= 190, gsOk = s.ilsValid && Math.abs(s.gsDev) <= 0.8, locOk = s.ilsValid && Math.abs(s.locXtk) <= 15;
       const check = [`${tick(s.gearDown)} Gear down`, `${tick(spdOk)} Speed 170-190 kt (${Math.round(s.iasKt)})`,
@@ -173,12 +186,17 @@ class Landing {
         ? 'The autopilot is flying the approach (the A/P light is on). It follows the glideslope and the centre line and holds 180 kt, then disconnects at 46 m (150 ft) with a warning. '
           + 'Your job until then is to watch, check the list below, and get ready: when it disconnects you are flying. '
           + 'At the flare, raise the nose a few degrees with S, throttle to idle with 0 or Q, and let it settle. After touchdown deploy the chute with C and brake with B.'
-        : 'You are on a 5 NM final. Plan: 1. Hold about 180 kt, with E for more throttle and Q for less. '
+        : 'Hand-fly the final approach. Plan: 1. Hold about 180 kt, with E for more throttle and Q for less. '
           + '2. Keep the glideslope on 3°: if you are high, lower the nose with W and ease the throttle; if low, add throttle first and then raise the nose with S. '
           + '3. Stay on the centre line: a short tap of A or D banks the jet, tap the other key to level. Small, early corrections work best. '
           + '4. At 60 m height the flare begins and this card tells you what to do. The runway threshold is where the glideslope ends, aim just past it.';
-      return { label: assisted ? 'Landing 1 of 2' : 'Landing 2 of 2', title: assisted ? 'Autopilot flying the ILS' : 'Fly the ILS', text,
+      return { label: this.kind === 'landassist' ? 'Landing 1 of 2' : 'Landing 2 of 2', title: assisted ? 'Autopilot flying the ILS' : 'Fly the ILS', text,
         live: `${check}\nHeight ${Math.round(s.agl)} m   Pitch ${Math.round(s.pitchDeg || 0)}°`, hint: hints.join(' ') };
+    }
+    if (this.phase === 'goaround') {
+      return { label: 'Go-around', title: 'Climb away and rejoin final',
+        text: 'Keep climb power and a safe speed, then fly back to intercept the ILS before the runway. Rejoin above 90 m on a steady descent. For an assisted approach, select APPR again once established, or hand-fly the ILS.',
+        live: `Height ${Math.round(s.agl)} m   Vertical speed ${s.vy.toFixed(1)} m/s`, hint: 'Do not flare during the go-around.' };
     }
     if (this.phase === 'flare') {
       const sink = -s.vy, pitch = Math.round(s.pitchDeg || 0), ref = Math.round(s.vrefKt || 175);
@@ -205,6 +223,7 @@ class Landing {
   hud() {
     const s = this.s, lines = [];
     if (s && !this.td) {
+      if (this.phase === 'goaround') lines.push(row('Go-around', 'Climb away', 'Rejoin final', false));
       lines.push(row('Glideslope', s.ilsValid ? `${s.gsDev >= 0 ? '+' : ''}${s.gsDev.toFixed(1)}°` : '-', s.gsDev > 0.8 ? 'high' : s.gsDev < -0.8 ? 'low' : 'on path', s.ilsValid && Math.abs(s.gsDev) <= 0.8));
       lines.push(row('Course', s.ilsValid ? `${Math.round(Math.abs(s.locXtk))} m` : '-', s.locXtk > 5 ? 'right' : s.locXtk < -5 ? 'left' : 'centred', s.ilsValid && Math.abs(s.locXtk) <= 5));
       lines.push(row('Speed', `${Math.round(s.iasKt)} kt`, '175-185', s.iasKt >= 165 && s.iasKt <= 195));
@@ -218,7 +237,7 @@ class Landing {
       lines.push(row('Point', t.dist == null ? '-' : `${Math.round(t.dist)} m`, `${c.dist}/20`, c.dist >= 12));
       lines.push(row('Total', `${c.total}`, `grade ${c.grade}`, c.total >= 75));
     }
-    return { title: this.kind === 'landassist' ? 'LANDING 1' : 'LANDING 2', lines, done: this.done && !!this.score && this.score.total >= 55 };
+    return { title: this.kind === 'landassist' ? 'LANDING 1' : 'LANDING 2', lines, done: this.phase === 'done' && !!this.score && this.score.total >= 55 };
   }
 }
 

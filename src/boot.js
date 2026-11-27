@@ -5,6 +5,7 @@ import { diagnostics, installRuntimeDiagnostics } from './telemetry.js';
 import { showStartupError as msg } from './startup.js';
 import { touchOnly } from './touchcontrols.js';
 import { aircraftChoice, AIRCRAFT_TYPES } from './aircrafts.js';
+import { loadAircraftVisual } from './aircraft-visual.js';
 
 mountSetupAccessibility(aircraftChoice(savedSettings(), location.search));
 installRuntimeDiagnostics(window);
@@ -20,7 +21,7 @@ const quickButton = document.getElementById('just-fly');
 if (quickButton) { quickButton.textContent = `Just fly · ${AIRCRAFT_TYPES[quickChoice].short}`; quickButton.disabled = false; }
 
 // Start flight answers the first click even while the simulator is still loading: the loading screen opens at once and main.js replays the
-// click when it is ready (window.__simReady). The buttons used to stay disabled for the first 10-30 s, so early clicks did nothing.
+// click when setup handlers are ready (window.__simReady). Aircraft assets are prepared only by the explicit start action in main.js.
 window.__startQueued = null;
 document.addEventListener('click', (e) => {
   const clicked = e.target instanceof Element && e.target.closest('#start-btn, #home-go, #just-fly, #resume-flight');
@@ -49,7 +50,8 @@ if (!gl) {
   diagnostics.record('load_failure', 'webgl');
   msg('This simulator needs WebGL 2. Turn on hardware acceleration in your browser settings or try another browser.');
 } else {
-  import('./main.js').catch((e) => { console.error(e); msg('Failed to start: ' + (e && e.message ? e.message : e)); });
+  Promise.all([import('./main.js'), loadAircraftVisual(selectedAircraft)])
+    .then(([simulator, visual]) => simulator.startSimulator(visual)).catch((e) => { console.error(e); msg('Failed to start: ' + (e && e.message ? e.message : e)); });
 }
 
 }

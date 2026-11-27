@@ -1,0 +1,5 @@
+# Blackbird Owner — SR-71 release
+
+Extract the code ZIP and **all** numbered asset ZIPs into the same directory. Each is a normal ZIP; all members sit under `blackbird-owner/`, and no same-path files are duplicated across parts. From `blackbird-owner/`, run `npm ci` then `npm run dev`. For Cloudflare Pages use `npm run build`; `dist/` contains the built site, while `functions/` at the project root supplies the Pages API routes. ZIPs include the previous owner's source, build files, notes and tools plus updated assets; dependencies and built output are regenerated, not bundled. Do not add deployment credentials to source or ZIPs.
+
+Select SR-71, then click **Start in SR-71 cockpit** on Flight setup, or click the **Cockpit** icon during flight. In cockpit, that same button returns outside. The original exterior and interior preload before flight; no fallback to the old SR-71 model is used. The Cloudflare release uses this same source and public assets. See `SR71-WHAT-IS-LEFT.md` for original-runtime features still not reproduced.

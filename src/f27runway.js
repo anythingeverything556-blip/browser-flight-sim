@@ -21,8 +21,12 @@ export class F27RunwayInset {
     for(let i=0;i<=n;i++)cols.push(-length+runway.len*i/n);
     cols.push(length+80,length+150,length+240);
     const positions=[],uv=[],indices=[];
+    const bounds={lat0:Infinity,lat1:-Infinity,lon0:Infinity,lon1:-Infinity};
     for(let j=0;j<rows.length;j++)for(let i=0;i<cols.length;i++){
       const {lat,lon}=runway.pointAlong(cols[i],rows[j]), p=this.geo.toXZ(lat,lon);
+      const unwrappedLon=runway.lon+((lon-runway.lon+540)%360)-180;
+      bounds.lat0=Math.min(bounds.lat0,lat);bounds.lat1=Math.max(bounds.lat1,lat);
+      bounds.lon0=Math.min(bounds.lon0,unwrappedLon);bounds.lon1=Math.max(bounds.lon1,unwrappedLon);
       // AirportDB collision height and published longitudinal slope are shared.
       const height=this.terrain.heightAt(lat,lon)??runway.surfaceAt(cols[i]);
       positions.push(p.x-center.x,height,p.z-center.z); uv.push(i/(cols.length-1),j/(rows.length-1));
@@ -37,7 +41,8 @@ export class F27RunwayInset {
     }
     this.mesh.geometry.dispose();this.mesh.geometry=geom;
     this.mesh.material.uniforms.uTile.value.set(0,0,Math.max(runway.len,400),0);
-    this.runway=runway;this.geoVersion=this.geo.version;this.demEpoch=this.terrain.demEpoch;this.fitAt=performance.now();
+    this.runway=runway;this.geoVersion=this.geo.version;this.demEpoch=this.terrain.demEpoch;
+    this.bounds=bounds;this.elevationVersion=this.terrain.elevationVersion;this.elevationRevision=this.terrain.elevationRevision(bounds);
     U.uF27PatchArea.value.set(length+65,width+25,length+239,width+189);
   }
   update(runway,cameraWorld,blend) {
@@ -45,7 +50,14 @@ export class F27RunwayInset {
     this.mesh.visible=show;
     if(!show)return;
     const c=this.geo.toXZ(runway.lat,runway.lon);
-    if(this.runway!==runway||this.geoVersion!==this.geo.version||(this.demEpoch!==this.terrain.demEpoch&&performance.now()-this.fitAt>1000))this.fit(runway,c);
+    // Collision samples new data immediately, so a relevant DEM arrival must
+    // refit the visual apron on this update too. Unrelated arrivals do no work.
+    let elevationChanged=false;
+    if(this.bounds&&this.elevationVersion!==this.terrain.elevationVersion){
+      this.elevationVersion=this.terrain.elevationVersion;
+      elevationChanged=this.elevationRevision!==this.terrain.elevationRevision(this.bounds);
+    }
+    if(this.runway!==runway||this.geoVersion!==this.geo.version||this.demEpoch!==this.terrain.demEpoch||elevationChanged)this.fit(runway,c);
     this.mesh.position.set(c.x-cameraWorld.x,-cameraWorld.y,c.z-cameraWorld.z);
   }
 }

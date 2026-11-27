@@ -1,0 +1,5 @@
+# GitHub mirror update kit — private review, not ready for public upload
+
+The comparison base is the public `anythingeverything556-blip/browser-flight-sim` at `db8ac6578770e2ad4569afccc5d6372dedf758b0`. The owner build source is `68152dbee6618dfa0bd262796e8c8a3c52dde698`. Included files are placed at their original repo paths. This ZIP does not update or modify any remote repository by itself.
+
+**Do not upload the ZIP as-is.** Owner-only/changed aircraft media, recordings, third-party source assets and private handoff notes are omitted. Some included code expects those assets, so this is not a verified runnable public distribution. Before applying the update, reconcile `MIRROR-DIFF.json` (including upstream-only files that may require deletion), verify project owner permission and the SR-71/F27 and DA40 distribution terms, then build/test against an authorized complete payload. Do not overwrite the current live sites from a partial GitHub tree. No Cloudflare or GitHub credentials are included.

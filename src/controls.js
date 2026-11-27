@@ -1,3 +1,7 @@
+import { CAMERA_ACTIONS } from './camera-input.js';
+import { SR71_EXTERIOR_ACTIONS } from './sr71-exterior-lights.js';
+import { SR71_ACTIONS } from './sr71bindings.js';
+import { SR71_COCKPIT_ACTIONS } from './sr71cockpit.js';
 const Kr = (s, t, e) => Math.min(e, Math.max(t, s)),
   M2 = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'PageUp', 'PageDown', ' ', 'Home', 'End', 'F1'],
   w2 = (s) => s && (s.isContentEditable || s.closest?.('input, textarea, select, button, a[href], [role="slider"], [role="radio"], [role="combobox"], .leaflet-container') || ['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'A'].includes(s.tagName));
@@ -6,6 +10,10 @@ const Kr = (s, t, e) => Math.min(e, Math.max(t, s)),
 // hold: read every frame while down; otherwise fired once on the key press. ctx: keys only conflict within one context (slew mode reuses keys).
 // The defaults are the simulator's original keys, so an unedited setup behaves exactly as before.
 export const KEY_ACTIONS = [
+  ...CAMERA_ACTIONS,
+  ...SR71_ACTIONS,
+  ...SR71_EXTERIOR_ACTIONS,
+  ...SR71_COCKPIT_ACTIONS,
   { id: 'pitchDown', label: 'Nose down (push)', group: 'Flight controls', hold: true, keys: ['ArrowUp', 'KeyW'] },
   { id: 'pitchUp', label: 'Nose up (pull)', group: 'Flight controls', hold: true, keys: ['ArrowDown', 'KeyS'] },
   { id: 'rollLeft', label: 'Roll left', group: 'Flight controls', hold: true, keys: ['ArrowLeft'] },
@@ -34,7 +42,7 @@ export const KEY_ACTIONS = [
   { id: 'autobrake', label: 'Autobrake: off / low / medium / max', group: 'Ground and gear', keys: ['Digit6'] },
   { id: 'gear', label: 'Landing gear (Skyhawk/DA40: fixed; Vision Jet, Il-76: retractable)', group: 'Ground and gear', keys: ['KeyG'] },
   { id: 'flapsDown', label: 'Flaps: advance one notch, FULL to UP (DA40, Skyhawk, Vision Jet, F27, Il-76); A380 stops at FULL', group: 'Ground and gear', keys: ['KeyF'] },
-  { id: 'doors', label: 'Cabin door / canopy, on the ground (DA40, Vision Jet); crew doors (Il-76)', group: 'Ground and gear', keys: ['Shift+KeyN'] },
+  { id: 'doors', label: 'Cabin door / canopy, stopped on ground (SR-71: unseal first); crew doors (Il-76)', group: 'Ground and gear', keys: ['Shift+KeyN'] },
   { id: 'spoilers', label: 'Spoilers and brake panels out / in (Il-76; deploy on touchdown by themselves in Medium and Easy)', group: 'Ground and gear', keys: ['Digit2'] },
   { id: 'reverse', label: 'Thrust reverse out / stowed, on the ground only; the thrust lever then sets the reverse power (Il-76)', group: 'Ground and gear', keys: ['Digit3'] },
   { id: 'cargo', label: 'Cargo hatch: clamshell doors, ramp and upper door open / close (Il-76)', group: 'Ground and gear', keys: ['Digit4'] },
@@ -70,7 +78,7 @@ export const DEFAULT_KEYS = Object.fromEntries(KEY_ACTIONS.map((a) => [a.id, [..
 export const RESERVED_KEYS = new Set(['Escape', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight', 'ContextMenu', 'Tab', 'CapsLock']);
 // the full table from saved overrides (only actions the player changed are saved)
 export function resolveKeys(over) {
-  const out = {}; for (const a of KEY_ACTIONS) out[a.id] = Array.isArray(over && over[a.id]) ? over[a.id].filter((k) => typeof k === 'string' && !(a.id === 'throttleUp' && k === 'Shift')) : [...a.keys]; // Shift alone is no longer a throttle key: it got in the way of the Shift chords
+  const out = {}; for (const a of KEY_ACTIONS) out[a.id] = Array.isArray(over && over[a.id]) ? over[a.id].filter((k) => typeof k === 'string') : [...a.keys];
   return out;
 }
 export function keyOverrides(table) {
@@ -97,10 +105,10 @@ export function keyName(k) {
   return k;
 }
 
-const UI_ACTIONS = new Set(['help', 'nextView', 'prevView', 'pause', 'reset', 'map', 'hud', 'instruments', 'sound']), // still work while paused; everything that flies the jet does not
+const UI_ACTIONS = new Set(['cameraRecenter', 'help', 'nextView', 'prevView', 'pause', 'reset', 'map', 'hud', 'instruments', 'sound']), // still work while paused; everything that flies the jet does not
   PAD_DEAD = 0.12, PAD_OVERRIDE = 0.3, PB_CHORD_S = 0.3;
 class Controls {
-  constructor() {
+  constructor({ slewMode = null } = {}) {
     ((this.keys = new Set()),
       (this.axes = { pitch: 0, roll: 0, yaw: 0 }),
       (this.yawKey = 0), (this.rudderSet = 0), (this.engSel = 0), (this.engTrim = [0, 0, 0, 0]), // rudder keys (eased), the held rudder setting, the selected engine (0 = all) and each engine's lever offset
@@ -122,6 +130,9 @@ class Controls {
       (this.groundFor = 0),
       (this.pbChord = !1),
       (this.chordKeys = new Set()),
+      (this.slewThrottleKeys = new Set()),
+      (this.getSlewMode = slewMode),
+      (this.slewMode = false),
       this.setBindings(null),
       window.addEventListener('keydown', (t) => {
         w2(t.target) ||
@@ -132,9 +143,9 @@ class Controls {
           !this.keys.has(t.code) && this.enabled && this.fire(t),
           this.keys.add(t.code));
       }),
-      window.addEventListener('focusin', (t) => { if (w2(t.target)) { this.keys.clear(); this.chordKeys.clear(); this.releaseAll(); this.centerMouse(); } }),
-      window.addEventListener('keyup', (t) => { this.keys.delete(t.code); this.chordKeys.delete(t.code); if (t.code === 'ShiftLeft' || t.code === 'ShiftRight') this.pbChord = false; }),
-      window.addEventListener('blur', () => { this.keys.clear(); this.chordKeys.clear(); this.pbChord = false; this.centerMouse(); }),
+      window.addEventListener('focusin', (t) => { if (w2(t.target)) { this.keys.clear(); this.chordKeys.clear(); this.slewThrottleKeys.clear(); this.releaseAll(); this.centerMouse(); } }),
+      window.addEventListener('keyup', (t) => { this.keys.delete(t.code); this.chordKeys.delete(t.code); this.slewThrottleKeys.delete(t.code); if (t.code === 'ShiftLeft' || t.code === 'ShiftRight') this.pbChord = false; }),
+      window.addEventListener('blur', () => { this.keys.clear(); this.chordKeys.clear(); this.slewThrottleKeys.clear(); this.pbChord = false; this.centerMouse(); }),
       window.addEventListener('mouseout', (t) => { t.relatedTarget || this.centerMouse(); }),
       window.addEventListener('mousemove', (t) => {
         if (!t.target || t.target.id !== 'view') { this.centerMouse(); return; }
@@ -145,19 +156,43 @@ class Controls {
           (this.mouse.y = n));
       }));
   }
-  // over: saved per-action overrides (or a full table); the press lookup maps a key or 'Shift+key' to its action
+  // Press and held bindings share one lookup, so the active context and the most specific chord own a key.
   setBindings(over) {
     this.bind = resolveKeys(over);
     this.press = new Map();
-    for (const a of KEY_ACTIONS) if (!a.hold) for (const k of this.bind[a.id]) this.press.set(k, a.id);
+    this.keyContexts = { main: new Map(), slew: new Map() };
+    for (const a of KEY_ACTIONS) for (const key of this.bind[a.id]) {
+      this.keyContexts[a.ctx || 'main'].set(key, { id: a.id, key, chord: key.startsWith('Shift+') });
+      if (!a.hold) this.press.set(key, a.id);
+    }
   }
-  // is a held action's key down? 'Shift' alone counts unless a Shift chord is in use (Shift+B parking brake, Shift+V, Shift+F, ?)
-  held(id) {
+  keyBinding(code, shift) {
+    // The live provider lets keydown see a slew toggle before the next animation frame.
+    const contexts = (this.getSlewMode?.() ?? this.slewMode) ? ['slew', 'main'] : ['main'];
+    for (const ctx of contexts) {
+      const map = this.keyContexts[ctx], chord = shift && map.get('Shift+' + code), plain = map.get(code);
+      // Intentional guide gesture: after holding Shift-throttle, B remains the wheel brake.
+      if (chord?.id === 'parkingBrake' && plain?.id === 'brakes' && this.bind.throttleUp.includes('Shift') &&
+          this.shiftT >= PB_CHORD_S && !this.pbChord && !this.chordKeys.size) return plain;
+      if (chord || plain) return chord || plain;
+    }
+  }
+  held(id, excluded = null) {
     const e = this.keys, shift = e.has('ShiftLeft') || e.has('ShiftRight');
-    for (const k of this.bind[id]) {
-      if (k === 'Shift') { if (shift && !this.pbChord && !this.chordKeys.size) return true; }
-      else if (k.startsWith('Shift+')) { if (shift && e.has(k.slice(6))) return true; }
-      else if (e.has(k)) return true;
+    for (const key of this.bind[id]) {
+      if (key === 'Shift') {
+        if ((e.has('ShiftLeft') && !excluded?.has('ShiftLeft') || e.has('ShiftRight') && !excluded?.has('ShiftRight')) &&
+            this.keyBinding('Shift', false)?.id === id && !this.pbChord && !this.chordKeys.size &&
+            ![...e].some(code => this.keyBinding(code, true)?.chord)) return true;
+        continue;
+      }
+      const code = key.startsWith('Shift+') ? key.slice(6) : key;
+      if (!e.has(code) || excluded?.has(code)) continue;
+      const winner = this.keyBinding(code, shift);
+      // Parking-brake chords intentionally retain the ordinary wheel brake while B is held.
+      if (id === 'brakes' && key === code && winner?.id === 'parkingBrake') return true;
+      if (winner?.id === id && winner.key === key &&
+          (winner.chord || !this.chordKeys.has(code) || id === 'brakes')) return true;
     }
     return false;
   }
@@ -188,18 +223,17 @@ class Controls {
   }
   fire(t) {
     const e = this.handlers, n = t.code, shift = t.shiftKey && n !== 'ShiftLeft' && n !== 'ShiftRight';
-    // a Shift chord first ('Shift+KeyF'), then the plain key (Shift+G is still the gear, '?' is Shift+/ for help)
-    let act = shift ? this.press.get('Shift+' + n) : undefined, chord = !!act;
-    if (!act) act = this.press.get(n);
-    if (act === 'parkingBrake' && chord) {
-      // Shift already pushing the throttle for a while = B is the brakes (guide step 1), not a parking-brake chord
-      if (this.held('throttleUp') && this.bind.throttleUp.includes('Shift') && this.shiftT >= PB_CHORD_S) return;
-      this.pbChord = true; // Shift was the chord's modifier: it must not also push the throttle until it is let go
+    const winner = this.keyBinding(n, shift), act = winner?.id;
+    if (winner?.chord) {
+      this.chordKeys.add(n);
+      if (act === 'parkingBrake') this.pbChord = true;
     }
-    if (shift && act) this.chordKeys.add(n);
+    // A held chord consumes its key without dispatching the plain key's press action.
+    if (ACTION[act]?.hold) return;
     act && e[act] && (!this.locked || UI_ACTIONS.has(act)) && e[act]();
   }
-  update(t) {
+  update(t, slewMode = false) {
+    this.slewMode = slewMode;
     if (this.onGround === this.ground) this.groundFor = 0;
     else if ((this.groundFor += t) > 0.25) ((this.ground = this.onGround), (this.groundFor = 0));
     if (!this.enabled || this.locked) { this.releaseAll(); this.padEdges(); return; }
@@ -245,9 +279,17 @@ class Controls {
     if (Math.max(Math.abs(this.touch.pitch || 0), Math.abs(this.touch.roll || 0)) > 0.05) this.manual = true;
     this.mouseMoved = !1;
     this.shiftT = e.has('ShiftLeft') || e.has('ShiftRight') ? this.shiftT + t : 0;
-    // throttle (default Shift / E up, Q down). Not Ctrl: held Ctrl turned W/S/G into browser shortcuts (Ctrl+W closed the tab).
+    // throttle (default E up, Q down). Not Ctrl: held Ctrl turned W/S/G into browser shortcuts (Ctrl+W closed the tab).
     // B held for the brakes still lets Shift push the throttle (the first guide step); a Shift chord (Shift+B, Shift+V, ?) holds it off
-    const thrUp = this.held('throttleUp'), thrDn = this.held('throttleDown');
+    if (slewMode) {
+      for (const id of ['pitchDown', 'pitchUp', 'rollLeft', 'rollRight', 'rollSteerLeft', 'rollSteerRight', 'slewUp', 'slewDown']) {
+        for (const key of this.bind[id]) {
+          const codes = key === 'Shift' ? ['ShiftLeft', 'ShiftRight'] : [key.startsWith('Shift+') ? key.slice(6) : key];
+          for (const code of codes) if (e.has(code) && (key === 'Shift' ? this.held(id) : this.keyBinding(code, e.has('ShiftLeft') || e.has('ShiftRight'))?.id === id)) this.slewThrottleKeys.add(code);
+        }
+      }
+    }
+    const thrUp = this.held('throttleUp', this.slewThrottleKeys), thrDn = this.held('throttleDown', this.slewThrottleKeys);
     const one = this.engSel - 1; // an engine selected: the keys move its lever alone, as an offset from the master lever
     if (one >= 0 && (thrUp || thrDn)) { this.engTrim[one] = Kr(this.throttle + this.engTrim[one] + (thrUp ? 0.35 : -0.35) * t, 0, 1) - this.throttle; this.touched = true; }
     else { if (thrUp) { this.throttle = Kr(this.throttle + 0.35 * t, 0, 1); this.touched = true; }
@@ -295,6 +337,17 @@ class Controls {
   }
   // Optional hardware access may be denied by browser policy. Keyboard/touch must still run.
   selectedPad() {
+    if (!this.padLifecycle) {
+      // Browsers may reuse a slot (even for the same model) between polls.
+      // Object identity is not stable across getGamepads() snapshots.
+      const invalidate = e => {
+        if (e.gamepad?.index !== this.padIndex) return;
+        this.padIdentity = null; this.padPrev = {}; this.padLive = {};
+      };
+      window.addEventListener('gamepadconnected', invalidate);
+      window.addEventListener('gamepaddisconnected', invalidate);
+      this.padLifecycle = true;
+    }
     let pads;
     try { pads = Array.from(navigator.getGamepads?.() || []).filter(d => d && d.connected !== false); }
     catch { pads = []; }
@@ -304,7 +357,10 @@ class Controls {
     const active = supported.filter(d => (d.axes || []).some((v, i) => (d.mapping === 'standard' || i < 2 && v > -0.95) && Math.abs(v) > PAD_DEAD) || (d.buttons || []).some(b => b.pressed || b.value > 0.1));
     const d = active.find(d => d.index === this.padIndex) || active[0] || supported.find(d => d.index === this.padIndex) || supported[0];
     const index = d ? d.index : null;
-    if (index !== this.padIndex) { this.padPrev = {}; this.padLive = {}; this.padIndex = index; }
+    const identity = d ? JSON.stringify([index, d.id, d.mapping, d.axes?.length, d.buttons?.length]) : null;
+    if (index !== this.padIndex || identity !== this.padIdentity) {
+      this.padPrev = {}; this.padLive = {}; this.padIndex = index; this.padIdentity = identity;
+    }
     return d;
   }
   // Keep button edges current while off, so a button held across resume does not fire.

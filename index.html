@@ -23,12 +23,16 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23070a0e'/%3E%3Cpath d='M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z' fill='%236cc4e4'/%3E%3C/svg%3E" />
   <link rel="stylesheet" href="/src/style.css" />
+  <link rel="stylesheet" href="/src/launch-deck.css" />
+  <link rel="stylesheet" href="/src/flight-shell.css" />
+  <link rel="stylesheet" href="/src/weather-deck.css" />
+  <link rel="stylesheet" href="/src/route-deck.css" />
   <link rel="preload" href="/fonts/geist-latin.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/geist-mono-latin.woff2" as="font" type="font/woff2" crossorigin />
   <!-- Shared small dependencies only. main.js loads the selected aircraft, never an unconditional SR-71. -->
   <link rel="preload" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin="anonymous" href="/data/airports.json" />
-  <link rel="preload" href="/draco/draco_wasm_wrapper.js" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin />
-  <link rel="preload" href="/draco/draco_decoder.wasm" data-flight-preload media="(any-pointer: fine)" as="fetch" crossorigin />
+  <link rel="preload" href="/draco/draco_wasm_wrapper.js" data-aircraft-preload media="not all" as="fetch" crossorigin />
+  <link rel="preload" href="/draco/draco_decoder.wasm" data-aircraft-preload media="not all" as="fetch" crossorigin />
 </head>
 <body class="intro">
   <dialog id="touch-gate" aria-labelledby="touch-title" aria-describedby="touch-description">
@@ -36,7 +40,7 @@
     <p id="touch-description">Touch flight controls are basic. Some cockpit tools still need a keyboard or pointer. Continuing downloads the aircraft and starts demanding WebGL graphics.</p>
     <button type="button" id="touch-continue">Continue with touch controls</button>
   </dialog>
-  <canvas id="view" aria-hidden="true"></canvas>
+  <canvas id="view" tabindex="-1" aria-label="Flight surface"></canvas>
   <div id="gloom" aria-hidden="true"></div>
   <div id="fogveil" aria-hidden="true"></div>
   <canvas id="rain" aria-hidden="true"></canvas>
@@ -47,19 +51,21 @@
     <div class="brand" title="Earthwing" aria-hidden="true">
       <svg viewBox="0 0 40 40"><path d="M20 3 L21.4 13 L23 13.6 L24 11 L25.6 11 L26 22 L36 30 L36 32 L26 30 L24 33 L21.8 33 L21 37 L19 37 L18.2 33 L16 33 L14 30 L4 32 L4 30 L14 22 L14.4 11 L16 11 L17 13.6 L18.6 13 Z" /></svg>
     </div>
-    <button type="button" data-sheet="flight" title="Flight setup" aria-label="Flight setup"><svg viewBox="0 0 24 24"><path d="M2 16l20-6-20-6 3 6-3 6zm3-6h9"/></svg><span>Flight</span></button>
-    <button type="button" data-sheet="map" title="Map &amp; route (M)" aria-label="Map and route"><svg viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg><span>Map</span></button>
-    <button type="button" data-sheet="airports" title="Airports" aria-label="Airports"><svg viewBox="0 0 24 24"><path d="M4 20h16M7 20V9l5-4 5 4v11M10 20v-5h4v5"/></svg><span>Airports</span></button>
-    <button type="button" data-sheet="ap" title="Autopilot (K)" aria-label="Autopilot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v4M12 16v4M4 12h4M16 12h4M12 12l4-3"/></svg><span>Autopilot</span></button>
-    <button type="button" data-sheet="views" title="Cameras (V)" aria-label="Camera views"><svg viewBox="0 0 24 24"><path d="M3 8h13v9H3zM16 11l5-3v9l-5-3"/></svg><span>Views</span></button>
-    <button type="button" data-sheet="env" title="Time &amp; weather" aria-label="Time and weather"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.5"/><path d="M9 2v2M9 14v2M2 9h2M14 9h2M7 20h11a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6 1.5A3 3 0 0 0 7 20z"/></svg><span>Weather</span></button>
-    <button type="button" data-sheet="settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>Settings</span></button>
-    <button type="button" data-sheet="help" title="Controls &amp; help (?)" aria-label="Controls and help"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10.5 10h.01M14.5 10h.01M17.5 10h.01M7.5 14h9"/></svg><span>Controls</span></button>
-    <button type="button" data-sheet="f27" id="f27-rail" title="F27 lights and aircraft controls" aria-label="F27 lights and aircraft controls" hidden><svg viewBox="0 0 24 24"><path d="M9 19h6m-5 3h4m-5-6c0-2-3-3-3-7a6 6 0 0 1 12 0c0 4-3 5-3 7zM2 8h2m16 0h2"/></svg><span>F27 Systems</span></button>
+    <button type="button" data-sheet="flight" aria-expanded="false" aria-controls="sheet-flight" title="Flight setup" aria-label="Flight setup"><svg viewBox="0 0 24 24"><path d="M2 16l20-6-20-6 3 6-3 6zm3-6h9"/></svg><span>Flight</span></button>
+    <button type="button" data-sheet="map" aria-expanded="false" aria-controls="sheet-map" title="Map &amp; route (M)" aria-label="Map and route"><svg viewBox="0 0 24 24"><path d="M3 6l6-3 6 3 6-3v15l-6 3-6-3-6 3zM9 3v15M15 6v15"/></svg><span>Map</span></button>
+    <button type="button" data-sheet="airports" aria-expanded="false" aria-controls="sheet-airports" title="Airports" aria-label="Airports"><svg viewBox="0 0 24 24"><path d="M4 20h16M7 20V9l5-4 5 4v11M10 20v-5h4v5"/></svg><span>Airports</span></button>
+    <button type="button" data-sheet="ap" aria-expanded="false" aria-controls="sheet-ap" title="Autopilot (K)" aria-label="Autopilot"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 4v4M12 16v4M4 12h4M16 12h4M12 12l4-3"/></svg><span>Autopilot</span></button>
+    <button type="button" data-sheet="views" aria-expanded="false" aria-controls="sheet-views" title="Cameras (V)" aria-label="Camera views"><svg viewBox="0 0 24 24"><path d="M3 8h13v9H3zM16 11l5-3v9l-5-3"/></svg><span>Views</span></button>
+    <button type="button" id="sr71-cockpit-entry" title="Enter cockpit" aria-label="Enter SR-71 cockpit" aria-pressed="false" hidden><svg viewBox="0 0 24 24"><path d="M3 16V8l9-4 9 4v8M3 10h18M12 5v5M8 16h8"/></svg><span>Cockpit</span></button>
+    <button type="button" data-sheet="env" aria-expanded="false" aria-controls="sheet-env" title="Time &amp; weather" aria-label="Time and weather"><svg viewBox="0 0 24 24"><circle cx="9" cy="9" r="3.5"/><path d="M9 2v2M9 14v2M2 9h2M14 9h2M7 20h11a3.5 3.5 0 0 0 0-7 5 5 0 0 0-9.6 1.5A3 3 0 0 0 7 20z"/></svg><span>Weather</span></button>
+    <button type="button" data-sheet="settings" aria-expanded="false" aria-controls="sheet-settings" title="Settings" aria-label="Settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span>Settings</span></button>
+    <button type="button" data-sheet="help" aria-expanded="false" aria-controls="sheet-help" title="Controls &amp; help (?)" aria-label="Controls and help"><svg viewBox="0 0 24 24"><rect x="2.5" y="6" width="19" height="12" rx="2"/><path d="M6.5 10h.01M10.5 10h.01M14.5 10h.01M17.5 10h.01M7.5 14h9"/></svg><span>Controls</span></button>
+    <button type="button" data-sheet="f27" aria-expanded="false" aria-controls="sheet-f27" id="f27-rail" title="F27 lights and aircraft controls" aria-label="F27 lights and aircraft controls" hidden><svg viewBox="0 0 24 24"><path d="M9 19h6m-5 3h4m-5-6c0-2-3-3-3-7a6 6 0 0 1 12 0c0 4-3 5-3 7zM2 8h2m16 0h2"/></svg><span>F27 Systems</span></button>
     <div class="grow"></div>
-    <button type="button" id="b-pause" title="Pause (P)" aria-keyshortcuts="P"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg><span>Pause</span></button>
-    <button type="button" id="b-sound" title="Sound (O)" aria-keyshortcuts="O"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg><span>Sound</span></button>
+    <button type="button" id="b-pause" aria-pressed="false" title="Pause (P)" aria-keyshortcuts="P"><svg viewBox="0 0 24 24"><path d="M8 5v14M16 5v14"/></svg><span>Pause</span></button>
+    <button type="button" id="b-sound" aria-pressed="true" aria-describedby="sound-status" title="Sound (O)" aria-keyshortcuts="O"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4zM16 9a4 4 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg><span>Sound</span></button>
   </nav>
+  <span id="sound-status" class="sr-only" role="status">Sound on</span>
 
   <div id="hero-media" aria-hidden="true">
     <picture><img src="/images/earthwing-flight-1920.webp" srcset="/images/earthwing-flight-960.webp 960w, /images/earthwing-flight-1920.webp 1920w, /images/earthwing-flight-4k.webp 3840w" sizes="100vw" alt="" width="3840" height="2160" fetchpriority="high" /></picture>
@@ -68,12 +74,13 @@
   <button type="button" id="hero-motion" hidden>Pause background</button>
   <div id="hero-intro">
   <div id="hero" aria-label="Earthwing flight simulator">
-    <div class="h-kicker"><svg class="h-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z"/></svg>Flight simulator in your browser</div>
+    <div class="h-kicker"><svg class="h-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 6 35 24 39 26 41 20 44 20 44 36 60 48 60 52 43 47 38 53 34 53 32 60 29 60 27 53 23 53 19 47 4 52 4 48 19 36 20 20 24 20 26 26 30 24Z"/></svg>Flight simulator <span class="hero-kicker-rule" aria-hidden="true"></span> In your browser</div>
     <h1>Earthwing</h1>
-    <p>Your first take-off, a quiet local circuit, or the edge of space. Fly a range of aircraft over the real world — no account, no install.</p>
+    <p class="hero-lede">The world is your runway.</p>
+    <p class="hero-copy">From your first circuit to the edge of space. Choose an aircraft, set your departure, and fly the real world.</p>
+    <div class="hero-facts" aria-label="Simulator features"><span><b>06</b> aircraft</span><span><b>8,200+</b> airports</span><span>No account · no install</span></div>
     <nav aria-label="Explore aircraft"><a href="/aircraft/sr71/">SR-71</a> · <a href="/aircraft/c172/">C172</a> · <a href="/aircraft/sf50/">Vision Jet</a> · <a href="/aircraft/il76/">Il-76</a></nav>
     <p class="hero-caption">SR-71 model film · rendered for Earthwing</p>
-
   </div>
 
   <div id="hero-ac"></div>
@@ -82,21 +89,15 @@
 
   <section class="sheet" id="sheet-flight" aria-labelledby="flight-heading">
     <header>
-      <div class="heading"><h2 id="flight-heading">Flight setup</h2></div>
+      <div class="heading"><span class="launch-eyebrow">Flight deck / 01</span><h2 id="flight-heading">Prepare your flight</h2><p class="launch-heading-note">Choose your departure and conditions.</p></div>
       <span class="hint">Choose aircraft, departure and start</span>
       <button type="button" class="x" data-close aria-label="Close flight setup"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
     <div class="hero-loader">
-      <div class="hero-loader-head"><span>Starting up</span><span id="loadmsg" aria-live="polite">Loading aircraft…</span></div>
+      <div class="hero-loader-head"><span id="loadmsg" aria-live="polite"></span></div>
       <button type="button" id="startup-retry" hidden>Retry loading</button>
-      <div id="loadline"><div id="loadbar"></div></div>
     </div>
     <div class="body">
-      <section class="grp quick-start" aria-label="Quick start">
-        <button type="button" id="just-fly" class="cta" disabled>Just fly · DA40 NG</button>
-        <p class="sub" id="quick-description">Clear skies · free flight · home runway (KBAB on first use). Your saved preferences stay unchanged.</p>
-        <p class="sub">Want the aircraft and conditions you selected? Use Start flight below.</p>
-      </section>
       <div id="ac-slot"><div id="ac-pick">
         <div class="lbl">Choose your aircraft</div>
         <div class="ac-cards" id="ac-cards" role="radiogroup" aria-label="Aircraft">
@@ -114,9 +115,6 @@
         <label class="check"><input id="f27-cold" type="checkbox" /> Cold ground start · engines off</label>
         <p class="note">In flight, open <b>F27 Systems</b> on the left for lights, engine and door controls, and seat height.</p>
       </section>
-      <button type="button" id="resume-flight" class="ghost wide" hidden>Resume last flight setup</button>
-      <p class="sub" id="resume-note" hidden>Restores aircraft, runway, start profile, time, weather and mission — not an in-air save.</p>
-      <details id="logbook-view"><summary>Local logbook</summary><p class="note">Last 50 completed landings in this browser. Duration is simulated flight time; landing quality is approximate sink rate, not a certification score. No account or upload.</p><ol id="logbook-list"></ol><p id="logbook-status" class="note" aria-live="polite"></p></details>
       <div class="f27-paint" id="f27-livery-setup" hidden><label class="lbl" for="f27-livery-setup-choice">Livery</label><select id="f27-livery-setup-choice" aria-label="F27 livery"><option value="air-inter-1980">Air Inter 1980 · F-BPNB</option><option value="white">White Classic</option></select><small aria-live="polite"></small></div>
       <section class="grp" aria-labelledby="grp-dep">
         <h3 class="grp-h" id="grp-dep">Departure</h3>
@@ -149,8 +147,18 @@
         </div>
         <div class="sub" id="mission-blurb">No objectives</div>
       </section>
+      <section class="grp quick-start" aria-label="Quick start">
+        <h3 class="grp-h">Take the shortcut</h3>
+        <p class="sub" id="quick-description">Clear skies · free flight · home runway (KBAB on first use). Your saved preferences stay unchanged.</p>
+        <button type="button" id="just-fly" class="ghost wide" disabled>Just fly · DA40 NG</button>
+        <button type="button" id="sr71-start-cockpit" class="ghost wide" hidden disabled>Start in SR-71 cockpit</button>
+      </section>
+      <button type="button" id="resume-flight" class="ghost wide" hidden>Resume last flight setup</button>
+      <p class="sub" id="resume-note" hidden>Restores aircraft, runway, start profile, time, weather and mission — not an in-air save.</p>
+      <details id="logbook-view"><summary>Local logbook</summary><p class="note">Last 50 completed landings in this browser. Duration is simulated flight time; landing quality is approximate sink rate, not a certification score. No account or upload.</p><ol id="logbook-list"></ol><p id="logbook-status" class="note" aria-live="polite"></p></details>
     </div>
     <footer class="sheet-foot">
+      <span class="launch-eyebrow">Ready when you are</span>
       <div class="foot-sum" id="flight-sum" aria-live="polite"></div>
       <button type="button" id="start-btn" class="cta">Start flight</button>
       <label class="check"><input type="checkbox" id="make-home" /> <span>Make this my home base</span></label>
@@ -166,13 +174,16 @@
     <div class="mapwrap">
       <div id="map" aria-label="Flight planning map"></div>
       <aside id="route" aria-label="Route planner">
+        <div class="route-deck-heading"><span>Navigation</span><h3>Route planner</h3><p>Choose an airport or add a waypoint on the map.</p></div>
         <div id="map-apt"></div>
-        <div class="lbl">Flight plan</div>
-        <ol id="route-list"></ol>
-        <div id="route-sum" class="sub"></div>
-        <div class="lbl">Arrival runway</div>
-        <div id="arr-box" class="sub">None selected — choose one from an airport</div>
-        <div class="btns"><button type="button" id="route-nav" class="primary">Fly route (NAV)</button><button type="button" id="route-clear" class="ghost">Clear</button></div>
+        <div class="route-deck-card">
+          <h4>Waypoints</h4><ol id="route-list"></ol><div id="route-sum" class="sub"></div>
+        </div>
+        <div class="route-deck-card">
+          <h4>Arrival runway</h4><div id="arr-box" class="sub">None selected — choose one from an airport</div>
+          <p class="note">Virtual ILS is generated in-game guidance, not published radio or procedure data.</p>
+        </div>
+        <div class="btns route-deck-actions"><button type="button" id="route-nav" class="primary">Fly route (NAV)</button><button type="button" id="route-clear" class="ghost">Clear</button></div>
       </aside>
     </div>
   </section>
@@ -227,19 +238,19 @@
       <div class="dial" data-k="mach"><span>Mach</span><button type="button" data-d="-0.5">−.5</button><button type="button" data-d="-0.05">−</button><input id="ap-mach" type="number" value="3.2" step="0.05" aria-label="Mach target" /><button type="button" data-d="0.05">+</button><button type="button" data-d="0.5">+0.5</button><i>M</i></div>
       <div class="dial" data-k="vsl"><span>Climb limit</span><button type="button" data-d="-1000">−1k</button><button type="button" data-d="-250">−</button><input id="ap-vsl" type="number" value="6000" step="250" aria-label="Vertical speed limit" /><button type="button" data-d="250">+</button><button type="button" data-d="1000">+1k</button><i>fpm</i></div>
       <details class="advanced"><summary>Advanced autopilot actions</summary>
-      <button type="button" id="ap-tuneils" class="ghost wide">Tune ILS ahead (\): nearest runway in front, needles and HSI live without the autopilot</button>
+      <button type="button" id="ap-tuneils" class="ghost wide">Select virtual ILS ahead (\): nearest runway in front, needles and HSI live without the autopilot</button>
       <button type="button" id="ap-refuel" class="ghost wide">Refuel (L): stopped on the ground, or the SR-71 from a tanker below 30,000 ft</button>
       <button type="button" id="ap-goaround" class="ghost wide">Go-around (J): full power, wings level, climb 600 m, gear up</button>
       </details>
       <button type="button" id="ap-sync" class="ghost wide">Sync targets to current flight</button>
-      <p class="note">NAV follows the flight plan from the Map. APPR captures the localizer and glideslope of the arrival runway and disconnects at 150 ft — the SR-71 had no autoland, so you flare and land by hand.</p>
+      <p class="note">NAV follows the flight plan from the Map. APPR captures the virtual localizer and glideslope of the arrival runway and disconnects at 150 ft — the SR-71 had no autoland, so you flare and land by hand.</p>
     </div>
   </section>
 
   <section class="sheet" id="sheet-views" aria-labelledby="views-heading">
     <header>
       <div class="heading"><h2 id="views-heading">Views</h2></div>
-      <span class="hint">V / Shift+V · drag to look · wheel to zoom</span>
+      <span class="hint">V / Shift+V · drag or Home/End/Del/Ins to look · 7/8 zoom · 1 recenter</span>
       <button type="button" class="x" data-close aria-label="Close views"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
     <div class="body"><div id="view-grid" class="grid" aria-label="Camera views"></div></div>
@@ -251,27 +262,55 @@
       <button type="button" class="x" data-close aria-label="Close time and weather"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button>
     </header>
     <div class="body">
-      <p class="panel-summary">Choose the light, wind and weather you want to fly in.</p>
-      <label class="lbl" for="tod">Time of day <span id="tod-l" class="val"></span></label>
-      <input type="range" id="tod" min="0" max="24" step="0.05" value="15" aria-label="Time of day" />
-      <label class="check"><input type="checkbox" id="tod-run" /> <span>Clock runs in real time</span></label>
-      <div class="lbl">Live weather <span class="field-meta">METAR</span></div>
-      <button type="button" class="ghost" id="metar-btn">Load live METAR for the departure airport</button>
-      <label class="check"><input type="checkbox" id="metar-auto" /> <span>Use live weather when a flight starts (opt in)</span></label>
-      <p class="note" id="metar-raw" aria-live="polite">Reads the current METAR from aviationweather.gov and sets wind, visibility, cloud and rain to match.</p>
-      <div class="lbl">Weather</div>
-      <div class="seg wrap" id="wx-presets" role="group" aria-label="Weather preset"><button type="button" data-v="clear">Clear</button><button type="button" data-v="few">Fair</button><button type="button" data-v="scattered">Scattered</button><button type="button" data-v="overcast">Overcast</button><button type="button" data-v="rain">Rain</button><button type="button" data-v="storm">Storm</button><button type="button" data-v="fog">Fog</button><button type="button" data-v="windy">Gusty</button></div>
-      <details class="advanced"><summary>Advanced weather adjustments</summary>
+      <section class="weather-current" aria-label="Current weather">
+        <svg class="weather-horizon" viewBox="0 0 220 120" fill="none" aria-hidden="true"><circle cx="165" cy="49" r="26"/><path d="M30 94h185M80 94l52-22 25 18 22-12 39 16M123 58h11m44-31 8-8m-20-2V6m28 46h10"/><path d="M8 107h208m-118 10h115" opacity=".45"/></svg>
+        <span class="weather-eyebrow"><i></i> Current conditions</span>
+        <p id="weather-current" class="weather-current-title" role="status">Clear preset</p>
+        <div class="weather-readouts">
+          <div><span>Wind</span><b id="weather-wind">—</b></div>
+          <div><span>Visibility</span><b id="reported-vis-l">No active observation</b></div>
+        </div>
+      </section>
+      <div class="weather-section-heading">Weather presets</div>
+      <div class="seg wrap" id="wx-presets" role="group" aria-label="Weather preset">
+        <button type="button" data-v="clear" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19m0-14-1.5 1.5m-11 11L5 19"/></svg>Clear</button>
+        <button type="button" data-v="few" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9h2m4-7v2m-5 1 1.5 1.5M9 12a3 3 0 1 1 3-3m-3 10h11a3 3 0 0 0-.5-5.96 4.6 4.6 0 0 0-8.1 1.5A2.6 2.6 0 0 0 9 19Z"/></svg>Fair</button>
+        <button type="button" data-v="scattered" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13a3 3 0 1 1 1-5.83A4.4 4.4 0 0 1 14 9m-6 10h12a3 3 0 0 0-.6-5.94 4.6 4.6 0 0 0-8.2 1.5A2.6 2.6 0 0 0 8 19Z"/></svg>Scattered</button>
+        <button type="button" data-v="overcast" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 16h13a3.4 3.4 0 0 0 .2-6.8 5.1 5.1 0 0 0-9.9.7A3.6 3.6 0 1 0 6 16Zm0 4h12"/></svg>Overcast</button>
+        <button type="button" data-v="rain" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.5 14H19a3 3 0 0 0 0-6 4.6 4.6 0 0 0-8.8 1.1A2.8 2.8 0 1 0 5.5 14ZM8 17l-1 2m6-2-1 3m6-3-1 2"/></svg>Rain</button>
+        <button type="button" data-v="storm" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 14h2m8 0h3a3 3 0 0 0 0-6 4.6 4.6 0 0 0-9 1A2.8 2.8 0 1 0 6 14Zm8-2-4 5h4l-2 5"/></svg>Storm</button>
+        <button type="button" data-v="fog" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 9h14a2.5 2.5 0 0 0-.4-5 4 4 0 0 0-7.6 1A2.1 2.1 0 0 0 8 6.5H5A1.25 1.25 0 0 0 5 9Zm-2 4h18m-16 4h14m-16 4h18"/></svg>Fog</button>
+        <button type="button" data-v="windy" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8h12a2.5 2.5 0 1 0-2.5-2.5M3 12h16a2.5 2.5 0 1 1-2.5 2.5M3 16h8a2.5 2.5 0 1 1-2.5 2.5"/></svg>Gusty</button>
+      </div>
+      <section class="weather-section" aria-label="Time of day">
+        <label class="weather-section-heading weather-time-label" for="tod">Time of day <span id="tod-l" class="val"></span></label>
+        <input type="range" id="tod" min="0" max="24" step="0.05" value="15" aria-label="Time of day" />
+        <div class="weather-times" id="weather-times" role="group" aria-label="Time shortcuts">
+          <button type="button" data-hour="7" aria-pressed="false">Morning</button><button type="button" data-hour="12" aria-pressed="false">Noon</button><button type="button" data-hour="18" aria-pressed="false">Evening</button><button type="button" data-hour="22" aria-pressed="false">Night</button>
+        </div>
+        <label class="check"><input type="checkbox" id="tod-run" /> <span>Clock runs in real time</span></label>
+      </section>
+      <section class="weather-section" aria-label="Live weather">
+        <div class="weather-section-heading">Live weather <span class="field-meta">METAR or model</span></div>
+        <button type="button" class="ghost weather-load" id="metar-btn">Load departure weather</button>
+        <label class="check"><input type="checkbox" id="metar-auto" /> <span>Use live weather when a flight starts (opt in)</span></label>
+        <details class="weather-report"><summary>Weather report details</summary>
+          <p class="note" id="metar-raw">Loads a recent METAR, or clearly labeled modeled weather when no report is available.</p>
+        </details>
+      </section>
+      <details class="advanced weather-advanced"><summary>Fine-tune weather</summary>
       <div class="lbl">Cloud coverage</div>
       <div class="seg" id="clouds" role="group" aria-label="Cloud coverage"><button type="button" data-v="0">Clear</button><button type="button" data-v="0.3" class="on">Few</button><button type="button" data-v="0.6">Scattered</button><button type="button" data-v="0.9">Broken</button></div>
-      <label class="lbl" for="cloud-base">Cloud base <span id="cb-l" class="val"></span></label>
-      <input type="range" id="cloud-base" min="1000" max="30000" step="500" value="6000" aria-label="Cloud base" />
+      <label class="lbl" for="cloud-base">Cloud / obscuration base <span id="cb-l" class="val"></span></label>
+      <input type="range" id="cloud-base" min="-1900" max="65000" step="100" value="6000" aria-label="Manual cloud or obscuration base in feet MSL" aria-describedby="cloud-base-note" />
+      <p class="note" id="cloud-base-note">Readout preserves reported heights in MSL, including low cloud and vertical visibility (obscuration). Moving this manual slider chooses a 100 ft step from −1,900 to 65,000 ft MSL.</p>
       <div class="lbl">Wind <span id="wind-l" class="val"></span></div>
       <div class="two"><input type="range" id="wind-dir" min="0" max="350" step="10" value="320" aria-label="Wind direction" title="Wind direction" /><input type="range" id="wind-spd" min="0" max="60" step="1" value="8" aria-label="Wind speed" title="Wind speed" /></div>
       <label class="lbl" for="turb">Turbulence <span id="turb-l" class="val"></span></label>
       <input type="range" id="turb" min="0" max="1" step="0.05" value="0.1" aria-label="Turbulence" />
-      <label class="lbl" for="vis">Visibility <span id="vis-l" class="val"></span></label>
-      <input type="range" id="vis" min="0.3" max="3" step="0.1" value="1" aria-label="Visibility" />
+      <label class="lbl" for="vis">Visual distance tuning <span id="vis-l" class="val"></span></label>
+      <input type="range" id="vis" min="0.3" max="3" step="0.1" value="1" aria-label="Visual distance tuning factor" aria-describedby="vis-note" />
+      <p class="note" id="vis-note">Manual rendering factor, not reported visibility or a measured scene sight distance.</p>
       </details>
       <button type="button" id="weather-reset" class="ghost wide">Reset to clear skies at 15:00</button>
       <p class="note">Applies immediately and turns automatic live weather off. No location sharing.</p>
@@ -349,7 +388,7 @@
           <tr><td>Z X</td><td>Rudder, nose-wheel steering (any time)</td></tr><tr><td>; '</td><td>Pitch trim (nose down / nose up)</td></tr>
           <tr><td>E · Q</td><td>Throttle up · down (hold). Or drag the throttle lever on the right edge. Last quarter = afterburner</td></tr><tr><td>+ − · PgUp PgDn · ] [</td><td>Throttle, alternative keys</td></tr><tr><td>Shift+1 … Shift+4</td><td>Select one engine: the throttle keys then move its lever alone. Same key again = all engines · Shift+0 all engines, levers together</td></tr><tr><td>Num 4 · Num 6 · Num 5</td><td>Rudder setting 5 % left · 5 % right · centre (stays until changed)</td></tr><tr><td>6</td><td>Autobrake off / low / medium / max: brakes by itself after touchdown</td></tr><tr><td>9 · 0</td><td>Max afterburner · idle</td></tr><tr><td>Shift+I</td><td>Simplified engine control: C172 ignition OFF / BOTH; DA40 diesel engine master (not magnetos); SF50 engine master / fuel cutoff; F27 engine start / stop</td></tr>
           <tr><td>G</td><td>Landing gear (Skyhawk and DA40: fixed gear; Vision Jet and Il-76: gear up refused on the ground)</td></tr><tr><td>2 · 3</td><td>Il-76: spoilers and brake panels out / in · thrust reverse out / stowed (on the ground only; the thrust lever then sets the power)</td></tr><tr><td>4 · 5</td><td>Il-76: cargo hatch (clamshell doors, ramp, upper door) · paratroop doors, opened stopped on the ground</td></tr><tr><td>B / Space</td><td>Brakes · Shift+B parking brake</td></tr>
-          <tr><td>C</td><td>Drag chute (deploy below 200 kt)</td></tr><tr><td>K</td><td>Autopilot (aircraft-specific; propeller aircraft retain manual throttle)</td></tr><tr><td>Shift+K</td><td>Vision Jet autoland on the selected arrival (Map → airport → ILS): configures, flares, lands, brakes to a stop</td></tr><tr><td>Shift+U</td><td>Vision Jet Safe Return: emergency autoland at the nearest suitable airport</td></tr><tr><td>Shift+N</td><td>Vision Jet cabin door (stopped on the ground)</td></tr><tr><td>U</td><td>Jet recovery aid: unloads, levels wings, adds power and levels off (not fitted to propeller-aircraft APs)</td></tr><tr><td>? · F1</td><td>This help</td></tr>
+          <tr><td>C</td><td>Drag chute (deploy below 200 kt)</td></tr><tr><td>K</td><td>Autopilot (aircraft-specific; propeller aircraft retain manual throttle)</td></tr><tr><td>Shift+K</td><td>Vision Jet autoland on the selected arrival (Map → airport → Virtual ILS): configures, flares, lands, brakes to a stop</td></tr><tr><td>Shift+U</td><td>Vision Jet Safe Return: emergency autoland at the nearest suitable airport</td></tr><tr><td>Shift+N</td><td>Vision Jet cabin door (stopped on the ground)</td></tr><tr><td>U</td><td>Jet recovery aid: unloads, levels wings, adds power and levels off (not fitted to propeller-aircraft APs)</td></tr><tr><td>? · F1</td><td>This help</td></tr>
           <tr><th colspan="2">Simulator</th></tr>
           <tr><td>V</td><td>Next view · Shift+V previous</td></tr><tr><td>M</td><td>Map</td></tr><tr><td>P</td><td>Pause</td></tr>
           <tr><td>R</td><td>Restart</td></tr><tr><td>Y</td><td>Slew mode</td></tr><tr><td>H</td><td>HUD overlay</td></tr><tr><td>O</td><td>Sound</td></tr>
@@ -367,6 +406,18 @@
           <li>Plan the arrival on the <b>Map</b>, pick the arrival runway, then use <b>NAV</b> and <b>APPR</b>.</li>
           <li>Fly final at ~175 kt, touch down below 160 kt, chute (<b>C</b>) and brakes.</li>
         </ol>
+        <section id="sr71-exterior-controls" aria-label="SR-71 exterior lights" hidden>
+          <h3>SR-71 exterior lights</h3>
+          <p>Landing and taxi lamps are on the nose gear: they shine only when it is fully down. White position lamps are at the tail; red beacons and white strobes are above and below the forward fuselage.</p>
+          <div class="chips">
+            <button type="button" data-sr71-exterior-light="landing" aria-pressed="true">Landing · Shift+7</button>
+            <button type="button" data-sr71-exterior-light="taxi" aria-pressed="false">Taxi · Shift+8</button>
+            <button type="button" data-sr71-exterior-light="navigation" aria-pressed="true">Tail / position · Shift+9</button>
+            <button type="button" data-sr71-exterior-light="beacon" aria-pressed="true">Red beacon · Shift+5</button>
+            <button type="button" data-sr71-exterior-light="strobe" aria-pressed="false">White strobe · Shift+6</button>
+          </div>
+          <p class="note">Simplified browser lights, not the original electrical system. Default keys are shown; change them in Settings → Keyboard controls. Buttons show the commanded state; landing/taxi output waits for the gear. New flights reset these switches.</p>
+        </section>
         <h3>Cockpit</h3>
         <p id="help-cockpit">The front panel is live: ADI with flight director and glideslope, HSI with bearing/DME to the active waypoint and localizer, KIAS/Mach, triple display, altimeter, VSI, g, AoA, clock, fuel, gear lights, both engines' RPM, EGT, nozzle and fuel flow, spike and bypass positions, CIT and annunciators.</p>
         <p class="note"><button type="button" class="linkbtn js-terms">Terms &amp; credits</button></p>
@@ -401,13 +452,17 @@
   <aside id="graphics-notice" hidden style="position:fixed;z-index:10000;inset:0;padding:30vh 10vw;background:#111e2cf5;color:white;border:1px solid #8aa5b8;border-radius:12px"><span role="status" aria-live="assertive"></span> <button type="button">Reload graphics</button></aside>
   <aside id="imagery-notice" hidden><span id="imagery-status" role="status"></span> <button type="button" id="imagery-retry">Retry imagery</button></aside>
 
+  <div id="sr71-view-feedback" role="status" aria-live="polite" hidden>
+    <span id="sr71-view-message" role="status" aria-live="polite"></span>
+    <div><button type="button" id="sr71-view-retry" hidden>Retry cockpit</button><button type="button" id="sr71-view-cancel">Keep exterior view</button></div>
+  </div>
   <div id="loadscreen" role="status" aria-live="polite" aria-label="Loading the flight" hidden>
     <div class="ls-card">
       <div class="ls-brand"><span class="h-kicker">Earthwing</span></div>
       <h2 id="ls-title">Preparing your flight</h2>
       <p id="ls-sub">Loading terrain and imagery…</p>
       <ul class="ls-steps">
-        <li data-step="aircraft"><i></i>Aircraft &amp; cockpit</li>
+        <li data-step="aircraft"><i></i>Aircraft exterior</li>
         <li data-step="elevation"><i></i>Terrain elevation</li>
         <li data-step="imagery"><i></i>Satellite imagery</li>
         <li data-step="shaders"><i></i>Graphics and shaders</li>
@@ -415,11 +470,12 @@
       </ul>
       <div class="ls-bar"><div id="ls-fill"></div></div>
       <div class="ls-meta"><span id="ls-pct">0%</span><span id="ls-tip"></span></div>
+      <div id="flight-load-actions" hidden><button type="button" id="flight-load-retry">Reload and retry</button><button type="button" id="flight-load-back">Back to setup</button></div>
     </div>
   </div>
-  <div id="throttle-lever" aria-label="Throttle lever" hidden>
+  <div id="throttle-lever" hidden>
     <div class="tl-cap">THR</div>
-    <div class="tl-track" id="tl-track" role="slider" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
+    <div class="tl-track" id="tl-track" role="slider" aria-label="Throttle lever" aria-valuetext="0% throttle, idle" aria-orientation="vertical" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" tabindex="0">
       <div class="tl-ab"><span>A/B</span></div><div class="tl-mil"><span>MIL</span></div>
       <div class="tl-fill" id="tl-fill"></div><div class="tl-knob" id="tl-knob"></div>
     </div>
@@ -439,7 +495,7 @@
     <div class="card"><h2 id="crash-title">Aircraft lost</h2><p id="crash-why"></p><button type="button" id="crash-reset" class="cta">Restart (R)</button><button type="button" id="crash-apt" class="ghost wide">Choose another airport</button></div>
   </div>
 
-  <div id="tp" role="dialog" aria-modal="true" aria-labelledby="tp-title" hidden>
+  <dialog id="tp" role="dialog" aria-modal="true" aria-labelledby="tp-title" hidden>
     <form class="card" id="tp-form" autocomplete="off">
       <h3 id="tp-title">Teleport</h3>
       <p class="tp-where" id="tp-where"></p>
@@ -454,7 +510,7 @@
       <label class="check"><input type="checkbox" id="tp-ap" /> <span>Autopilot holds this altitude, heading and speed</span></label>
       <div class="tp-btns"><button type="button" class="ghost" id="tp-cancel">Cancel</button><button type="submit" class="cta" id="tp-go">Teleport</button></div>
     </form>
-  </div>
+  </dialog>
   <dialog id="terms" role="dialog" aria-modal="true" aria-labelledby="terms-title" hidden>
     <div class="terms-card">
       <header><h2 id="terms-title">Terms &amp; credits</h2><button type="button" class="x" id="terms-close" aria-label="Close terms and credits"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3.5 3.5l9 9M12.5 3.5l-9 9"/></svg></button></header>

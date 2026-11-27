@@ -23,7 +23,8 @@ export const DYN = {
 export function nextScale(state, med, p90, now, native = 1, cfg = DYN) {
   const base = Math.max(0.01, state.base), since = now - (state.changed || 0);
   const minScale = Math.min(1, Math.max(0.3, (cfg.floorNative * Math.max(1, native)) / base));
-  const ceil = state.ceil && now < (state.ceilUntil || 0) ? state.ceil : 1;
+  // Only a live failed-probe ceiling is exclusive; the normal 100 % cap must be reachable.
+  const ceil = state.ceil && now < (state.ceilUntil || 0) ? state.ceil : Infinity;
   let s = state.scale;
   if (med > cfg.downAt || p90 > cfg.downP90) {
     if (state.noDown || (since < (cfg.downHold ?? 0) && med < 1 / 30)) return s;
@@ -38,7 +39,8 @@ export function nextScale(state, med, p90, now, native = 1, cfg = DYN) {
 // Pressure ladder: extra cuts once resolution is already at its floor and the frame is still over budget.
 // 0 = none, 1 = ambient occlusion off, 2 = also halve the shadow update rate, 3 = emergency: the resolution floor itself drops by
 // `emergencyDrop` (below 30 fps a softer picture beats a slideshow). Each level needs `need` consecutive slow checks and `recover` consecutive fast
-// ones to come back, so a loading hitch never flips it. Level 3 only counts frames slower than 1/30 s.
+// ones to come back, so a loading hitch never flips it. Recovery uses the same 60 Hz-friendly budget as scale probes,
+// not an impossible >66 fps requirement on a refresh-limited 60 Hz display. Level 3 only counts frames slower than 1/30 s.
 export const EMERGENCY_DROP = 0.2;
 // When to look at the frame times: after at least 1.5 s and 12 frames. The old rule wanted 30 frames, which at 5 fps is 6 s of a slideshow before the first step.
 export const dynReady = (frames, sinceMs) => sinceMs >= 1500 && frames >= 12;
@@ -47,7 +49,8 @@ export const lowerPreset = (name) => ({ ultra: 'high', high: 'normal' })[name] |
 export function nextPressure(p, atFloor, med, cfg = {}) {
   const need = cfg.need ?? 2, recover = cfg.recover ?? 6;
   let { level, slowN, fastN } = p, drop = false;
-  const slow = atFloor && med > (level >= 2 ? 1 / 30 : 1 / 40), fast = med < 1 / 66;
+  const slow = atFloor && med > (level >= 2 ? 1 / 30 : 1 / 40);
+  const fast = med <= (cfg.recoverAt ?? DYN.probeMed) && (cfg.p90 ?? med) < (cfg.recoverP90 ?? DYN.upP90);
   if (slow) { slowN++; fastN = 0; } else if (fast) { fastN++; slowN = 0; } else { slowN = 0; fastN = 0; }
   if (slowN >= need && level < 3) { level++; slowN = 0; }
   else if (slowN >= need + 2 && level >= 3) { drop = true; slowN = 0; } // still slow with the emergency floor: one preset down

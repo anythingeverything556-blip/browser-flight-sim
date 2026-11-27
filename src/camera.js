@@ -22,6 +22,7 @@ class CameraRig {
       (this.view = 'chase'),
       (this.world = new THREE.Vector3()),
       (this.look = { yaw: 0, pitch: -0.12 }),
+      (this.externalLook = { yaw: 0, pitch: 0 }),
       (this.cockpitHome = null),
       (this.orbit = { az: 2.6, el: 0.18, dist: 48 }),
       (this.fov = { cockpit: 84, other: 55 }),
@@ -31,41 +32,77 @@ class CameraRig {
       (this.shake = 0),
       (this.shakeT = 0),
       (this.blockDrag = !1)); // set by the cockpit throttle-lever drag: that drag must not also turn the view
-    let n = null;
-    (e.addEventListener('pointerdown', (i) => {
-      (i.button === 0 || i.button === 2) && (n = { x: i.clientX, y: i.clientY });
-    }),
-      window.addEventListener('pointerup', () => {
-        ((n = null), (this.blockDrag = !1));
-      }),
-      window.addEventListener('pointercancel', () => {
-        ((n = null), (this.blockDrag = !1));
-      }),
-      window.addEventListener('pointermove', (i) => {
-        if (!n || this.blockDrag) return;
-        const r = (i.clientX - n.x) * 0.005,
-          a = (i.clientY - n.y) * 0.005;
-        ((n = { x: i.clientX, y: i.clientY }),
-          this.view === 'cockpit' || this.view === 'cabin' || this.view === 'wing'
-            ? ((this.look.yaw -= r), (this.look.pitch = THREE.MathUtils.clamp(this.look.pitch - a, -1.4, 1.4)))
-            : ((this.orbit.az -= r), (this.orbit.el = THREE.MathUtils.clamp(this.orbit.el + a, -1.2, 1.45))));
-      }),
-      e.addEventListener(
-        'wheel',
-        (i) => {
-          const r = Math.exp(i.deltaY * 0.001);
-          this.view === 'cockpit' || this.view === 'cabin' || this.view === 'wing'
-            ? (this.fov.cockpit = THREE.MathUtils.clamp(this.fov.cockpit * r, 20, 100))
-            : this.view === 'tower' || this.view === 'flyby'
-              ? (this.fov.other = THREE.MathUtils.clamp(this.fov.other * r, 2, 70))
-              : (this.orbit.dist = THREE.MathUtils.clamp(this.orbit.dist * r, GEOM.minDist, 3e3));
-        },
-        { passive: !0 },
-      ),
-      e.addEventListener('dblclick', () => {
-        if (this.view === 'cockpit' && this.cockpitHome) this.recenterCockpit();
-        else { this.look.yaw = 0; this.look.pitch = -0.12; }
-      }));
+    // Per-rig scratch: camera math runs every rendered frame. Do not borrow the
+    // aircraft vectors or persistent chase/fly-by positions (rebased by main.js).
+    this._position = new THREE.Vector3();
+    this._direction = new THREE.Vector3();
+    this._target = new THREE.Vector3();
+    this._offset = new THREE.Vector3();
+    this._goalOffset = new THREE.Vector3();
+    this._lookDirection = new THREE.Vector3();
+    this._up = new THREE.Vector3(0, 1, 0);
+    this._zero = new THREE.Vector3();
+    this._rotation = new THREE.Matrix4();
+    this._quaternion = new THREE.Quaternion();
+    this._euler = new THREE.Euler();
+    this.inputEnabled = () => true;
+    let drag = null;
+    const cancel = () => {
+      const id = drag?.pointerId;
+      drag = null;
+      this.blockDrag = false;
+      if (id !== undefined && e.hasPointerCapture?.(id)) e.releasePointerCapture(id);
+    };
+    this.cancelDrag = cancel;
+    e.addEventListener('pointerdown', (event) => {
+      if (!this.inputEnabled() || drag || (event.button !== 0 && event.button !== 2)) return;
+      drag = { pointerId: event.pointerId, mask: event.button === 2 ? 2 : 1, x: event.clientX, y: event.clientY };
+      e.setPointerCapture?.(event.pointerId);
+    });
+    const end = (event) => { if (drag?.pointerId === event.pointerId) cancel(); };
+    window.addEventListener('pointerup', end);
+    window.addEventListener('pointercancel', end);
+    e.addEventListener('lostpointercapture', end);
+    window.addEventListener('blur', cancel);
+    e.ownerDocument?.addEventListener('visibilitychange', () => { if (e.ownerDocument.hidden) cancel(); });
+    window.addEventListener('pointermove', (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      // The original button must still be held: a missed release must never resume a drag.
+      if (!this.inputEnabled() || !(event.buttons & drag.mask)) { cancel(); return; }
+      if (this.blockDrag) return;
+      const dx = (event.clientX - drag.x) * 0.005, dy = (event.clientY - drag.y) * 0.005;
+      drag.x = event.clientX; drag.y = event.clientY;
+      this.pan(-dx, this.view === 'orbit' ? dy : -dy);
+    });
+    e.addEventListener('wheel', (event) => {
+      if (this.inputEnabled()) this.zoom(Math.exp(event.deltaY * 0.001));
+    }, { passive: true });
+    e.addEventListener('dblclick', () => { if (this.inputEnabled()) this.recenter(); });
+  }
+  pan(yaw, pitch) {
+    if (this.view === 'orbit') {
+      this.orbit.az += yaw;
+      this.orbit.el = THREE.MathUtils.clamp(this.orbit.el + pitch, -1.2, 1.45);
+    } else {
+      const look = ['cockpit', 'cabin', 'wing'].includes(this.view) ? this.look : this.externalLook;
+      look.yaw += yaw;
+      look.pitch = THREE.MathUtils.clamp(look.pitch + pitch, -1.4, 1.4);
+    }
+  }
+  zoom(factor) {
+    if (['cockpit', 'cabin', 'wing'].includes(this.view)) this.fov.cockpit = THREE.MathUtils.clamp(this.fov.cockpit * factor, 20, 100);
+    else if (this.view === 'tower' || this.view === 'flyby') this.fov.other = THREE.MathUtils.clamp(this.fov.other * factor, 2, 70);
+    else this.orbit.dist = THREE.MathUtils.clamp(this.orbit.dist * factor, GEOM.minDist, 3e3);
+  }
+  recenter() {
+    this.cancelDrag();
+    this.look.yaw = this.view === 'cabin' ? Math.PI : 0;
+    this.look.pitch = this.view === 'cabin' ? -0.04 : -0.12;
+    this.externalLook.yaw = this.externalLook.pitch = 0;
+    this.fov.cockpit = 84; this.fov.other = 55;
+    this.orbit.az = 2.6; this.orbit.el = 0.18;
+    this.orbit.dist = Math.max(GEOM.minDist, GEOM.chase);
+    if (this.view === 'cockpit' && this.cockpitHome) this.recenterCockpit();
   }
   recenterCockpit() {
     if (!this.cockpitHome) return;
@@ -73,6 +110,7 @@ class CameraRig {
     this.look.pitch = pitch; this.look.yaw = yaw; this.fov.cockpit = fov;
   }
   set(t) {
+    this.cancelDrag();
     // The passenger eye is near the front of the cabin: face aft down the original aisle.
     if (t === 'cabin') { this.look.yaw = Math.PI; this.look.pitch = -0.04; }
     else if (this.view === 'cabin') { this.look.yaw = 0; this.look.pitch = -0.12; }
@@ -90,30 +128,30 @@ class CameraRig {
     const a = this.camera,
       l = e.quat,
       h = e.pos,
-      u = new THREE.Vector3();
+      u = this._position.set(0, 0, 0);
     let f = null;
     if (((a.near = 0.05), this.view === 'cockpit' || this.view === 'cabin' || this.view === 'wing')) {
       u.copy(this.view === 'cockpit' ? _2 : this.view === 'cabin' ? cabinEye : y2)
         .applyQuaternion(l)
         .add(h);
-      const p = new THREE.Quaternion().setFromEuler(
-        new THREE.Euler(this.look.pitch, this.look.yaw - Math.PI / 2, 0, 'YXZ'),
+      const p = this._quaternion.setFromEuler(
+        this._euler.set(this.look.pitch, this.look.yaw - Math.PI / 2, 0, 'YXZ'),
       );
       (a.quaternion.copy(l).multiply(p), (a.fov = this.fov.cockpit));
     } else if (this.view === 'chase') {
-      const p = new THREE.Vector3(-1, 0, 0).applyQuaternion(l),
+      const p = this._direction.set(-1, 0, 0).applyQuaternion(l),
         v = this.orbit.dist,
-        y = h
-          .clone()
+        y = this._target
+          .copy(h)
           .addScaledVector(p, v)
-          .add(new THREE.Vector3(0, v * 0.2, 0));
+          .add(this._offset.set(0, v * 0.2, 0));
       (!this.chasePos || this.chasePos.distanceTo(y) > v * 4) && (this.chasePos = y.clone());
-      const x = this.chasePos.clone().sub(h),
-        g = y.clone().sub(h);
+      const x = this._offset.copy(this.chasePos).sub(h),
+        g = this._goalOffset.copy(y).sub(h);
       (x.lerp(g, 1 - Math.exp(-t * 3)).setLength(v),
         this.chasePos.copy(h).add(x),
         u.copy(this.chasePos),
-        (f = h.clone().addScaledVector(p, -GEOM.look)),
+        (f = this._target.copy(h).addScaledVector(p, -GEOM.look)),
         (a.fov = 55),
         (a.near = 0.5));
     } else if (this.view === 'orbit') {
@@ -131,14 +169,13 @@ class CameraRig {
       ((a.fov = THREE.MathUtils.clamp((2 * Math.atan(60 / p) * 180) / Math.PI, 1.2, this.fov.other)), (a.near = 1));
     } else if (this.view === 'flyby') {
       if (!this.flyPos || this.flyPos.distanceTo(h) > 1500 || e.vel.length() < 1) {
-        const v = e.vel.lengthSq() > 1 ? e.vel.clone().normalize() : new THREE.Vector3(1, 0, 0).applyQuaternion(l),
-          y = new THREE.Vector3().crossVectors(v, new THREE.Vector3(0, 1, 0)).normalize(),
+        const v = e.vel.lengthSq() > 1 ? this._direction.copy(e.vel).normalize() : this._direction.set(1, 0, 0).applyQuaternion(l),
+          y = this._offset.crossVectors(v, this._up).normalize(),
           x = Math.min(1200, Math.max(150, e.vel.length() * 4));
-        this.flyPos = h
-          .clone()
+        (this.flyPos ||= new THREE.Vector3()).copy(h)
           .addScaledVector(v, x)
           .addScaledVector(y, 60)
-          .add(new THREE.Vector3(0, 8, 0));
+          .add(this._goalOffset.set(0, 8, 0));
       }
       (u.copy(this.flyPos), (f = h));
       const p = u.distanceTo(h);
@@ -149,8 +186,12 @@ class CameraRig {
       u.y < p + 2 && (u.y = p + 2);
     }
     if ((this.world.copy(u), a.position.set(0, 0, 0), f)) {
-      const p = new THREE.Matrix4().lookAt(new THREE.Vector3(), f.clone().sub(u), new THREE.Vector3(0, 1, 0));
+      const p = this._rotation.lookAt(this._zero, this._lookDirection.copy(f).sub(u), this._up);
       a.quaternion.setFromRotationMatrix(p);
+      // Orbit pans around the aircraft; other external views can look away from their tracked target.
+      if (this.view !== 'orbit' && (this.externalLook.pitch || this.externalLook.yaw)) a.quaternion.multiply(this._quaternion.setFromEuler(
+        this._euler.set(this.externalLook.pitch, this.externalLook.yaw, 0, 'YXZ'),
+      ));
     }
     this.shakeT += t;
     const d = r * (this.view === 'cockpit' ? 1 : this.view === 'chase' || this.view === 'wing' ? 0.45 : 0.15);
@@ -158,8 +199,8 @@ class CameraRig {
       const p = this.shakeT,
         v = (y, x, g) => Math.sin(p * y) * 0.5 + Math.sin(p * x + 1.3) * 0.3 + Math.sin(p * g + 2.1) * 0.2;
       a.quaternion.multiply(
-        new THREE.Quaternion().setFromEuler(
-          new THREE.Euler(v(37, 61, 89) * 0.012 * d, v(29, 53, 97) * 0.008 * d, v(41, 71, 113) * 0.01 * d),
+        this._quaternion.setFromEuler(
+          this._euler.set(v(37, 61, 89) * 0.012 * d, v(29, 53, 97) * 0.008 * d, v(41, 71, 113) * 0.01 * d, 'XYZ'),
         ),
       );
     }

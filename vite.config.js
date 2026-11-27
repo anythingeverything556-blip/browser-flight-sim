@@ -8,9 +8,13 @@ const proxy = {
   '/api/traffic': { target: 'https://api.adsb.lol', changeOrigin: true, rewrite: (p) => { const q = new URL(p, 'http://x').searchParams; const list = { mil: '/v2/mil', ladd: '/v2/ladd', pia: '/v2/pia', emergency: '/v2/sqk/7700' }[q.get('list')]; return list || `/v2/point/${q.get('lat')}/${q.get('lon')}/${Math.min(250, +q.get('dist') || 54)}`; } },
   '/api/metar': { target: 'https://aviationweather.gov', changeOrigin: true, rewrite: (p) => p.replace('/api/metar', '/api/data/metar') + '&format=json' },
 };
-// three, leaflet and the tile decoders change far less often than the game code, so they ship as their own long-cached chunk.
-// Both chunks are needed at boot (three alone is ~1 MB minified), so the warning limit sits just above them rather than at Vite's 500 kB.
-const vendor = (id) => (id.includes('node_modules') ? 'vendor' : undefined);
+// Cache the shared engine and map separately, but let Rollup split the optional
+// GLTF/Draco/Meshopt loaders with the aircraft that actually uses them. A single
+// node_modules vendor bucket makes every dynamic aircraft import eager again.
+const vendor = (id) => {
+  if (id.includes('/node_modules/three/') && !id.includes('/examples/')) return 'three';
+  if (id.includes('/node_modules/leaflet/')) return 'leaflet';
+};
 const publicWithoutA380 = () => {
   let config;
   return {

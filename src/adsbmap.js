@@ -32,17 +32,39 @@ export function emergencyOf(squawk, emergency) {
 }
 const SOURCE = { adsb_icao: 'ADS-B', adsb_icao_nt: 'ADS-B', adsr_icao: 'ADS-R', tisb_icao: 'TIS-B', tisb_trackfile: 'TIS-B', mlat: 'MLAT', mode_s: 'Mode S', adsc: 'ADS-C', other: 'Other' };
 
+// Accept provider numeric strings, but not null/blank/boolean/object coordinates.
+const numberOrNull = (v) => (typeof v === 'number' || (typeof v === 'string' && v.trim())) && Number.isFinite(+v) ? +v : null;
+const validPosition = (lat, lon) => Number.isFinite(lat) && Math.abs(lat) <= 90 && Number.isFinite(lon) && Math.abs(lon) <= 180;
+const wrapLon = (lon) => ((lon + 180) % 360 + 360) % 360 - 180;
+
+// Leaflet does not choose a world copy for canvas points or panTo. Keep the
+// canonical observation unchanged; only presentation uses the nearest copy.
+export function nearestWorldPosition(point, centerLon = 0) {
+  if (!point || !Number.isFinite(point[0]) || Math.abs(point[0]) > 90 || !Number.isFinite(point[1])) return null;
+  const lon = point[1], ref = Number.isFinite(centerLon) ? centerLon : 0;
+  return [point[0], lon + 360 * Math.round((ref - lon) / 360)];
+}
+function screenPoint(map, point) {
+  if (!point) return null;
+  try {
+    const p = map.latLngToContainerPoint(point);
+    return Number.isFinite(p.x) && Number.isFinite(p.y) ? p : null;
+  } catch { return null; } // a bad observation must not suppress its neighbours
+}
+
 // provider record (adsb.lol / adsb.fi shape, already slimmed by the proxy) -> map entry. Ground aircraft keep alt null.
 export function normalize(a, nowS) {
-  if (!a || !a.hex || a.lat == null || a.lon == null) return null;
+  if (!a || !a.hex) return null;
+  const lat = numberOrNull(a.lat), lon = numberOrNull(a.lon), age = observationAge(a);
+  if (!validPosition(lat, lon) || !Number.isFinite(nowS) || !Number.isFinite(age)) return null;
   const ground = a.alt_baro === 'ground', alt = ground ? null : (a.alt_baro ?? a.alt_geom ?? null);
   const cls = classifyAircraftType(a.t || '');
   return {
     hex: String(a.hex).toLowerCase(), call: String(a.flight || '').trim(), reg: a.r || '', type: a.t || '', desc: a.desc || '', op: a.ownOp || '',
-    cls: cls.class, lat: +a.lat, lon: +a.lon, alt: alt == null ? null : +alt, ground, gs: +(a.gs || 0), trk: +(a.track ?? a.true_heading ?? 0),
-    vr: +(a.baro_rate ?? a.geom_rate ?? 0), squawk: a.squawk || '', emerg: emergencyOf(a.squawk, a.emergency), cat: a.category || '',
+    cls: cls.class, lat, lon, alt: numberOrNull(alt), ground, gs: Math.max(0, numberOrNull(a.gs) ?? 0), trk: numberOrNull(a.track ?? a.true_heading) ?? 0,
+    vr: numberOrNull(a.baro_rate ?? a.geom_rate) ?? 0, squawk: a.squawk || '', emerg: emergencyOf(a.squawk, a.emergency), cat: a.category || '',
     src: SOURCE[a.type] || '', mil: !!(a.dbFlags & 1), selAlt: a.nav_altitude_mcp ?? null, mach: a.mach ?? null,
-    at: nowS - observationAge(a),
+    at: nowS - age,
   };
 }
 
@@ -55,8 +77,10 @@ export function viewRadiusNm(map) {
 
 // dead reckoning from the report time, at most 60 s ahead
 export function project(e, nowS) {
-  const dt = Math.max(0, Math.min(60, nowS - e.at)), m = e.gs * 0.514444 * dt, th = e.trk * D2R;
-  return [e.lat + (Math.cos(th) * m) / 111320, e.lon + (Math.sin(th) * m) / (111320 * Math.max(0.2, Math.cos(e.lat * D2R)))];
+  if (!e || !validPosition(e.lat, e.lon) || ![nowS, e.at, e.gs, e.trk].every(Number.isFinite)) return null;
+  const dt = Math.max(0, Math.min(60, nowS - e.at)), m = Math.max(0, e.gs) * 0.514444 * dt, th = e.trk * D2R;
+  const lat = e.lat + (Math.cos(th) * m) / 111320, lon = e.lon + (Math.sin(th) * m) / (111320 * Math.max(0.2, Math.cos(e.lat * D2R)));
+  return Number.isFinite(lat) && Number.isFinite(lon) ? [Math.max(-90, Math.min(90, lat)), wrapLon(lon)] : null;
 }
 
 export function matches(e, q) {
@@ -109,6 +133,7 @@ export class LiveAdsb {
     const st = opts.settings || {};
     this.on = st.mapTraffic !== false; this.labels = st.mapLabels !== false; this.mode = MODES[st.mapTrafficMode] ? st.mapTrafficMode : 'area';
     this.query = ''; this.sel = null; this.followSel = false; this.active = false;
+    this.pollGeneration = 0; this.pollRequest = null;
     this.next = 0; this.busy = false; this.fails = 0; this.status = { n: 0, src: '', at: 0, err: '' }; this.coverage = null;
     this.glyphs = Object.fromEntries(Object.entries(GLYPH).map(([k, d]) => [k, new Path2D(d)]));
     this.layer = new (canvasLayer())(this);
@@ -149,20 +174,38 @@ export class LiveAdsb {
     if (this.mode !== 'area') { this.poll(); return; }
     if (own) this.poll({ lat: own.lat, lon: own.lon, r: Math.max(BG_NM, this.coverage ? Math.min(MAX_NM, this.coverage.r) : 0) });
   }
+  setMode(mode) {
+    if (!MODES[mode] || this.mode === mode) return;
+    // A tab switch owns a new picture and schedule, even when an older fetch/body is still pending.
+    this.mode = mode; this.pollGeneration = (this.pollGeneration || 0) + 1;
+    const previous = this.pollRequest; this.pollRequest = null; this.busy = false;
+    if (previous) previous.ctl.abort();
+    this.list.clear(); this.trails.clear(); this.select(null); this.coverage = null;
+    this.next = 0; this.bgNext = 0; this.lastPoll = null; this.fails = 0;
+    this.status = { n: 0, src: '', at: 0, err: '' };
+    this.persist(); this.renderUi();
+  }
   async poll(at) {
     if (this.busy) return; this.busy = true; this.lastPoll = performance.now() / 1000;
     const q = this.url(at), ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), CLIENT_BUDGET_MS);
+    const request = { mode: this.mode, generation: this.pollGeneration || 0, ctl }; this.pollRequest = request;
+    const owns = () => this.pollRequest === request && (this.pollGeneration || 0) === request.generation && this.mode === request.mode;
     try {
       const res = await fetch(q.url, { cache: 'no-store', signal: ctl.signal });
+      if (!owns()) return;
       if (!res.ok) throw new Error(res.status === 502 ? 'providers unavailable' : `error ${res.status}`);
-      const j = await res.json(), arr = j.aircraft || j.ac;
+      const j = await res.json();
+      if (!owns()) return;
+      const arr = j.aircraft || j.ac;
       if (!Array.isArray(arr) || j.error) throw new Error(j.error || 'bad data');
       const stamp = acquiredAt(j), age = stamp == null ? Infinity : Math.max(0, (Date.now() - stamp) / 1000);
       if (age > KEEP_S) throw new Error('observations expired');
       const now = performance.now() / 1000;
-      if (this.mode !== 'area' && !j.partial && !j.stale) this.list.clear(); // a worldwide list replaces the picture; the area view keeps what panning has shown for KEEP_S
+      if (request.mode !== 'area' && !j.partial && !j.stale) this.list.clear(); // a worldwide list replaces the picture; the area view keeps what panning has shown for KEEP_S
       for (const a of arr) {
-        const e = normalize(a, now - age); if (!e || now - e.at > KEEP_S) continue;
+        let e;
+        try { e = normalize(a, now - age); } catch { continue; }
+        if (!e || now - e.at > KEEP_S) continue;
         const previous = this.list.get(e.hex); if (previous && previous.at > e.at) continue;
         this.list.set(e.hex, e);
         let tr = this.trails.get(e.hex); if (!tr) this.trails.set(e.hex, (tr = []));
@@ -170,15 +213,19 @@ export class LiveAdsb {
       }
       this.coverage = q.c ? { c: q.c, r: q.r } : null;
       this.fails = 0; this.status = { n: arr.length, src: String(j.source || '').replace(/^api\./, ''), at: stamp, err: '', stale: !!j.stale, partial: !!j.partial };
-      this.next = now + (this.mode === 'area' ? POLL_S : LIST_POLL_S);
+      this.next = now + (request.mode === 'area' ? POLL_S : LIST_POLL_S);
     } catch (e) {
+      if (!owns()) return;
       // a first failure retries in 3 s, not 15: one slow answer should not leave the map empty
       this.fails++; this.status.err = e.name === 'AbortError' ? 'timed out' : e.message || 'unavailable';
       this.next = performance.now() / 1000 + Math.min(60, 3 * 2 ** (this.fails - 1));
     } finally {
-      clearTimeout(timer); this.busy = false; this.prune(); this.renderUi(); this.layer.draw();
+      clearTimeout(timer);
+      if (!owns()) return;
+      this.pollRequest = null; this.busy = false; this.prune();
       // the view moved while that request was out: fetch the new area now instead of at the next poll
       if (this.active && this.viewOk && !this.fails && !this.coversView()) this.next = 0;
+      this.refreshDisplay();
     }
   }
   prune() {
@@ -195,24 +242,37 @@ export class LiveAdsb {
     if (!this.active || !this.on) { this.looping = false; return; }
     if (this.looping && !this._tick) return;
     this.looping = true; this._tick = false;
-    const now = performance.now() / 1000;
-    if (this.viewOk && now >= this.next && !this.busy && (this.lastPoll == null || now - this.lastPoll >= MIN_GAP_S)) this.poll();
-    if (this.followSel && this.sel) { const e = this.list.get(this.sel); if (e) this.map.panTo(project(e, now), { animate: false }); }
-    this.prune(); this.layer.draw();
-    if (now - (this.uiAt || 0) > 1) { this.uiAt = now; this.renderUi(); }
-    setTimeout(() => requestAnimationFrame(() => { this._tick = true; this.loop(); }), 150); // ~6 redraws a second is plenty for aircraft moving a few pixels
+    try {
+      const now = performance.now() / 1000;
+      if (this.viewOk && now >= this.next && !this.busy && (this.lastPoll == null || now - this.lastPoll >= MIN_GAP_S)) this.poll();
+      if (this.followSel && this.sel) {
+        const ll = nearestWorldPosition(project(this.list.get(this.sel), now), this.map.getCenter().lng);
+        if (ll) this.map.panTo(ll, { animate: false });
+      }
+      this.prune(); this.layer.draw();
+      if (now - (this.uiAt || 0) > 1) { this.uiAt = now; this.renderUi(); }
+    } catch (error) { console.warn('Traffic map display failed', error); }
+    finally {
+      setTimeout(() => requestAnimationFrame(() => { this._tick = true; this.loop(); }), 150); // ~6 redraws a second is plenty for aircraft moving a few pixels
+    }
+  }
+  refreshDisplay() {
+    // UI and canvas are independent, and neither may reject a successful poll.
+    try { this.renderUi(); } catch (error) { console.warn('Traffic map interface failed', error); }
+    try { this.layer.draw(); } catch (error) { console.warn('Traffic map display failed', error); }
   }
 
   // ---------- drawing ----------
   draw(canvas, map) {
     const g = canvas.getContext('2d'), dpr = canvas.width / Math.max(1, canvas.clientWidth || canvas.width);
     g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, canvas.width, canvas.height);
-    const z = map.getZoom(), now = performance.now() / 1000, size = map.getSize(), q = this.query;
+    const z = map.getZoom(), now = performance.now() / 1000, size = map.getSize(), q = this.query, centerLon = map.getCenter().lng;
     const base = z < 4 ? 10 : z < 6 ? 11 : z < 8 ? 13 : z < 10 ? 16 : 19;
     const pts = []; let shown = 0;
     for (const e of this.list.values()) {
       if (e.ground && z < 10 && e.hex !== this.sel) continue;
-      const ll = project(e, now), p = map.latLngToContainerPoint(ll);
+      const ll = nearestWorldPosition(project(e, now), centerLon), p = screenPoint(map, ll);
+      if (!p) continue;
       if (p.x < -30 || p.y < -30 || p.x > size.x + 30 || p.y > size.y + 30) continue;
       pts.push([e, p]); shown++;
     }
@@ -221,10 +281,18 @@ export class LiveAdsb {
     const se = this.sel && this.list.get(this.sel), tr = se && this.trails.get(se.hex);
     if (tr && tr.length) {
       g.lineWidth = 2.5; g.lineCap = 'round';
-      let prev = map.latLngToContainerPoint([tr[0][0], tr[0][1]]);
-      for (let i = 1; i <= tr.length; i++) {
-        const pt = i < tr.length ? tr[i] : [...project(se, now), se.alt], cp = map.latLngToContainerPoint([pt[0], pt[1]]);
-        g.strokeStyle = altColor(pt[2]); g.beginPath(); g.moveTo(prev.x, prev.y); g.lineTo(cp.x, cp.y); g.stroke(); prev = cp;
+      // Anchor the newest point beside its marker, then unwrap backwards so
+      // every segment takes the short path across the dateline, in either world.
+      let prev = null, anchor = centerLon;
+      const current = project(se, now), points = [...tr, current && [...current, se.alt]];
+      for (let i = points.length - 1; i >= 0; i--) {
+        const pt = points[i], ll = pt && validPosition(pt[0], pt[1]) ? nearestWorldPosition(pt, anchor) : null;
+        const cp = screenPoint(map, ll);
+        if (!cp) { prev = null; anchor = centerLon; continue; }
+        if (prev) {
+          g.strokeStyle = altColor(prev.alt); g.beginPath(); g.moveTo(cp.x, cp.y); g.lineTo(prev.cp.x, prev.cp.y); g.stroke();
+        }
+        prev = { cp, alt: pt[2] }; anchor = ll[1];
       }
     }
     // worldwide lists are short: label them at any zoom (the declutter below drops the overlaps)
@@ -298,9 +366,9 @@ export class LiveAdsb {
     more.onclick = () => { const open = !this.box.classList.contains('open'); this.box.classList.toggle('open', open); more.setAttribute('aria-expanded', String(open)); };
     this.onBtn = this.box.querySelector('.adsb-on'); this.stat = this.box.querySelector('.adsb-stat'); this.hits = this.box.querySelector('.adsb-hits');
     this.onBtn.onclick = () => { this.on = !this.on; this.persist(); if (!this.on) { this.map.removeLayer(this.layer); this.map.removeLayer(this.cov); this.select(null); } else if (this.active) { this.layer.addTo(this.map); this.next = 0; this.viewOk = true; this.loop(); } this.renderUi(); };
-    this.box.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => { if (this.mode === b.dataset.m) return; this.mode = b.dataset.m; this.list.clear(); this.trails.clear(); this.select(null); this.coverage = null; this.next = 0; this.persist(); this.renderUi(); }));
+    this.box.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => this.setMode(b.dataset.m)));
     const input = this.box.querySelector('input[type=search]');
-    input.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { const hit = [...this.list.values()].find((x) => matches(x, this.query)); if (hit) { this.select(hit.hex); this.map.panTo(project(hit, performance.now() / 1000)); } } });
+    input.addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Enter') { const hit = [...this.list.values()].find((x) => matches(x, this.query)); if (hit) { this.select(hit.hex); const ll = nearestWorldPosition(project(hit, performance.now() / 1000), this.map.getCenter().lng); if (ll) this.map.panTo(ll); } } });
     input.addEventListener('input', () => { this.query = input.value.trim(); this.renderUi(); this.layer.draw(); });
     const lbl = this.box.querySelector('.adsb-lbl input'); lbl.checked = this.labels; lbl.onchange = () => { this.labels = lbl.checked; this.persist(); this.layer.draw(); };
     // altitude legend and cursor readout share the bottom-left corner with the scale bar
@@ -337,7 +405,8 @@ export class LiveAdsb {
     const e = this.sel && this.list.get(this.sel), c = this.card;
     if (!e) { c.hidden = true; c.innerHTML = ''; delete c.dataset.hex; delete c.dataset.html; return; }
     const now = performance.now() / 1000, own = this.o.ownship && this.o.ownship(), pos = project(e, now);
-    const rel = own ? `${Math.round(L.latLng(own.lat, own.lon).distanceTo(pos) / NM).toLocaleString()} NM ${String(Math.round(bearing(own.lat, own.lon, pos[0], pos[1])) % 360).padStart(3, '0')}°` : '—';
+    if (!pos) { c.hidden = true; return; }
+    const rel = own && validPosition(own.lat, own.lon) ? `${Math.round(L.latLng(own.lat, own.lon).distanceTo(pos) / NM).toLocaleString()} NM ${String(Math.round(bearing(own.lat, own.lon, pos[0], pos[1])) % 360).padStart(3, '0')}°` : '—';
     const vr = Math.round(e.vr / 50) * 50, vrs = Math.abs(vr) < 100 ? 'Level' : `${vr > 0 ? '↑' : '↓'} ${Math.abs(vr).toLocaleString()} fpm`;
     const age = Math.max(0, Math.round(now - e.at));
     const rows = [['Altitude', fmtAlt(e)], ['Vertical', vrs], ['Ground speed', `${Math.round(e.gs)} kt${e.mach ? ` · M${(+e.mach).toFixed(2)}` : ''}`], ['Track', `${String(Math.round(e.trk) % 360).padStart(3, '0')}°`],

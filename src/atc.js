@@ -1,6 +1,6 @@
 // A light-weight air traffic controller: it reads the weather, clears the take-off, hands the climb to departure, and talks the ILS
 // approach down to the landing, with a squelch click and (optionally) a synthesised voice. Everything is text in the radio log first.
-import { parseMetar } from './metar.js';
+import { metarVisibility, parseMetar } from './metar.js';
 const DIG = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'niner'];
 const dig = (n, pad = 0) => String(Math.round(n)).padStart(pad, '0').split('').map((d) => DIG[+d] || d).join(' ');
 const rwySpoken = (id) => String(id).replace(/(\d+)/, (m) => dig(m, 2)).replace(/L$/, ' left').replace(/R$/, ' right').replace(/C$/, ' centre');
@@ -21,7 +21,13 @@ export class Atc {
   // Browser speech bypasses the Web Audio master gain, so controls must hush it explicitly.
   soundChanged() { if (!this.audio?.enabled || (this.audio.volume ?? 0.7) <= 0) this.hush(); }
   setHidden(hidden) { this.hidden = !!hidden; hidden && this.hush(); }
-  reset() { this.hush(); this.s = { atis: false, clr: false, dep: false, app: false, land: false, down: false, goAround: false }; this.t = 0; this.quiet = 0; this.approachSample = null; this.lastAdvisoryAt = 0; }
+  reset() { this.hush(); this.s = { atis: false, clr: false, dep: false, app: false, land: false, down: false, goAround: false }; this.t = 0; this.quiet = 0; this.resetArrival(); this.arrivalKey = null; this.wasGoAround = false; this.crashed = false; this.lastAdvisoryAt = 0; }
+  resetArrival() {
+    Object.assign(this.s, { app: false, land: false, down: false, goAround: false });
+    if (['approach', 'landing', 'landed', 'goAround'].includes(this.s.phase)) delete this.s.phase;
+    this.approachSample = null; this.approachFloor = null;
+  }
+  crash() { if (!this.crashed) { this.crashed = true; this.hush(); } }
   squelch() {
     if (!this.audio?.enabled || (this.audio.volume ?? 0.7) <= 0 || this.hidden || this.audio.held) return;
     try {
@@ -41,6 +47,7 @@ export class Atc {
     } catch { /* audio is optional */ }
   }
   say(from, text, spoken, you = false) {
+    if (this.crashed) return;
     const m = document.createElement('div'); m.className = 'rmsg' + (you ? ' you' : ''); m.innerHTML = `<b></b><span></span>`; m.firstChild.textContent = from; m.lastChild.textContent = text;
     this.el.appendChild(m); while (this.el.children.length > 3) this.el.firstChild.remove();
     setTimeout(() => m.classList.add('old'), 14000 + text.length * 40); setTimeout(() => m.remove(), 16000 + text.length * 40);
@@ -67,7 +74,7 @@ export class Atc {
     const airport = c.apt.name.replace(/ (International|Intl|Airport|Air Force Base|AFB)$/i, '');
     const wind = this.wxLine(c).text.replace(/^wind\s+/, '');
     const message = advanceAtcPhase(this.s, phase, {
-      region: c.region, airport, runway: c.rwy, wind, qnhHpa: c.qnhHpa, ...extra,
+      region: c.region, airport, runway: c.rwy, wind, qnhHpa: c.qnhHpa, aircraft: c.aircraft, altitude: c.departureAltitude, ...extra,
     });
     if (!message) return null;
     this.say(`${airport} ${message.station}`, message.text, message.text);
@@ -75,48 +82,65 @@ export class Atc {
     this.later(() => this.say(CALLSIGN, readback, readback, true), 4200);
     return message;
   }
-  // c: { started, crashed, onGround, gsKt, agl (ft), gearDown, apt: {ident, name}, rwy, arrApt, arrRwy, wind: {dir, kt}, nav: {ilsValid, thrDist (m)}, tempC, qnhHpa }
+  // c: { started, crashed, onGround, gsKt, agl (ft), gearDown, fixedGear, aircraft, departureAltitude?, goAround,
+  //      apt: {ident, name}, rwy, arrApt, arrRwy, arrivalDistance (signed m, independent of ILS), wind, nav, ownship: {lat, lon, alt, heading (deg)}, qnhHpa }
   // departure calls name apt/rwy; approach, landing and landed calls name the arrival (they used the departure airport on a cross-country flight)
   update(dt, c) {
-    if (!c.started || c.crashed || !c.apt) return;
-    this.t += dt; const s = this.s, w = this.wxLine(c), name = c.apt.name.replace(/ (International|Intl|Airport|Air Force Base|AFB)$/i, ''), rid = c.rwy;
+    if (c.crashed) { this.crash(); return; }
+    if (!c.started || this.crashed || !c.apt) return;
+    const arrival = c.arrApt || c.apt, runway = c.arrApt ? c.arrRwy : c.rwy;
+    const key = JSON.stringify([arrival.ident || arrival.name, runway]);
+    if (this.arrivalKey !== null && key !== this.arrivalKey) { this.hush(); this.resetArrival(); }
+    this.arrivalKey = key;
+    const explicitGoAround = c.goAround && !this.wasGoAround;
+    this.wasGoAround = !!c.goAround;
+    this.t += dt; const s = this.s, name = c.apt.name.replace(/ (International|Intl|Airport|Air Force Base|AFB)$/i, '');
     if (c.onGround && c.gsKt < 5 && !s.clr && this.t > 3) {
       s.clr = true;
       this.sendPhase('takeoff', c);
     }
-    if (!c.onGround && c.agl > 1800 && !c.gearDown && s.clr && !s.dep) {
+    if (!c.onGround && c.agl > 1800 && (c.fixedGear || !c.gearDown) && s.clr && !s.dep) {
       s.dep = true;
       this.sendPhase('climb', c);
     }
-    const n = c.nav, arr = () => (c.arrApt ? { ...c, apt: c.arrApt, rwy: c.arrRwy } : c);
-    if (n && n.ilsValid && !c.onGround && n.thrDist != null) {
-      // A missed approach is latched until a distinct inbound, descending re-entry.
-      // Keep the outbound high-water sample: reversing a few metres cannot re-clear it.
+    const n = c.nav, distance = c.arrivalDistance ?? n?.thrDist;
+    const hasDistance = Number.isFinite(distance), arr = () => ({ ...c, apt: arrival, rwy: runway });
+    if (!c.onGround) {
+      // A signed threshold distance keeps decreasing on a straight-ahead overshoot.
+      // Detect its climb from the approach's low point, even outside the ILS cone.
+      const prev = this.approachSample;
+      const climbingAway = (s.app || s.land) && this.approachFloor !== null && c.agl > this.approachFloor + 100
+        && c.agl < 5000 && (hasDistance ? distance <= 0 || distance > (prev?.distance ?? distance) + 500 : !n?.ilsValid);
+      if (!s.goAround && (explicitGoAround || climbingAway)) {
+        this.hush(); // obsolete clearance readbacks must not follow the missed approach
+        this.sendPhase('approach', arr(), { goAround: true });
+        s.goAround = true; s.land = false; s.down = false;
+        this.approachSample = hasDistance ? { distance, agl: c.agl } : null;
+      }
       if (s.goAround) {
-        const prev = this.approachSample;
-        if (!prev || n.thrDist > prev.distance) this.approachSample = { distance: n.thrDist, agl: c.agl };
-        else if (n.thrDist < 24000 && n.thrDist > 8000 && n.thrDist < prev.distance - 500 && c.agl < prev.agl - 100) {
-          s.goAround = false; s.app = false;
+        // Re-entry needs a genuinely inbound, descending leg outside final.
+        // Absolute distance also tracks an outbound flight beyond the threshold.
+        const sample = this.approachSample, away = hasDistance ? Math.abs(distance) : null;
+        if (away !== null && (!sample || away > Math.abs(sample.distance))) this.approachSample = { distance, agl: c.agl };
+        else if (n?.ilsValid && distance > 8000 && distance < 24000 && sample
+          && away < Math.abs(sample.distance) - 500 && c.agl < sample.agl - 100) {
+          this.resetArrival();
         }
       }
-      if (!s.app && !s.goAround && n.thrDist < 24000 && n.thrDist > 8000) {
-        s.app = true;
-        s.goAround = false;
-        this.approachSample = { distance: n.thrDist, agl: c.agl };
-        this.sendPhase('approach', arr());
-      }
-      if (s.app && !s.goAround && this.approachSample) {
-        if (n.thrDist < this.approachSample.distance) {
-          this.approachSample = { distance: n.thrDist, agl: c.agl };
-        } else if (n.thrDist > this.approachSample.distance + 500 && c.agl > this.approachSample.agl + 100 && c.agl < 5000) {
-          this.hush(); // obsolete clearance readbacks must not follow the missed approach
-          this.sendPhase('approach', arr(), { goAround: true });
-          s.goAround = true; s.land = false; this.approachSample = { distance: n.thrDist, agl: c.agl };
+      if (n?.ilsValid && hasDistance && !s.goAround) {
+        if (!s.app && distance < 24000 && distance > 8000) {
+          s.app = true;
+          this.approachSample = { distance, agl: c.agl }; this.approachFloor = c.agl;
+          this.sendPhase('approach', arr());
+        }
+        if (!s.land && distance < 9500 && distance > 600) {
+          s.land = true;
+          this.sendPhase('landing', arr());
         }
       }
-      if (!s.goAround && !s.land && n.thrDist < 9500 && n.thrDist > 600) {
-        s.land = true;
-        this.sendPhase('landing', arr());
+      if (!s.goAround && (s.app || s.land)) {
+        this.approachFloor = Math.min(this.approachFloor ?? c.agl, c.agl);
+        if (hasDistance && (!this.approachSample || distance < this.approachSample.distance)) this.approachSample = { distance, agl: c.agl };
       }
     }
     if (s.land && c.onGround && c.gsKt < 60 && !s.down) { s.down = true; this.sendPhase('landed', arr()); }
@@ -169,30 +193,32 @@ export function selectRunwayFromWind(runways, wind = {}) {
   return typeof runway === 'string' ? runway : runway.ident ?? runway.id ?? runway.name ?? runway;
 }
 
-const coverSpoken = { FEW: 'few', SCT: 'scattered', BKN: 'broken', OVC: 'overcast', VV: 'vertical visibility' };
-const visibilitySpoken = (metar) => {
-  if (metar.visibilityMeters >= 10000) return '10 kilometres or greater';
-  if (metar.visibilitySM >= 6) return `${Math.round(metar.visibilitySM)} miles`;
-  if (metar.visibilityMeters >= 5000) return `${(metar.visibilityMeters / 1000).toFixed(0)} kilometres`;
-  return `${Math.round(metar.visibilityMeters / 100) * 100} metres`;
+const coverSpoken = { FEW: 'few', SCT: 'scattered', BKN: 'broken', OVC: 'overcast', VV: 'vertical visibility', OVX: 'vertical visibility' };
+const visibilitySpoken = (metar, region) => {
+  const { visibilityMeters: metres, visibilitySM: sm, visibilityQualifier: qualifier } = metarVisibility(metar);
+  if (metres === null) return 'unavailable';
+  const value = regionOf(region) === 'FAA' ? `${Number(sm.toFixed(2))} miles`
+    : metres >= 1000 ? `${Number((metres / 1000).toFixed(2))} kilometres` : `${Math.round(metres)} metres`;
+  return qualifier === 'less-than' ? `less than ${value}` : qualifier === 'at-least' ? `${value} or greater` : value;
 };
 
 /** Build an ATIS from a raw METAR string or aviationweather.gov record. */
 export function buildAtis({ metar, information = 'A', region = 'ICAO', runways = [], runway = null } = {}) {
   const m = typeof metar === 'string' ? parseMetar(metar) : metar;
   if (!m) throw new Error('A METAR is required to build ATIS');
-  const clouds = (m.clouds || []).filter((c) => coverSpoken[c.cover]).map((c) => `${coverSpoken[c.cover]} ${c.base == null ? 'unknown' : `${Math.round(c.base / 100) * 100} feet`}`);
+  const clouds = (m.clouds || []).filter((c) => coverSpoken[c.cover]).map((c) => `${c.estimated ? 'estimated ' : ''}${c.cover === 'VV' || c.cover === 'OVX' ? 'sky obscured, ' : ''}${coverSpoken[c.cover]} ${c.base == null ? 'unknown' : `${Math.round(c.base / 100) * 100} feet`}`);
   const windDir = m.wdir ?? m.windDirection ?? 'VRB';
   const windSpeed = Math.round(m.wspd ?? m.windSpeed ?? 0);
   const wind = windSpeed ? `${windDir === 'VRB' ? 'variable' : `wind ${String(windDir).padStart(3, '0')} degrees`} at ${windSpeed}${m.wgst || m.windGust ? ` gusting ${Math.round(m.wgst ?? m.windGust)}` : ''} knots` : 'wind calm';
   const temp = m.temp == null ? 'temperature unavailable' : `temperature ${m.temp}, dew point ${m.dewp ?? 'unavailable'}`;
   const qnh = m.altim ?? m.qnhHpa ?? null;
   const pressure = qnh == null ? 'pressure unavailable' : pressurePhrase(region, qnh);
-  const activeRunway = runway || selectRunwayFromWind(runways, { dir: Number(windDir), kt: windSpeed });
+  // A model cannot establish an airport's actual runway in use.
+  const activeRunway = m.modeled ? null : runway || selectRunwayFromWind(runways, { dir: Number(windDir), kt: windSpeed });
   const runwayText = activeRunway ? `runway ${activeRunway} in use` : 'runway in use not available';
   const weather = m.wxString ? ` ${m.wxString}.` : '';
   const cloudText = clouds.length ? clouds.join(', ') : 'no significant cloud';
-  return `Information ${String(information).toUpperCase()}. ${runwayText}. ${wind}. Visibility ${visibilitySpoken({ visibilitySM: Number(m.visib) || 10, visibilityMeters: m.visibilityMeters ?? (Number(m.visib) || 10) * 1609.344 })}.${weather} ${cloudText}. ${temp}. ${pressure}.`;
+  return `${m.modeled ? 'Modeled weather. ' : ''}Information ${String(information).toUpperCase()}. ${runwayText}. ${wind}. Visibility ${visibilitySpoken(m, region)}.${weather} ${cloudText}. ${temp}. ${pressure}.`;
 }
 
 const PHASE_STATIONS = {
@@ -200,10 +226,14 @@ const PHASE_STATIONS = {
   descent: 'Centre', approach: 'Approach', goAround: 'Approach', landing: 'Tower', landed: 'Tower',
 };
 
+// Toy-simulator departure targets, not operational route/terrain clearances.
+const SIMULATED_CLIMB = { c172: '5,000 feet', da40: '5,000 feet', f27: 'flight level 180', sf50: 'flight level 280', il76: 'flight level 330', a380x: 'flight level 350', sr71: 'flight level 600' };
+
 /** Pure phase call builder for clearance, ground, tower and handoffs. */
 export function buildPhaseMessage(phase, context = {}) {
   const region = regionOf(context.region), callsign = context.callsign || CALLSIGN, runway = context.runway || context.rwy || 'not assigned';
   const airport = context.airport || context.apt || 'the airport', qnh = context.qnhHpa == null ? '' : `, ${pressurePhrase(region, context.qnhHpa)}`;
+  const altitude = context.altitude || SIMULATED_CLIMB[context.aircraft] || 'assigned altitude';
   const hold = region === 'FAA' ? 'position and hold' : 'line up and wait';
   if (context.goAround || context.missedApproach) return { station: 'Approach', text: `${callsign}, go around. Fly the published missed approach and contact approach.`, readback: `Going around, published missed approach, ${callsign}.` };
   const messages = {
@@ -211,7 +241,7 @@ export function buildPhaseMessage(phase, context = {}) {
     taxi: { station: 'Ground', text: `${callsign}, taxi to runway ${runway} via ${context.taxiRoute || 'the published taxiway'}. Hold short runway ${runway}.`, readback: `Taxi runway ${runway}, hold short, ${callsign}.` },
     'hold-short': { station: 'Tower', text: `${callsign}, runway ${runway}, ${hold}.`, readback: `${hold} runway ${runway}, ${callsign}.` },
     takeoff: { station: 'Tower', text: `${callsign}, wind ${context.wind || 'calm'}, runway ${runway}, cleared for takeoff.`, readback: `Cleared for takeoff runway ${runway}, ${callsign}.` },
-    climb: { station: 'Departure', text: `${callsign}, radar contact. Climb and maintain ${context.altitude || 'flight level 600'}, proceed on course.`, readback: `Climb and maintain ${context.altitude || 'flight level 600'}, ${callsign}.` },
+    climb: { station: 'Departure', text: `${callsign}, radar contact. Climb and maintain ${altitude}, proceed on course.`, readback: `Climb and maintain ${altitude}, ${callsign}.` },
     cruise: { station: 'Centre', text: `${callsign}, contact centre on the published frequency.`, readback: `Contact centre, ${callsign}.` },
     descent: { station: 'Centre', text: `${callsign}, descend via arrival, expect approach runway ${runway}${qnh}.`, readback: `Descend via arrival, expect runway ${runway}, ${callsign}.` },
     approach: { station: 'Approach', text: `${callsign}, cleared ILS approach runway ${runway}; contact tower.`, readback: `Cleared ILS runway ${runway}, ${callsign}.` },
@@ -242,7 +272,9 @@ export function buildTrafficAdvisory(trafficList, ownship = {}) {
     const distance = Math.hypot(dx, dy);
     if (distance < 0.2 || distance > 20 || (nearest && distance >= nearest.distance)) continue;
     const bearing = (Math.atan2(dx, dy) * 180 / Math.PI + 360) % 360;
-    const clock = Math.round(bearing / 30) % 12 || 12;
+    const heading = Number.isFinite(ownship.heading) ? ownship.heading : 0;
+    const relativeBearing = ((bearing - heading) % 360 + 360) % 360;
+    const clock = Math.round(relativeBearing / 30) % 12 || 12;
     nearest = { aircraft, distance, clock };
   }
   if (!nearest) return null;

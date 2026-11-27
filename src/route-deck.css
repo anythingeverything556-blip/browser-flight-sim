@@ -1,0 +1,20 @@
+/* Navigation drawer: leave Leaflet controls and hit targets intact. */
+#sheet-map .mapwrap { background: #101c29; }
+#sheet-map #route { gap: 10px; padding: 14px; background: #0d1723; }
+#sheet-map .route-deck-heading { padding: 2px 3px 4px; }
+#sheet-map .route-deck-heading > span { color: #93f0dc; text-transform: uppercase; font: 550 10px/1.3 var(--mono); letter-spacing: .08em; }
+#sheet-map .route-deck-heading h3 { color: #eef8fc; font-size: 20px; font-weight: 630; letter-spacing: -.035em; }
+#sheet-map .route-deck-heading p { margin: 3px 0 0; color: #aabacb; font-size: 12px; }
+#sheet-map .route-deck-card { padding: 11px; border: 1px solid #2a3d50; border-radius: 9px; background: #142333; }
+#sheet-map .route-deck-card h4 { margin: 0 0 5px; color: #e7f1f8; font-size: 12px; font-weight: 660; }
+#sheet-map .route-deck-card .sub { color: #b0c0ce; font-size: 12px; }
+#sheet-map #route-list li { padding: 5px 6px; }
+#sheet-map #route-list li:not(:first-child) { margin-top: 3px; }
+#sheet-map #route-list li.active { background: #213c40; box-shadow: inset 0 0 0 1px #54867d; }
+#sheet-map .route-deck-actions { margin-top: 0; }
+#sheet-map .route-deck-actions button { min-height: 39px; }
+@media (max-width: 740px) {
+  #sheet-map #route { padding: 10px; gap: 6px; }
+  #sheet-map .route-deck-heading h3 { font-size: 17px; }
+  #sheet-map .route-deck-card { padding: 7px 9px; }
+}

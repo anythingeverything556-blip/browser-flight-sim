@@ -1,4 +1,4 @@
-import { acquiredAt, PAGES_BUDGET_MS, withinDeadline } from '../../shared/traffic-contract.js';
+import { acquiredAt, observationAge, TRAFFIC_KEEP_SECONDS, PAGES_BUDGET_MS, withinDeadline } from '../../shared/traffic-contract.js';
 // Live ADS-B traffic proxy for Cloudflare Pages.
 //
 // The single upstream (adsb.lol) answers 429 to Cloudflare's shared egress addresses, so most players saw "Live traffic unavailable". This version
@@ -21,6 +21,27 @@ export function slim(list) {
 // worldwide lists: one upstream path each (emergency merges the three emergency squawks)
 export const LISTS = { mil: ['/v2/mil'], ladd: ['/v2/ladd'], pia: ['/v2/pia'], emergency: ['/v2/sqk/7700', '/v2/sqk/7600', '/v2/sqk/7500'] };
 const LIST_FALLBACK = { 'api.adsb.lol': (path) => `https://opendata.adsb.fi/api${path}` };
+
+// Apply the same observation lifetime as both browser clients before choosing
+// a provider or renewing a cache. A fresh empty snapshot is still valid.
+function usableSnapshot(body, records) {
+  const now = Date.now(), at = acquiredAt(body, now);
+  if (!Array.isArray(records) || body.error || at == null) throw new Error('bad data');
+  const age = Math.max(0, (now - at) / 1000);
+  if (age > TRAFFIC_KEEP_SECONDS) throw new Error('traffic observations expired');
+  const list = records.filter((a) => a && age + observationAge(a) <= TRAFFIC_KEEP_SECONDS);
+  if (records.length && !list.length) throw new Error('traffic observations expired');
+  return { list, at };
+}
+
+async function usableCacheHit(cache, key) {
+  const hit = await cache.match(key).catch(() => null);
+  if (hit) {
+    try { const body = await hit.clone().json(); usableSnapshot(body, body.aircraft); return hit; }
+    catch { /* expired or invalid cached data must not block provider fallback */ }
+  }
+  return null;
+}
 
 function numeric(value) {
   if (value == null || String(value).trim() === '') return null;
@@ -78,7 +99,7 @@ const unavailable = (error) => new Response(JSON.stringify({ aircraft: [], error
 async function worldList(name, { env, waitUntil, primary }) {
   const cache = typeof caches !== 'undefined' ? caches.default : null;
   const key = new Request(`https://traffic-cache.invalid/v3/${primary.hostname}/list/${name}`);
-  if (cache) { const hit = await cache.match(key).catch(() => null); if (hit) return hit; }
+  if (cache) { const hit = await usableCacheHit(cache, key); if (hit) return hit; }
   const deadline = Date.now() + PAGES_BUDGET_MS;
   // Independent categories run concurrently under one budget, not three serial budgets.
   const parts = await Promise.all(LISTS[name].map(async (path) => {
@@ -91,8 +112,7 @@ async function worldList(name, { env, waitUntil, primary }) {
           if (!r.ok) throw new Error(String(r.status));
           return r.json();
         });
-        const list = j.ac || j.aircraft, at = acquiredAt(j);
-        if (!Array.isArray(list) || j.error || at == null) throw new Error('bad data');
+        const { list, at } = usableSnapshot(j, j.ac || j.aircraft);
         return { list, at, stale: !!j.stale, partial: !!j.partial, source: url.hostname === primary.hostname ? primary.hostname : 'adsb.fi' };
       } catch { /* use remaining provider budget */ }
     }
@@ -145,7 +165,7 @@ export async function onRequestGet({ request, env = {}, waitUntil }) {
   const respond = (body, source, extra = {}) => new Response(JSON.stringify({ aircraft: body, source, ...extra }), {
     status: 200, headers: { ...jsonHeaders, 'cache-control': extra.stale || extra.partial ? 'no-store' : `public, max-age=${cacheSeconds}, s-maxage=${cacheSeconds}`, 'x-traffic-source': source },
   });
-  if (cache) { const hit = await cache.match(key).catch(() => null); if (hit) return hit; }
+  if (cache) { const hit = await usableCacheHit(cache, key); if (hit) return hit; }
 
   const errors = [], chain = providers(lat, lon, cellDist, primary.href), deadline = Date.now() + PAGES_BUDGET_MS;
   for (const [i, prov] of chain.entries()) {
@@ -156,8 +176,7 @@ export async function onRequestGet({ request, env = {}, waitUntil }) {
         if (!response.ok) throw new Error(String(response.status));
         return response.json();
       });
-      const list = prov.parse(j), at = acquiredAt(j);
-      if (!Array.isArray(list) || j.error || at == null) throw new Error('bad data');
+      const { list, at } = usableSnapshot(j, prov.parse(j));
       const res = respond(slim(list), prov.name, { acquiredAt: at, stale: !!j.stale, partial: !!j.partial });
       // A stale relay response must not renew either edge cache's lifetime.
       if (cache && !j.stale && !j.partial) {
@@ -171,7 +190,7 @@ export async function onRequestGet({ request, env = {}, waitUntil }) {
   }
   if (cache) {
     const old = await cache.match(staleKey).catch(() => null);
-    if (old) { try { const j = await old.json(); if (Array.isArray(j.aircraft) && acquiredAt(j) != null) return respond(j.aircraft, `${j.source || 'cache'} (stale)`, { stale: true, acquiredAt: j.acquiredAt }); } catch { /* fall through */ } }
+    if (old) { try { const j = await old.json(), { list, at } = usableSnapshot(j, j.aircraft); return respond(list, `${j.source || 'cache'} (stale)`, { stale: true, acquiredAt: at }); } catch { /* fall through */ } }
   }
   return new Response(JSON.stringify({ aircraft: [], error: `Traffic upstreams unavailable: ${errors.join(', ')}` }), { status: 502, headers: { ...jsonHeaders, 'cache-control': 'no-store' } });
 }

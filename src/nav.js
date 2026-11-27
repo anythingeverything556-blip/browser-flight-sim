@@ -1,4 +1,4 @@
-import { D2R, bearing, haversine } from './geo.js';
+import { D2R, bearing, greatCircleLeg, haversine } from './geo.js';
 
 const gT = (s) => ((s + 540) % 360) - 180,
   cm = (s, t, e) => Math.min(e, Math.max(t, s));
@@ -8,6 +8,7 @@ class Navigation {
       (this.active = 0),
       (this.legStart = null),
       (this.done = false),
+      (this.terminalCourse = null),
       (this.arrival = null),
       (this.locCap = !1),
       (this.gsCap = !1),
@@ -78,6 +79,7 @@ class Navigation {
       course: 0,
       xtkNm: 0,
       ilsValid: !1,
+      ilsId: null,
       locDev: 0,
       gsDev: 0,
       lnavHdg: null,
@@ -88,26 +90,27 @@ class Navigation {
       !this.legStart && (this.legStart = { lat: t.lat, lon: t.lon });
       const r = this.wps[this.active],
         a = this.legStart || (this.active > 0 ? this.wps[this.active - 1] : t),
-        l = bearing(a.lat, a.lon, r.lat, r.lon),
+        leg = greatCircleLeg(a, r, t),
+        l = leg.course,
         h = haversine(t.lat, t.lon, r.lat, r.lon),
         u = bearing(t.lat, t.lon, r.lat, r.lon),
-        f = haversine(a.lat, a.lon, t.lat, t.lon),
-        d = bearing(a.lat, a.lon, t.lat, t.lon),
-        p = f * Math.sin((d - l) * D2R),
-        v = haversine(a.lat, a.lon, r.lat, r.lon) - f * Math.cos((d - l) * D2R),
+        p = leg.crossTrack,
+        v = leg.remaining,
         y = (n * n) / (9.80665 * Math.tan((bankDeg ?? (n > 340 ? 35 : 25)) * D2R)),
         x = this.wps[this.active + 1],
-        g = x ? Math.abs(gT(bearing(r.lat, r.lon, x.lat, x.lon) - l)) : 0,
-        _ = x ? Math.min(Math.max(1e3, y * Math.tan((Math.min(150, g) * D2R) / 2)), Math.max(300, 0.5 * Math.min(haversine(r.lat, r.lon, x.lat, x.lon), haversine(a.lat, a.lon, r.lat, r.lon)))) : 300;
+        g = x ? Math.abs(gT(bearing(r.lat, r.lon, x.lat, x.lon) - leg.endCourse)) : 0,
+        _ = x ? Math.min(Math.max(1e3, y * Math.tan((Math.min(150, g) * D2R) / 2)), Math.max(300, 0.5 * Math.min(haversine(r.lat, r.lon, x.lat, x.lon), leg.length))) : 300;
       i.turnInS = x && g > 8 ? Math.max(0, (h - _) / Math.max(n, 1)) : null; i.turnDeg = x ? g : 0; i.turnRadiusNm = y / 1852;
       !this.done && (h < _ || v < 0)
         ? x
           ? (this.active++, (this.legStart = { lat: r.lat, lon: r.lon }), this.changed(), (this.sequenced = r.name))
-          : !this.done && h < 2e3 && ((this.done = !0), (this.sequenced = r.name + ' (end of route)'))
+          : ((this.done = !0), (this.terminalCourse = l), (this.sequenced = r.name + ' (end of route)'))
         : null;
       const w = Math.max(25, (y / Math.max(n, 1)) * 0.6);
-      // After the final fix, continue the terminal course without reviving route progress.
-      ((i.lnavHdg = this.done ? l : (l - Math.atan2(p, n * w) / D2R + 360) % 360),
+      // A final fix is complete on close capture OR passing its perpendicular
+      // great-circle plane, even after a lateral miss. Latch the local heading
+      // for the intended straight terminal handoff; never chase behind us.
+      ((i.lnavHdg = this.done ? this.terminalCourse : (l - Math.atan2(p, n * w) / D2R + 360) % 360),
         Object.assign(i, { valid: !this.done, routeActive: !this.done, routeComplete: !!this.done, ident: r.name, brgDeg: u, distNm: this.done ? 0 : h / 1852, course: l, xtkNm: p / 1852 }));
     }
     if (this.arrival) {
@@ -124,6 +127,9 @@ class Navigation {
         g = 300 - v,
         _ = -Math.atan2(y, x) / D2R,
         w = Math.atan2(e - l.elev - 4, Math.max(1, g)) / D2R - 3;
+      // Physical runway/end identity, independent of signal coverage and route-fix labels.
+      // Geometry also distinguishes relocated/edited runways with the same displayed ident.
+      i.ilsId = JSON.stringify([r.ap.ident, l.ident, h.lat, h.lon, u, l.elev, r.len]);
       if (x > 0 && f < 46e3 && Math.abs(_) < 18 && v < r.len) {
         ((i.ilsValid = !0),
           (i.locDev = _),

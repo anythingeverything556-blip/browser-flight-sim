@@ -1,11 +1,21 @@
 # Notices and attributions
 
-The authors' own code and the SR-71 model are covered by `LICENSE`.
+The project authors' original work is covered by `LICENSE`. It does not grant
+rights to third-party assets or recordings.
 Everything below belongs to its respective owners and keeps its own terms.
 
 ## Aircraft model
-`public/models/SR71_sim.glb` was modelled in Blender by the project authors
-with help from an AI assistant.
+The private owner-build SR-71 exterior and cockpit (`public/models/sr71/`)
+contain converted third-party Milviz source assets supplied with this handoff,
+as described in `README-SR71-INTEGRATION.md`. The original packages and
+recordings remain subject to their rightsholders' terms. This notice does not
+authorize public release. The earlier author-made `SR71_sim.glb` described in
+historical notes is not the selected model in this owner build.
+
+The Fokker F27 Mk500 (`public/models/f27/`) includes adaptations of Benoît
+Gaurant's aircraft, textures, animations and recordings. See the dedicated
+`public/models/f27/NOTICE.md` for original credit, terms, archive identity and
+the private-handoff restriction.
 
 `public/models/SF50.glb` (Vision Jet) was modelled in Blender by the project
 authors with help from an AI assistant. It is an unofficial model: Cirrus,

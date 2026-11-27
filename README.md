@@ -4,14 +4,12 @@
 
 **A real-world flight simulator that runs in your browser.**
 
-Fly six aircraft — from the Diamond DA40 NG and Fokker F27 to the Mach 3 SR-71 Blackbird — from 8,200+ real airports,<br>
+Fly an SR-71 Blackbird at Mach 3, a Cessna 172, a Cirrus Vision Jet or an Ilyushin Il-76 from 8,200+ real airports,<br>
 over satellite imagery and terrain at full scale. No install, no account.
 
 ### [▶ Play Earthwing in your browser](https://earthwing.pages.dev)
 
-[Fly the Fokker F27](https://earthwing.pages.dev/?aircraft=f27) · [Original Blackbird address](https://sr71-blackbird.pages.dev)
-
-[Aircraft](#aircraft) · [Latest update](#latest-update-fokker-f27-v6) · [Missions](#missions-and-training) · [Features](#features) · [Controls](#controls) · [Run it locally](#run-it-locally) · [Changelog](CHANGELOG.md)
+[Aircraft](#aircraft) · [Missions](#missions-and-training) · [Features](#features) · [Controls](#controls) · [Run it locally](#run-it-locally) · [Changelog](CHANGELOG.md)
 
 <a href="https://earthwing.pages.dev"><img src="docs/earthwing.gif" alt="The SR-71 at Mach 3 and 79,000 ft over the Grand Canyon in Earthwing, with afterburners lit and the curve of the Earth below" width="900"></a>
 
@@ -19,16 +17,17 @@ over satellite imagery and terrain at full scale. No install, no account.
 
 </div>
 
-Earthwing began as an SR-71 simulator called *Blackbird*. It now flies six very different aircraft
+Earthwing began as an SR-71 simulator called *Blackbird*. It now flies four very different aircraft
 over the whole planet, so it has a new name; the Blackbird is still here, and still the fastest way to
 see the world.
 
 - **The real world, everywhere.** Satellite imagery, real terrain, 8,200+ airports and 10,600+ runways,
   3D buildings, trees, water, weather and time of day.
-- **Six aircraft, different ways to fly.** Practise a circuit in the Skyhawk, fly the F27 by hand, or cruise at Mach 3.2 in the Blackbird.
+- **Four aircraft, four ways to fly.** Hand-fly a Cessna on a short final, or set the autopilot for
+  Mach 3.2 at 85,000 ft and watch the curvature of the Earth.
 - **A real flight model.** Six degrees of freedom at 240 Hz, per-aircraft engines and systems, fuel,
   turbulence, wind shear and crash physics.
-- **Nothing to install.** Open the link in a desktop browser with WebGL 2 and hardware acceleration. Press **Just fly** for clear-sky free flight from your saved home (KBAB on first use), or use **Start flight** to keep your aircraft, runway and weather choices. No location sharing is required.
+- **Nothing to install.** Open the link in a desktop browser with WebGL 2 and press **Just fly** for clear-sky free flight from your saved home (KBAB on first use), or customize **Start flight**. No location sharing is required.
 
 ## Aircraft
 
@@ -36,28 +35,18 @@ see the world.
 | --- | --- | --- |
 | **Lockheed SR-71A Blackbird** | Mach 3.2 cruise, 85,000 ft, 2 × J58 | Afterburners, inlet unstarts, drag chute and air-to-air refuelling. Full autopilot with SPD and MACH holds; the original missions and tutorial remain available. |
 | **Cessna 172SP Skyhawk** | 122 KTAS, 180 hp, 4 seats | A trainer you fly by hand: live six-pack instruments, flaps, trim and nose-wheel steering. No autopilot fitted. A short guided flight and a hand-flown traffic-pattern lesson are available. |
-| **Diamond DA40 NG** | 154 KTAS, 168 hp Austro AE300 diesel, 4 seats | A composite trainer with fixed tricycle gear and simplified G1000-style displays. |
 | **Cirrus Vision Jet SF50 G3** | 311 KTAS, FL310, FJ33-5A | Glass PFD and MFD, NAV/APPR autopilot with autoland, go-around and a *Safe Return* landing at the nearest suitable airport. |
-| **Fokker F27 Mk500 Friendship** | 2 × Rolls-Royce Dart turboprops, 29 m wingspan | Hand-fly a twin turboprop with live analogue instruments, animated gear, and White Classic and Air Inter 1980 liveries. |
 | **Ilyushin Il-76MD-90A** | 770 km/h cruise, 12,200 m ceiling, 210 t, 4 × PS-90A-76 | Il-76: a heavy four-engine transport with slats, triple-slotted flaps, spoilers, thrust reversers, 20 wheels that fold into the fuselage, and a cargo ramp, clamshell doors and paratroop doors that open. |
 
-Pick an aircraft on the start screen, or set the `aircraft` URL parameter to `sr71`, `c172`, `da40`, `sf50`, `f27` or `il76` (for example, [`?aircraft=f27`](https://earthwing.pages.dev/?aircraft=f27)).
+Pick the aircraft on the start screen, or open the simulator with `?aircraft=sr71`, `?aircraft=c172`, `?aircraft=sf50` or `?aircraft=il76`.
 The Vision Jet model is unofficial and not affiliated with Cirrus, and the Il-76 model is unofficial and not affiliated with Ilyushin or United Aircraft Corporation (see `NOTICE.md`).
 The Il-76's flight model uses published figures where they exist and labelled estimates elsewhere (see the comment block at the top of `src/il76.js`); it is not a certified reproduction.
 
-<img src="public/social-preview.png" alt="Earlier Earthwing start screen and flight setup" width="900">
-
-## Latest update: Fokker F27 v6
-
-- **Landing gear:** Fixed nosewheel steering and the mid-cycle gear snap. Extension takes 7 seconds and retraction takes 17 seconds at normal sim speed; the gear reverses from its current position. The HUD and **F27 Systems** show travel and lock status.
-- **Windshield rain:** Choose **Rain** in Flight Setup, press **Start flight**, then cycle to the cockpit with **V**. Droplets move across the windscreen and dry out when the rain stops.
-- **Cockpit rendering:** Batching static geometry cut draw calls from 841 to 666 (about 21%) in a controlled test without lowering resolution. Real-device FPS gains are not verified.
-
-The F27 is a browser simulation, not a certified trainer. Its exterior, cockpit, textures and selected sounds are adapted from Benoît Gaurant’s F27 Mk500 freeware. See the [F27 quick-start guide](F27-START-HERE.txt), [v6 technical notes](F27-V6-COCKPIT-RAIN.md) and [asset notice](public/models/f27/NOTICE.md).
+<img src="public/social-preview.png" alt="Earlier Earthwing start screen; the current release also includes the Il-76 and Just fly" width="900">
 
 ## Missions and training
 
-Choose one under **Mission** on the start sheet. The SR-71 retains its original missions below. The C172 now offers **Guided flight** (power, take-off, climb, turn, trim) and **Take-off, pattern & landing** (a simple left-hand circuit back to the departure runway). You fly; coaching does not operate the controls. The other aircraft are available for free flight.
+Choose one under **Mission** on the start sheet. The SR-71 retains its original missions below. The C172 now offers **Guided flight** (power, take-off, climb, turn, trim) and **Take-off, pattern & landing** (a simple left-hand circuit back to the departure runway). You fly; coaching does not operate the controls. The Vision Jet and Il-76 retain free flight.
 
 - **Tutorial:** you fly, it coaches, in eleven steps from the take-off roll to the autopilot.
 - **Landing 1 and 2:** ILS approaches from a 10 NM or 5 NM final, scored on sink rate, speed, centreline and touchdown point.
@@ -67,13 +56,16 @@ Choose one under **Mission** on the start sheet. The SR-71 retains its original 
 
 Every aircraft has **Easy**, **Medium** and **Realistic** flying modes with adjustable assists.
 
-**Start quickly or resume.** **Just fly** starts clear-sky free flight in the aircraft named on its button; **Start flight** keeps your custom aircraft and conditions. **Resume last flight setup** restores aircraft, airport/runway, start profile, weather, time and mission, not airborne position. No account or location sharing is required. Saved aircraft preferences are not silently replaced by a deep link.
+**Start quickly or resume.** Just fly is an explicit SR-71/C172 clear-sky free-flight choice; **Start flight** keeps your custom aircraft and conditions. **Resume last flight setup** restores aircraft, airport/runway, start profile, weather, time and mission, not airborne position. No account or location sharing is required. Saved aircraft preferences are not silently replaced by a deep link.
 
 **Local logbook.** The start sheet shows up to 50 completed landings, including aircraft, departure, nearby arrival (or Unknown), simulated duration and approximate sink-rate quality. One entry is recorded per flight setup, not each wheel bounce. It stays in this browser only; clearing site data removes it. Storage that is missing, corrupt or full does not stop flight.
 
 ## Model performance status
 
-Earthwing loads the selected aircraft instead of downloading the whole fleet at startup. The F27 exterior loads first; the cockpit is prepared in the background unless Data Saver is enabled. The active SF50 uses the [native-detail model](notes/MODEL-QUALITY-UPGRADE.md). The SF50 and Il-76 still use approximately 403,000 and 369,000 triangles respectively. Software Chrome checks verify functionality, not hardware frame rate. See the [changelog](CHANGELOG.md).
+The selected aircraft alone is downloaded; selecting a different card reloads its model. The SR-71 loads its own LOD only when selected.
+A conservative texture-only pass reduces the SF50 GLB from 1,771,000 to 1,481,076 bytes and the Il-76 from 2,016,464 to 2,007,968 bytes.
+Geometry, moving-node pivots, extras and display wiring are unchanged: **403,431 SF50 / 368,929 Il-76 triangles**, so the ~200k geometry/draw-call target is **not done**.
+Instrument atlases and fine livery were retained where downsampling risked readability. Software Chrome checks verify functionality, not hardware frame rate. See [Changelog](CHANGELOG.md).
 
 ## Features
 
@@ -101,7 +93,7 @@ Earthwing loads the selected aircraft instead of downloading the whole fleet at 
 - **Weather:** Clear, Fair, Scattered, Overcast, Rain, Storm, Fog and Gusty presets set cloud cover, wind,
   turbulence and visibility, and add rain streaks that sweep past at flight speed, a grey gloom, a fog veil,
   lightning and delayed thunder.
-- **Sound:** Most engine and environment effects are synthesised; the F27 also uses selected recordings from Gaurant’s freeware add-on. Engine effects include per-engine rumble, roar, hiss and compressor whine with the slow wobble of
+- **Sound:** synthesised (the voice warnings are the only recorded clips): per-engine rumble, roar, hiss and compressor whine with the slow wobble of
   real jet noise, a rolling afterburner growl, wind, tyre rumble over runway joints, a hydraulic pump with door and
   lock clunks, rain, thunder, and modal crash sounds (struck metal, tearing, a sub-bass explosion that arrives late).
 - **Voice warnings:** spoken "PULL UP", stall, over-G, overspeed, gear and low-fuel call-outs in a US fighter, US airliner
@@ -189,24 +181,24 @@ Earthwing loads the selected aircraft instead of downloading the whole fleet at 
 | \\ | Tune the nearest ILS ahead (autopilot stays off) | L | Refuel (fuel truck on the ground; tanker in the air, SR-71) |
 | \` | Time warp 1x / 2x / 4x / 8x / 16x (above 1,000 ft) | N | Cockpit moving map (heading-up / north-up, 5-320 NM) |
 
-**SR-71 takeoff:** press 9 for full afterburner, pull back gently (↓) at about 210 kt,
+**Typical takeoff:** press 9 for full afterburner, pull back gently (↓) at about 210 kt,
 raise the gear (G) once you're climbing, then use the Autopilot panel to set Mach 3.2 and 80,000 ft.
-**SR-71 landing:** approach at about 175 kt, touch down below 160 kt, deploy the chute (C) and brake.
+**Landing:** approach at about 175 kt, touch down below 160 kt, deploy the chute (C) and brake.
 Press `\` on the way in to tune the runway's ILS without engaging the autopilot; the radio-altitude call-outs
 ("One hundred" ... "Ten", "Retard") count you down to the runway.
 
 
 The Skyhawk and Vision Jet use the same keys, plus **F** / **Shift+F** for flaps (and **;** / **'** for trim in the Skyhawk).
 The Il-76 adds **F** / **Shift+F** for its slat and flap settings, **2** for spoilers and brake panels, **3** for the Il-76 thrust reversers (on the ground), **4** for the cargo hatch, **5** for the paratroop doors and **Shift+N** for the crew doors.
-For the **F27**, **E / Q** adjust power, **F / Shift+F** step flaps, **G** toggles gear, and **V** cycles views. Open **F27 Systems** for seat height, lighting, livery, and gear status. The in-sim **Help** sheet shows the procedures for the selected aircraft.
+The in-sim **Help** sheet shows the procedures for whichever aircraft you are flying.
 
 ## Run it locally
 
-Use [Node.js](https://nodejs.org) 24 LTS (recommended for Vite 7).
+Requires [Node.js](https://nodejs.org) 20.19 or newer (Vite 7).
 
 ```bash
-npm ci
-npm run dev      # http://localhost:5173
+npm install
+npm run dev      # opens on http://localhost:5173
 ```
 
 On Windows you can double-click `start.bat` instead.
@@ -286,11 +278,7 @@ Normal and up).
 
 ## Tests
 
-For the full suite, install the DA40 test tooling as well as the root dependencies. The v6 release passed all 142 scripts locally.
-
 ```bash
-npm ci
-npm ci --prefix tools/da40-tooling
 npm test
 node test/dem-test.mjs   # corrupt elevation rows/columns are repaired; clean terrain and real ridges are left alone
 node test/fdm-test.mjs   # take-off roll, rotation, climb, zero timestep: finite state, no crash
@@ -302,8 +290,6 @@ node test/il76-fdm-test.mjs     # Il-76 flight model against the published and e
 node test/il76-glb-test.mjs     # Il-76 model contract: frame, 20 wheels, every mover's axis, limit and direction
 node test/il76-visual-test.mjs  # Il-76 in the game: surfaces, gear sequence, doors, fans, lights
 node test/il76-wiring-test.mjs  # Il-76 registry, keys, modes, spawn, audio
-node test/f27-gear-test.mjs    # F27 steering, gear timing, reversal and initial positions
-node test/f27-batch-rain-v6-test.mjs  # F27 cockpit batching and windshield rain
 ```
 
 The original archive referred to further flight-model test scripts (`test/trim-test.mjs`, `test/handling-test.mjs`, ...) and a
@@ -407,7 +393,11 @@ allowed origin and a disallowed origin. No live headers were changed here.
 
 ## Continuous checks
 
-Run the production build and tests locally before uploading changes. The public GitHub snapshot does not include a CI workflow.
+`.github/workflows/ci.yml` runs on every push and pull request with read-only
+repository permission: Node 24 LTS, clean `npm ci`, full tests and production
+build. Official checkout/setup-node v6 actions are pinned to verified commit
+SHAs. No deployment, tokens or secrets are used. Local tests/build are verified;
+a hosted Actions run requires a separately authorized push and is not claimed.
 
 `npm test` runs the ordered `test/scripts.json` manifest through
 `tools/test-runner.mjs`. Every original script (including terrain-bench) runs
@@ -447,7 +437,6 @@ and screenshots (default `/tmp/earthwing-smoke`).
 This starts a loopback-only static Pages-convention fixture on a random port,
 boots the actual production C172 model, clicks Just fly, reaches the cockpit,
 and requires actual WebGL 2 draw calls and shader programs on ANGLE SwiftShader.
-For the F27, use `SMOKE_AIRCRAFT=f27 npm run test:smoke` after building.
 Traffic/weather API responses are local empty-success fixtures. World tiles are synthetic local zero-elevation/red-image fixtures: this tests
 engine/asset startup, not live imagery, GPU performance or physical flight accuracy.
 External page requests are intercepted; worker world-data requests are fulfilled

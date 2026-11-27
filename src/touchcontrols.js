@@ -42,11 +42,17 @@ export function mountTouchControls(controls, parent = document.body) {
   brake.addEventListener('keyup', () => { controls.touch.brake = false; });
   brake.addEventListener('blur', () => { controls.touch.brake = false; });
   for (const button of root.querySelectorAll('[data-action]')) button.addEventListener('click', () => { const action = button.dataset.action; if (controls.enabled && (!controls.locked || action === 'nextView')) controls.handlers[action]?.(); });
+  const resetAxes = [];
   for (const input of root.querySelectorAll('[data-axis]')) {
+    let axisPointer = null;
+    input.addEventListener('pointerdown', e => { if (!active() || axisPointer !== null) return; axisPointer = e.pointerId; input.setPointerCapture(axisPointer); });
     input.addEventListener('input', () => { if (active()) controls.touch[input.dataset.axis] = +input.value / 100; });
-    for (const event of ['pointerup', 'pointercancel', 'blur']) input.addEventListener(event, () => { controls.touch[input.dataset.axis] = null; input.value = '0'; });
+    const releaseAxis = e => { if (e && e.pointerId !== axisPointer) return; axisPointer = null; controls.touch[input.dataset.axis] = null; input.value = '0'; };
+    for (const event of ['pointerup', 'pointercancel', 'lostpointercapture']) input.addEventListener(event, releaseAxis);
+    input.addEventListener('blur', () => releaseAxis());
+    resetAxes.push(() => releaseAxis());
   }
-  const reset = () => { releaseThrottle(); releaseStick(); releaseBrake(); resetRudder(); for (const input of root.querySelectorAll('[data-axis]')) { controls.touch[input.dataset.axis] = null; input.value = '0'; } };
+  const reset = () => { releaseThrottle(); releaseStick(); releaseBrake(); resetRudder(); for (const releaseAxis of resetAxes) releaseAxis(); };
   window.addEventListener('blur', reset);
   document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
   new MutationObserver(() => { if (document.body.classList.contains('sheet-open') || document.body.classList.contains('intro')) reset(); }).observe(document.body, { attributes: true, attributeFilter: ['class'] });

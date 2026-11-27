@@ -1,0 +1,157 @@
+/* Flight deck weather: an instrument readout first; controls follow in order of use. */
+#sheet-env {
+  --weather-mint: #93f0dc;
+  --weather-dim: #aabacb;
+  --weather-rule: rgba(161, 194, 220, .18);
+  --weather-cell: #142333;
+}
+#sheet-env .body { padding: 18px 18px 22px; }
+#sheet-env .weather-current {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 15px 17px 13px;
+  border: 1px solid #3e6b70;
+  border-radius: 13px;
+  background: radial-gradient(ellipse at 105% 12%, #28585c, transparent 70%), linear-gradient(145deg, #162c3a, #101b2a 82%);
+}
+#sheet-env .weather-horizon {
+  position: absolute;
+  z-index: -1;
+  inset: auto -5px 0 auto;
+  width: min(63%, 220px);
+  height: auto;
+  stroke: #9ae7df;
+  stroke-width: 1;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: .27;
+  pointer-events: none;
+}
+#sheet-env .weather-eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--weather-mint);
+  font: 600 10px/1.35 var(--mono);
+  letter-spacing: .075em;
+  text-transform: uppercase;
+}
+#sheet-env .weather-eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+#sheet-env .weather-current-title {
+  max-width: 100%;
+  margin: 6px 0 10px;
+  color: #f2fbff;
+  font-size: clamp(17px, 2.35vw, 23px);
+  font-weight: 630;
+  letter-spacing: -.035em;
+  line-height: 1.16;
+}
+#sheet-env .weather-readouts {
+  display: grid;
+  grid-template-columns: minmax(86px, .7fr) minmax(0, 1.3fr);
+  gap: 11px;
+  padding-top: 9px;
+  border-top: 1px solid var(--weather-rule);
+}
+#sheet-env .weather-readouts span { color: var(--weather-dim); font-size: 11px; }
+#sheet-env .weather-readouts b { color: #eef9fc; font: 560 12px/1.4 var(--mono); }
+#sheet-env .weather-section-heading {
+  margin-top: 15px;
+  margin-bottom: 7px;
+  color: #e5edf4;
+  font-size: 13px;
+  font-weight: 650;
+}
+#sheet-env #wx-presets {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 5px;
+  padding: 0;
+  border: 0;
+  background: none;
+  overflow: visible;
+}
+#sheet-env #wx-presets button {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 3px;
+  width: auto;
+  min-width: 0;
+  min-height: 49px;
+  padding: 4px 2px;
+  border: 1px solid var(--weather-rule);
+  border-radius: 7px;
+  background: var(--weather-cell);
+  color: #c8d7e4;
+  font-size: 11px;
+  font-weight: 530;
+  line-height: 1.2;
+  white-space: normal;
+}
+#sheet-env #wx-presets svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.55;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  color: #a5c8d8;
+  transition: color 120ms ease;
+}
+#sheet-env #wx-presets button:hover, #sheet-env .weather-times button:hover { background: #20384a; color: #fff; }
+#sheet-env #wx-presets button.on, #sheet-env .weather-times [aria-pressed="true"] {
+  border-color: #70bfaf;
+  background: #20393b;
+  color: #b9fff0;
+}
+#sheet-env #wx-presets button.on svg { color: var(--weather-mint); }
+#sheet-env .weather-section { margin-top: 13px; }
+#sheet-env .weather-section-heading.weather-time-label { margin-bottom: 1px; }
+#sheet-env #tod-l { color: var(--weather-mint); }
+#sheet-env .weather-times { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 5px; }
+#sheet-env .weather-times button {
+  min-width: 0;
+  min-height: 36px;
+  padding: 4px 2px;
+  border: 1px solid var(--weather-rule);
+  border-radius: 6px;
+  background: var(--weather-cell);
+  color: #d7e4ec;
+  font: 530 11px/1.2 var(--font);
+}
+#sheet-env .weather-load {
+  border-color: #4a736f;
+  background: #21343d;
+  color: #c5fbed;
+  min-height: 40px;
+}
+#sheet-env .weather-load:hover { border-color: var(--weather-mint); background: #2b4550; }
+#sheet-env .weather-report,
+#sheet-env .weather-advanced {
+  margin-block: 8px;
+  padding: 0 10px;
+  border: 1px solid var(--weather-rule);
+  border-radius: 7px;
+  background: #111e2c;
+}
+#sheet-env .weather-report > summary,
+#sheet-env .weather-advanced > summary { min-height: 38px; margin: 0; padding: 9px 0; color: #d7e4ec; font-size: 12px; }
+#sheet-env .weather-report[open], #sheet-env .weather-advanced[open] { padding-bottom: 10px; }
+#sheet-env #metar-raw { overflow-wrap: anywhere; }
+@media (max-width: 470px) {
+  #sheet-env .body { padding: 11px 12px 16px; }
+  #sheet-env .weather-current { padding: 12px 11px 10px; }
+  #sheet-env .weather-current-title { font-size: 18px; }
+  #sheet-env #wx-presets { gap: 4px; }
+  #sheet-env #wx-presets button { min-height: 45px; font-size: 10px; }
+  #sheet-env .weather-times button { min-height: 38px; font-size: 10px; }
+}
+@media (max-width: 345px) {
+  #sheet-env #wx-presets { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #sheet-env #wx-presets svg { transition: none; }
+}

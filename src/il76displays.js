@@ -32,7 +32,8 @@ export class IL76Displays {
     const g = this.pfd.getContext('2d'), { w, h } = IL76_DISPLAY; g.setTransform(this.k, 0, 0, this.k, 0, 0);
     const pitch = num(s.pitch), bank = num(s.bank), cx = w / 2, cy = h * 0.44, ppd = 5.2; // pixels per degree of pitch
     g.save(); g.beginPath(); g.rect(0, 40, w, h * 0.78); g.clip();
-    g.translate(cx, cy); g.rotate(bank * D2R); g.translate(0, pitch * ppd);
+    // Positive bank is right-wing-down: the outside horizon rises on the right.
+    g.translate(cx, cy); g.rotate(-bank * D2R); g.translate(0, pitch * ppd);
     rect(g, -400, -600, 400, 0, '#2a74d8'); rect(g, -400, 0, 400, 600, '#7a4a22'); line(g, [[-400, 0], [400, 0]], 2, WHT);
     for (let p = -30; p <= 30; p += 2.5) {
       if (!p) continue; const big = p % 10 === 0, half = p % 5 === 0, hw = big ? 56 : half ? 34 : 18;

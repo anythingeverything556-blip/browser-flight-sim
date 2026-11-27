@@ -1,7 +1,9 @@
 // Local, bounded diagnostics only. No provider, transport, persistent IDs or storage.
+import { AIRCRAFT_TYPES } from './aircrafts.js';
+const selectableAircraft = Object.freeze(Object.keys(AIRCRAFT_TYPES));
 const categories = Object.freeze({
   start_screen_viewed: ['screen'], start_clicked: ['custom','quick','home','resume'],
-  cockpit_reached: ['flight'], aircraft_chosen: ['sr71','c172','sf50','il76'],
+  cockpit_reached: ['flight'], aircraft_chosen: selectableAircraft,
   load_failure: ['startup','webgl','asset'], mobile_gate_shown: ['touch'],
   runtime_error: ['javascript','promise','resource'], graphics_error: ['shader']
 });

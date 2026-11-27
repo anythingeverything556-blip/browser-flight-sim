@@ -250,30 +250,102 @@ class Buildings {
       (this.renderer = null),
       (this.uploadBudget = 8 * 2 ** 20),
       (this.texQ = []));
-    const r = Math.max(1, Math.min(2, (navigator.hardwareConcurrency || 2) - 1));
-    ((this.workers = Array.from({ length: r }, () => {
-      const a = new Worker(new URL('./buildings-worker.js', import.meta.url), { type: 'module' }),
-        l = { w: a, busy: null };
-      return (
-        (a.onmessage = (h) => this._decoded(l, h.data)),
-        (a.onerror = (h) => {
-          (console.warn('buildings worker', h.message),
-            l.busy && ((l.busy.state = 'failed'), (l.busy.retryAt = performance.now() + 15e3), (l.busy = null)));
-        }),
-        l
-      );
-    })),
-      (this.jobs = []),
-      (this.jobId = 0),
-      (this.imgWorker = new Worker(new URL('./buildings-worker.js', import.meta.url), { type: 'module' })),
-      (this.imgWorker.onmessage = (a) => (a.data.type === 'facades' ? this._facades(a.data) : this._atlas(a.data))),
-      (this.imgWorker.onerror = (a) => {
-        (console.warn('buildings imagery worker', a.message),
-          this.imgJob && ((this.imgJob.t.imgRetry = performance.now() + 2e4), (this.imgJob = null)));
-      }),
-      this.imgWorker.postMessage({ type: 'facades' }));
+    // Optional scenery must not create workers during core flight startup.
+    const count = Math.max(1, Math.min(2, (globalThis.navigator?.hardwareConcurrency || 2) - 1));
+    this.workers = Array.from({ length: count }, () => ({ w: null, busy: null, failures: 0, retryAt: 0, deadline: 0 }));
+    this.jobs = [];
+    this.jobId = 0;
+    this.imgWorker = null;
+    this.imgFailures = 0;
+    this.imgRetryAt = 0;
+    this.imgDeadline = 0;
+  }
+  _failDecode(job, delay = 15000) {
+    if (!job || job.state === 'disposed') return;
+    job.decodeFailures = (job.decodeFailures || 0) + 1;
+    job.state = 'failed';
+    job.retryAt = job.decodeFailures >= 3 ? Infinity : performance.now() + delay;
+  }
+  _failWorker(slot, error) {
+    console.warn('buildings worker unavailable', error?.message || error);
+    const worker = slot.w;
+    slot.w = null; // Invalidate callbacks before termination; never reuse a failed worker.
+    if (worker) {
+      worker.onmessage = worker.onerror = worker.onmessageerror = null;
+      worker.terminate();
+    }
+    this._failDecode(slot.busy);
+    slot.busy = null;
+    slot.deadline = 0;
+    slot.retryAt = ++slot.failures >= 3 ? Infinity : performance.now() + 15000;
+  }
+  _checkWorkers() {
+    const now = performance.now();
+    if (this.imgWorker && this.imgDeadline && now >= this.imgDeadline) this._failImagery('imagery timeout');
+    for (const slot of this.workers)
+      if (slot.busy && now >= slot.deadline) this._failWorker(slot, 'decode timeout');
+  }
+  _ensureWorkers() {
+    if (!this.enabled) return false;
+    this._checkWorkers();
+    for (const slot of this.workers) {
+      if (slot.w || performance.now() < slot.retryAt) continue;
+      try {
+        const worker = new Worker(new URL('./buildings-worker.js', import.meta.url), { type: 'module' });
+        slot.w = worker;
+        worker.onmessage = (event) => {
+          if (slot.w === worker) this._decoded(slot, event.data);
+        };
+        worker.onerror = worker.onmessageerror = (event) => {
+          event.preventDefault?.();
+          if (slot.w === worker) this._failWorker(slot, event);
+        };
+      } catch (error) { this._failWorker(slot, error); }
+    }
+    return this.workers.some((slot) => slot.w);
+  }
+  _failImagery(error) {
+    console.warn('buildings imagery worker unavailable', error?.message || error);
+    const worker = this.imgWorker;
+    this.imgWorker = null;
+    if (worker) {
+      worker.onmessage = worker.onerror = worker.onmessageerror = null;
+      worker.terminate();
+    }
+    if (this.imgJob && this.imgJob.t.state !== 'disposed') {
+      const tile = this.imgJob.t;
+      tile.imgFailures = (tile.imgFailures || 0) + 1;
+      tile.imgRetry = tile.imgFailures >= 3 ? Infinity : performance.now() + 20e3;
+    }
+    this.imgJob = null;
+    this.imgDeadline = 0;
+    this.imgRetryAt = ++this.imgFailures >= 3 ? Infinity : performance.now() + 20e3;
+  }
+  _ensureImagery() {
+    if (!this.enabled || performance.now() < this.imgRetryAt) return false;
+    if (this.imgWorker) return true;
+    try {
+      const worker = new Worker(new URL('./buildings-worker.js', import.meta.url), { type: 'module' });
+      this.imgWorker = worker;
+      worker.onmessage = (event) => {
+        if (this.imgWorker !== worker) { event.data?.bitmap?.close(); return; }
+        if (event.data.type === 'facades') this._facades(event.data);
+        else this._atlas(event.data);
+      };
+      worker.onerror = worker.onmessageerror = (event) => {
+        event.preventDefault?.();
+        if (this.imgWorker === worker) this._failImagery(event);
+      };
+      if (!this.facReady) {
+        this.imgDeadline = performance.now() + 30e3;
+        worker.postMessage({ type: 'facades' });
+      }
+      return true;
+    } catch (error) { this._failImagery(error); return false; }
   }
   _facades(t) {
+    this.imgFailures = 0;
+    this.imgDeadline = 0;
     const e = (n, i) => {
       const r = new THREE.DataArrayTexture(n, to, to, Qp);
       return (
@@ -437,6 +509,15 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
       this.tiles.delete(t.key));
   }
   clear() {
+    for (const slot of this.workers) {
+      if (!slot.busy) continue;
+      const worker = slot.w;
+      slot.w = null;
+      slot.busy = null;
+      slot.deadline = 0;
+      worker.onmessage = worker.onerror = worker.onmessageerror = null;
+      worker.terminate();
+    }
     for (const t of [...this.tiles.values()]) this._drop(t);
     this.jobs.length = 0;
     for (const t of this.atlases.values()) t.tex.dispose();
@@ -522,6 +603,7 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
     }
   }
   _pump() {
+    if (!this._ensureWorkers()) return;
     if (this.fetching < im) {
       const t = [...this.tiles.values()]
         .filter((e) => e.state === 'new' || (e.state === 'failed' && performance.now() > e.retryAt))
@@ -533,24 +615,34 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
     }
     if (!(!this.db.ready || !this.jobs.length))
       for (const t of this.workers) {
-        if (t.busy) continue;
+        if (!t.w || t.busy) continue;
         if (((this.jobs = this.jobs.filter((i) => i.state === 'queued')), !this.jobs.length)) break;
         this.jobs.sort((i, r) => i.dist - r.dist);
         const e = this.jobs.shift();
         ((e.state = 'decoding'), (t.busy = e));
         const n = e.buf;
-        ((e.buf = null),
+        e.buf = null;
+        t.id = ++this.jobId;
+        t.deadline = performance.now() + 30e3;
+        try {
           t.w.postMessage(
-            { id: ++this.jobId, buf: n, src: e.src, W: e.W, H: e.H, runways: this._runways(e), maxTris: VS },
+            { id: t.id, buf: n, src: e.src, W: e.W, H: e.H, runways: this._runways(e), maxTris: VS },
             [n],
-          ));
+          );
+        } catch (error) { this._failWorker(t, error); }
       }
   }
   _decoded(t, e) {
+    if (!e || e.id !== t.id || !t.busy) return;
     const n = t.busy;
-    if (((t.busy = null), (this.stats.lastWorkerMs = e.ms || 0), !n || n.state !== 'decoding')) return;
+    t.busy = null;
+    t.deadline = 0;
+    t.failures = 0;
+    this.stats.lastWorkerMs = e.ms || 0;
+    if (n.state !== 'decoding') return;
     if (e.error) {
-      (console.warn('buildings decode', e.error), (n.state = 'failed'), (n.retryAt = performance.now() + 3e4));
+      console.warn('buildings decode', e.error);
+      this._failDecode(n, 30e3);
       return;
     }
     if (e.empty || !e.count) {
@@ -627,9 +719,11 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
     this.stats.uploadQ = this.texQ.length;
   }
   _abortImg() {
-    this.imgJob && this.imgWorker.postMessage({ type: 'abort', id: this.imgJob.id });
+    try { this.imgJob && this.imgWorker?.postMessage({ type: 'abort', id: this.imgJob.id }); }
+    catch (error) { this._failImagery(error); }
   }
   _imgPump() {
+    if (!this._ensureImagery() || !this.facReady) return;
     const t = performance.now();
     if (!this.imgJob && this.terrain.stats.imgWait > 30 && (this.deferAt || (this.deferAt = t), t - this.deferAt < 6e3))
       return;
@@ -653,8 +747,10 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
         r.atlas !== a && this._attach(r, a);
         continue;
       }
-      ((this.imgJob = { id: ++this.imgId, t: r, z: r.want }),
-        this.imgWorker.postMessage({ type: 'atlas', id: this.imgJob.id, x14: r.x, y14: r.y, z: r.want }));
+      this.imgJob = { id: ++this.imgId, t: r, z: r.want };
+      this.imgDeadline = performance.now() + 45e3;
+      try { this.imgWorker.postMessage({ type: 'atlas', id: this.imgJob.id, x14: r.x, y14: r.y, z: r.want }); }
+      catch (error) { this._failImagery(error); }
       return;
     }
   }
@@ -665,6 +761,8 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
       return;
     }
     this.imgJob = null;
+    this.imgDeadline = 0;
+    this.imgFailures = 0;
     const n = e.t;
     if (t.aborted) return;
     if (t.none) {
@@ -805,6 +903,7 @@ totalEmissiveRadiance += fE + diffuseColor.rgb * 0.16 * (1.0 - uNight);`,
     }
   }
   update(t, e, n, i, r) {
+    this._checkWorkers(); // Also release timed-out ownership while disabled or above the scenery ceiling.
     if (!this.enabled) {
       (this.tiles.size && this.clear(), (this.group.visible = !1));
       return;

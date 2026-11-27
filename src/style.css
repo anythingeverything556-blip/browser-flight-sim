@@ -261,12 +261,8 @@ body.intro #hero { animation: intro-in 420ms var(--ease) both; }
 body.intro #hero-ac { animation: intro-in 420ms 120ms var(--ease) both; }
 #hero h1 { margin: 8px 0 0; white-space: nowrap; font-size: clamp(2.75rem, min(5.4vw, calc((100vw - 560px) / 6.4)), 4.5rem); font-weight: 500; line-height: 1; letter-spacing: -0.02em; color: var(--text); }
 #hero p { max-width: 28em; margin: 16px 0 0; color: var(--muted); font-size: 17px; line-height: 1.55; }
-.hero-loader { max-width: 360px; margin-top: 24px; }
-/* the loader is only for start-up; once the scene draws it goes (it used to stay as "Choose where to fly, then Start flight") */
-body.ready .hero-loader { display: none; }
-.hero-loader-head { display: flex; justify-content: space-between; margin-bottom: 8px; color: var(--muted); font-size: 13px; }
-#loadline { height: 2px; overflow: hidden; border-radius: 1px; background: var(--line-strong); }
-#loadbar { width: 0; height: 100%; background: var(--accent); transition: width 200ms var(--ease); }
+.hero-loader { display: none; }
+.hero-loader-head { display: flex; margin-bottom: 8px; color: var(--muted); font-size: 13px; }
 .hero-terms { display: none; position: fixed; z-index: 3; bottom: 20px; left: clamp(24px, 5vw, 80px); }
 body.intro .hero-terms { display: inline-block; }
 body.intro #rail, body.intro #status, body.intro #strip, body.intro #toasts, body.intro #warnline { display: none; }
@@ -572,6 +568,8 @@ body.intro #coach, body.intro #mission { display: none; }
 .ls-steps li i { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--line-strong); flex: none; }
 .ls-steps li.busy { color: var(--text); }
 .ls-steps li.busy i { border-color: var(--accent) transparent var(--accent) transparent; animation: ls-spin 0.9s linear infinite; }
+.ls-steps li.error { color: var(--red); }
+.ls-steps li.error i { border-color: var(--red); }
 .ls-steps li.done { color: var(--muted); }
 .ls-steps li.done i { border-color: var(--good); background: var(--good); }
 .ls-bar { height: 2px; overflow: hidden; border-radius: 1px; background: var(--line-strong); }
@@ -631,6 +629,27 @@ body.intro #guide { display: none; }
 #sheet-help .heading { display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 4px 16px; }
 #sheet-help .heading .ghost { margin-left: auto; }
 #metar-raw { font-family: var(--mono); font-size: 12px; word-break: break-word; }
+
+#sheet-env .weather-current { padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--surface-2); }
+#sheet-env .weather-eyebrow { color: var(--muted); font-size: 12px; }
+#sheet-env .weather-current-title { margin: 4px 0 12px; color: var(--text); font-size: 16px; font-weight: 500; line-height: 1.35; overflow-wrap: anywhere; }
+#sheet-env .weather-readouts { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+#sheet-env .weather-readouts div { display: grid; gap: 3px; min-width: 0; }
+#sheet-env .weather-readouts span { color: var(--muted); font-size: 12px; }
+#sheet-env .weather-readouts b { color: var(--text); font: 500 12px/1.4 var(--mono); overflow-wrap: anywhere; }
+#sheet-env .weather-section-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 18px 0 8px; color: var(--text); font-size: 13px; font-weight: 500; }
+#sheet-env #wx-presets { grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); }
+#sheet-env #wx-presets button { min-height: 40px; }
+#sheet-env .weather-section { margin-top: 18px; padding-top: 1px; border-top: 1px solid var(--line); }
+#sheet-env .weather-section-heading.weather-time-label { margin-bottom: 2px; }
+#sheet-env .weather-section .check { margin-top: 8px; }
+#sheet-env .weather-load { width: 100%; min-height: 40px; text-align: center; }
+#sheet-env .weather-report { margin-top: 12px; color: var(--muted); font-size: 13px; }
+#sheet-env .weather-report summary { min-height: 32px; padding: 6px 0; cursor: pointer; }
+#sheet-env .weather-report .note { margin-top: 4px; }
+#sheet-env .weather-advanced { margin-bottom: 8px; }
+#sheet-env .weather-advanced > summary { min-height: 32px; margin-bottom: 0; padding: 6px 0; }
+#sheet-env .weather-advanced[open] > summary { margin-bottom: 12px; }
 
 /* ---------- radio log ---------- */
 #radio { position: fixed; z-index: 11; left: 92px; bottom: 112px; width: min(430px, calc(100vw - 120px)); display: grid; gap: 4px; pointer-events: none; }
@@ -703,7 +722,8 @@ body:has(#guide:not([hidden])) #radio { top: 64px; right: 16px; bottom: auto; le
 .seg.off { opacity: 0.5; }
 
 /* teleport: altitude, heading, speed and climb angle before the jump */
-#tp { position: fixed; z-index: 55; inset: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: rgba(3, 5, 8, 0.6); }
+#tp { position: fixed; z-index: 55; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; border: 0; display: flex; align-items: center; justify-content: center; padding: 20px; background: transparent; color: inherit; }
+#tp::backdrop { background: rgba(3, 5, 8, 0.6); }
 #tp[hidden] { display: none; }
 #tp .card { width: min(420px, 100%); max-height: calc(100vh - 40px); max-height: calc(100dvh - 40px); overflow-y: auto; overscroll-behavior: contain; padding: 20px 22px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--surface); box-shadow: var(--shadow); }
 #tp h3 { margin: 0 0 2px; font-size: 18px; }
@@ -715,7 +735,7 @@ body:has(#guide:not([hidden])) #radio { top: 64px; right: 16px; bottom: auto; le
 #tp .tp-quick { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 #tp .tp-quick button { padding: 5px 10px; font-size: 12px; }
 #tp .tp-btns { display: flex; justify-content: flex-end; align-items: center; gap: 8px; margin-top: 14px; }
-#tp .tp-btns button { flex: 0 0 auto; min-width: 110px; }
+#tp .tp-btns button { flex: 0 0 auto; width: auto; min-width: 110px; margin-top: 0; }
 /* map sheet fixes: the runway ident ran into its length ("15 / 3311,962 ft"); the airport card's badge crushed the name into one word per line in
    smaller windows; the live-traffic options folded away only on phones, so they covered a third of the map below ~1100 px; the throttle hint showed beside open sheets */
 .rwy .t b { margin-right: 10px; color: var(--text); }
@@ -795,7 +815,7 @@ body:not(.intro) #hero-media, body:not(.intro) #hero-motion { display: none; }
   #hero-ac .ac-specs { display: none; }
 }
 
-/* Loader and recovery belong to the setup panel on every viewport. */
+/* Actual startup errors stay actionable on every viewport. */
 #sheet-flight > .hero-loader { flex: 0 0 auto; max-width: none; margin: 14px 24px 0; }
 .hero-loader-head { flex-wrap: wrap; justify-content: flex-start; gap: 4px 12px; line-height: 1.5; }
 #loadmsg { min-width: 0; overflow-wrap: anywhere; }
@@ -830,3 +850,7 @@ body.startup-failed #sheet-flight > .hero-loader { display: block; }
 .f27-paint:not([hidden]) { display:grid; gap:4px; margin:8px 0 12px; }
 .f27-paint select { width:100%; padding:8px; color:inherit; background:#142133; border:1px solid #4e667b; border-radius:6px; font:inherit; }
 .f27-paint small:empty { display:none; }
+
+#sr71-view-feedback { position: fixed; z-index: 42; top: 16px; left: 50%; transform: translateX(-50%); max-width: min(520px, 85vw); padding: 12px 16px; border-radius: 12px; background: var(--canvas); color: var(--text); box-shadow: 0 4px 24px #0006; }
+#sr71-view-feedback[hidden], #flight-load-actions[hidden] { display: none; }
+#sr71-view-feedback button, #flight-load-actions button { margin: 8px 8px 0 0; }

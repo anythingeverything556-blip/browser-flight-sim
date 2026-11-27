@@ -32,7 +32,7 @@ export function makeWeatherPreferences(settings) {
     serialized() { return { ...settings, ...(saved || {}) }; },
   };
 }
-const LIMITS = { clouds: [0, 1], cloudBase: [0, 20000], windDir: [0, 360], windSpd: [0, 200], turb: [0, 1], vis: [0.3, 3] };
+const LIMITS = { clouds: [0, 1], cloudBase: [-600, 20000], windDir: [0, 360], windSpd: [0, 200], turb: [0, 1], vis: [0.3, 3] };
 export function cleanWeatherSnapshot(v) {
   if (!v || typeof v !== 'object') return null;
   const out = {};
@@ -53,4 +53,15 @@ export function restoreWeather(settings, snapshot) {
   const clean = cleanWeatherSnapshot(snapshot); if (!clean) return false;
   delete settings.metarWx;
   Object.assign(settings, clean); return true;
+}
+
+// Observations and the renderer's dimensionless tuning factor are separate quantities.
+export function formatReportedVisibility(observation, metric = true) {
+  const meters = observation?.visibilityMeters;
+  if (!Number.isFinite(meters) || meters < 0) return 'unavailable';
+  const qualifier = observation.visibilityQualifier === 'at-least' ? '≥ ' : observation.visibilityQualifier === 'less-than' ? '< ' : '';
+  const distance = metric
+    ? meters < 1000 ? `${Math.round(meters)} m` : `${Number((meters / 1000).toFixed(2))} km`
+    : `${Number((meters / 1609.344).toFixed(3))} mi`;
+  return qualifier + distance;
 }

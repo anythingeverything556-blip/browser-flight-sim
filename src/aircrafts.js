@@ -2,7 +2,7 @@
 // a switch: the flight model, the 3D model, the cockpit and the sounds are built for one aircraft at a time.
 export const AIRCRAFT_TYPES = {
   sr71: {
-    id: 'sr71', name: 'Lockheed SR-71A Blackbird', short: 'SR-71A', model: 'SR71_sim.glb',
+    id: 'sr71', name: 'Lockheed SR-71A Blackbird', short: 'SR-71A', model: 'sr71/exterior/manifest.json',
     blurb: 'Mach 3.2 strategic reconnaissance jet. Two J58 turbo-ramjets with afterburner, 85,000 ft.',
     stats: [['Cruise', 'Mach 3.2'], ['Ceiling', '85,000 ft'], ['Crew', '2']],
   },

@@ -50,37 +50,52 @@ export function alertsOf(fdm, c) {
 }
 
 // A feed with a little memory (heading rate, cabin rate). c: { att, casMs, gsMs, trkDeg, flightT, hour, settings: { windDir, windSpd }, nav, ap, warn,
-// airports [{ id, brgDeg, distNm }], com1, com1Name, destElevFt }
+// airports [{ id, brgDeg, distNm }], com1, com1Name, destElevFt, fdPitch, fdBank (optional commanded attitude, deg) }
+// flightT is the simulation clock, not wall/render time. An explicit dt is supported for callers without that clock.
 export function makeSF50Feed() {
-  const mem = { hdg: null, cab: null, rate: 0, turn: 0, t: 0 };
-  return function feed(fdm, c, dt = 0.1) {
+  const mem = {};
+  const reset = () => Object.assign(mem, { hdg: null, cab: null, rate: 0, turn: 0, t: null });
+  reset();
+  function feed(fdm, c, dt) {
     const o = fdm.out || {}, e = fdm.engines[0], att = c.att, nav = c.nav || {}, ap = c.ap;
     const altFt = fdm.pos.y * FT, V = o.V || 0, gs = (c.gsMs || 0) * KT, vsFpm = fdm.vel.y * 196.85;
     const cas = (c.casMs || 0) * KT, hdg = att.heading, cab = cabinAt(altFt);
-    if (mem.hdg !== null && dt > 0) { mem.turn += (wrap180(hdg - mem.hdg) / dt - mem.turn) * Math.min(1, dt / 1.5); mem.rate += ((cab.cabAlt - mem.cab) / dt * 60 - mem.rate) * Math.min(1, dt / 4); }
-    mem.hdg = hdg; mem.cab = cab.cabAlt;
+    const clock = Number.isFinite(c.flightT) ? c.flightT : null;
+    const elapsed = clock !== null ? (mem.t !== null ? clock - mem.t : NaN) : dt;
+    // Samples are normally ~0.1 s apart. After an exterior-view gap, clock reset,
+    // pause or invalid sample, reseed rather than calling an endpoint delta a rate.
+    if (Number.isFinite(hdg) && Number.isFinite(cab.cabAlt) && mem.hdg !== null && mem.cab !== null && Number.isFinite(elapsed) && elapsed > 0 && elapsed <= 2) {
+      mem.turn += (wrap180(hdg - mem.hdg) / elapsed - mem.turn) * Math.min(1, elapsed / 1.5);
+      mem.rate += ((cab.cabAlt - mem.cab) / elapsed * 60 - mem.rate) * Math.min(1, elapsed / 4);
+    } else { mem.turn = 0; mem.rate = 0; }
+    mem.hdg = Number.isFinite(hdg) ? hdg : null; mem.cab = Number.isFinite(cab.cabAlt) ? cab.cabAlt : null; mem.t = clock;
     const oat = (o.T || 288.15) - 273.15, isa = oat - (altFt < 36089 ? 15 - 1.98 * altFt / 1000 : -56.5);
     const fuel = Math.max(0, fdm.fuel), ff = e.ff || 0, ffGph = ff * 3600 / GAL_KG;
     const apOn = !!(ap && ap.on);
+    // The shared AP does not expose pitch/bank commands today. Keep cues hidden
+    // unless a caller supplies actual guidance; engagement alone is not guidance.
+    const fd = apOn && Number.isFinite(c.fdPitch) && Number.isFinite(c.fdBank);
     const endH = ff > 1e-4 ? fuel / (ff * 3600) : 0;
     const sel = apOn ? { selIas: ap.target.spd * KT, selAlt: ap.target.alt * FT, selHdg: ap.cmdHdg ?? ap.target.hdg } : {};
     const wind = c.settings || {};
     return {
       ias: cas, tas: V * KT, gs, mach: o.M || 0, alt: altFt, vs: vsFpm, hdg, trk: c.trkDeg ?? hdg, crs: nav.valid ? nav.course : hdg,
       pitch: att.pitch * R2D, bank: att.bank * R2D, fpa: gs > 20 ? Math.atan2(fdm.vel.y, Math.max(1, c.gsMs || 0)) * R2D : att.pitch * R2D, slip: Math.max(-1, Math.min(1, (o.beta || 0) / 0.1)),
-      aoa: o.aoaNorm || 0, ...sel,
+      aoa: o.aoaNorm || 0, ...sel, ...(fd ? { fdPitch: c.fdPitch, fdBank: c.fdBank } : {}),
       thrust: e.lit ? thrustFrac(e.dry) * 100 : 0, thrustCmd: (fdm.throttle || 0) * 100, n1: e.n1 || 0, n2: e.n2 || 0, itt: e.itt || 15,
       oilT: 38 + 44 * Math.min(1, (e.n2 || 0) / 100), oilP: e.lit ? 38 + 30 * (e.n2 || 0) / 100 : 0, ff: ffGph, fuelL: fuel / 2 / GAL_KG, fuelR: fuel / 2 / GAL_KG,
       fobLb: fuel * 2.20462, endurance: endH > 0 ? `${Math.floor(endH)}+${pad2((endH % 1) * 60)}` : '-:--',
       gear: fdm.gearPos ?? 1, gearTransit: (fdm.gearPos ?? 1) > 0.02 && (fdm.gearPos ?? 1) < 0.98, flaps: flapFraction(fdm.flaps || 0), trim: (fdm.trim || 0) * 8,
       cabAlt: cab.cabAlt, cabDiff: cab.cabDiff, cabRate: mem.rate, oat, isa, windFrom: wind.windDir ?? 0, windKt: (wind.windSpd || 0) * KT,
       turnRate: mem.turn, xtk: nav.valid ? nav.xtkNm : 0,
-      ap: { ap: apOn, yd: !!(fdm.sasOn && !fdm.onGround && V > 35), at: apOn && (ap.modes.spd || ap.modes.mach) ? 'SPD' : false, lat: apOn ? ap.status.lat : 'ROL', vert: apOn ? ap.status.vert : 'PIT', fd: apOn, armed: apOn && ap.modes.appr ? 'GP' : '' },
+      ap: { ap: apOn, yd: !!(fdm.sasOn && !fdm.onGround && V > 35), at: apOn && (ap.modes.spd || ap.modes.mach) ? 'SPD' : false, lat: apOn ? ap.status.lat : 'ROL', vert: apOn ? ap.status.vert : 'PIT', fd, armed: apOn && ap.modes.appr ? 'GP' : '' },
       com1: c.com1 || '118.300', com1Name: c.com1Name || '', wpt: nav.valid ? nav.ident : '', dis: nav.valid ? nav.distNm : NaN,
       ete: nav.valid && gs > 30 ? `${pad2(Math.min(99, nav.distNm / gs))}:${pad2(((nav.distNm / gs) % 1) * 60)}` : '', flt: hms(c.flightT || 0),
       utc: `${pad2(c.hour || 0)}:${pad2(((c.hour || 0) % 1) * 60)}:${pad2((((c.hour || 0) * 60) % 1) * 60)}`, destElev: c.destElevFt || 0,
       airports: (c.airports || []).map((a) => { const r = wrap180(a.brgDeg - hdg) * Math.PI / 180; return { id: a.id, x: a.distNm * Math.sin(r), y: -a.distNm * Math.cos(r) }; }),
       alerts: alertsOf(fdm, c),
     };
-  };
+  }
+  feed.reset = reset;
+  return feed;
 }

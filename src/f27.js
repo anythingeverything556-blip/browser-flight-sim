@@ -148,7 +148,7 @@ export class F27Model extends FlightModel {
   }
   setEngines(throttle) {
     this.throttle = clamp(throttle, 0, 1);
-    for (const e of this.engines) { e.rpm = this.engineRunning && !e.fail && (this.fuel > 0 || this.unlimitedFuel) ? this.targetRpm(this.throttle) : 0; e.dry = this.throttle; e.ab = 0; e.abLit = false; }
+    for (const e of this.engines) { e.rpm = this.engineRunning && !e.fail && !e.feather && (this.fuel > 0 || this.unlimitedFuel) ? this.targetRpm(this.throttle) : 0; e.dry = this.throttle; e.ab = 0; e.abLit = false; }
     this.rpm = this.engines.reduce((s, e) => s + e.rpm, 0) / 2; this.propRpm = this.rpm * F27.GEAR_RATIO; this.spool = this.throttle;
     this.updateEngines(0, isa(this.pos.y), this.vel.length());
   }
@@ -184,16 +184,22 @@ export class F27Model extends FlightModel {
   // Pass 40 explicitly to plan a full-flap landing before selecting that setting.
   vref(flaps = this.flaps) { return 1.3 * stallSpeed(this.mass, flaps) * KT; }
   vSpeed(reference) { return reference * Math.sqrt(this.mass / F27.MTOW); }
-  reset(pos, headingDeg, speed, onGround, gammaDeg = 0, approach = false) {
+  reset(pos, headingDeg, speed, onGround, gammaDeg = 0, config = {}) {
+    // Keep the original boolean approach argument for standalone model callers.
+    // Configuration and selected engine switches must precede the one initial trim.
+    if (typeof config === 'boolean') config = { approach: config };
+    config = config || {};
     const spawnAtm = isa(pos.y), casMs = airData({ V: speed, M: speed / spawnAtm.a, rho: spawnAtm.rho, T: spawnAtm.T }).cas;
     this.fuel = clamp(Number.isFinite(this.fuel) ? this.fuel : F27.FUEL_START, 0, F27.FUEL_MAX);
-    this.engineRunning = true; this.engines = [this.newEng(), this.newEng()]; this.pneumatic = 2800;
+    this.engineRunning = config.engineRunning ?? true; this.engines = [this.newEng(), this.newEng()]; this.pneumatic = 2800;
     const kias = casMs * KT;
-    this.flapCmd = onGround ? 0 : approach ? 3 : kias < 115 ? 4 : kias < 135 ? 2 : 0;
+    this.flapCmd = onGround ? 0 : config.approach ? 3 : kias < 115 ? 4 : kias < 135 ? 2 : 0;
+    if (Number.isFinite(config.flapNotch)) this.setFlaps(config.flapNotch);
     this.flaps = F27_FLAP_DEG[this.flapCmd]; this.noTrim = true;
     super.reset(pos, headingDeg, speed, onGround, gammaDeg);
     this.engines = [this.newEng(), this.newEng()]; this.noTrim = false;
-    this.gearDown = onGround || approach || this.flapCmd === 4; this.gearPos = this.gearDown ? 1 : 0;
+    this.engines.forEach((e, i) => { e.feather = !!config.feather?.[i]; });
+    this.gearDown = onGround || (config.gearDown ?? (config.approach || this.flapCmd === 4)); this.gearPos = this.gearDown ? 1 : 0;
     this.wheel = F27_GEAR.map(g => onGround ? speed / g.R : 0);
     this.wheelAngle.fill(0);
     if (onGround) this.setEngines(0); else { this.setEngines(0.8); if (speed > 30) this.trimLevel(gammaDeg); }

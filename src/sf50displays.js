@@ -2,7 +2,7 @@
 // used as the emissive maps of the Display_PFD / Display_MFD screens of SF50.glb. Layout follows the Garmin SF50 pilot's guide (figs. 2-1, 3-2)
 // and G3 cockpit photos; every graphic is procedural (no Garmin artwork). Design coordinates are 2560 x 1600 (the Blender textures), scaled.
 // state (all optional, display units): ias tas gs (kt) mach alt (ft) vs (fpm) hdg trk crs (deg) pitch bank fpa (deg) slip (-1..1) aoa (0..1 of stall)
-//   selIas selAlt selHdg, thrust (%) n1 n2 (%) itt oilT (°C) oilP (psi) ff (gph) fuelL fuelR (gal) gear (0 up..1 down) gearTransit (bool) flaps (0..1)
+//   selIas selAlt selHdg, fdPitch fdBank (commanded attitude, deg; both required with ap.fd), thrust (%) n1 n2 (%) itt oilT (°C) oilP (psi) ff (gph) fuelL fuelR (gal) gear (0 up..1 down) gearTransit (bool) flaps (0..1)
 //   trim (deg nose up) cabAlt (ft) cabDiff (psi) cabRate (fpm) oat (°C) windFrom windKt, ap {ap, yd, at, lat, vert, armed}, com1 com1Name flt utc wpt dis ete dest
 //   alerts [{text, level: 'warning'|'caution'|'advisory'}]
 export const SF50_DISPLAY_DESIGN = { w: 2560, h: 1600 };
@@ -83,15 +83,17 @@ function drawAttitude(g, s, cx, cy, k) {
   poly(g, [[-24 + sl, -R + 40], [24 + sl, -R + 40], [29 + sl, -R + 53], [-29 + sl, -R + 53]], WHT, '#000', 2);
   g.restore();
   // flight-path marker
-  const fx = cx + (num(s.trk, hdg) - hdg) * k * Math.cos(bank * D2R), fy = cy + (pitch - num(s.fpa, pitch)) * k;
+  const drift = ((num(s.trk, hdg) - hdg + 180) % 360 + 360) % 360 - 180;
+  const fx = cx + drift * k * Math.cos(bank * D2R), fy = cy + (pitch - num(s.fpa, pitch)) * k;
   for (const [w, c] of [[9, 'rgba(0,0,0,0.7)'], [4.5, GRN]]) {
     g.beginPath(); g.arc(fx, fy, 15, 0, 2 * Math.PI); g.lineWidth = w; g.strokeStyle = c; g.stroke();
     seg(g, fx - 15, fy, fx - 46, fy, w, c); seg(g, fx + 15, fy, fx + 46, fy, w, c); seg(g, fx, fy - 15, fx, fy - 34, w, c);
   }
   // flight director (magenta single cue), aircraft symbol, wing bars
-  const fdp = clamp(num(s.fdPitch, 0) - pitch, -12, 12) * k, fdb = (num(s.fdBank, bank) - bank) * D2R;
-  if (s.ap && s.ap.fd !== false) {
-    g.save(); g.translate(cx, cy + fdp * 0); g.rotate(-fdb);
+  // Never invent zero-pitch/current-bank guidance when commands are unavailable.
+  if (s.ap?.fd === true && Number.isFinite(s.fdPitch) && Number.isFinite(s.fdBank)) {
+    const fdp = clamp(s.fdPitch - pitch, -12, 12) * k, fdb = (s.fdBank - bank) * D2R;
+    g.save(); g.translate(cx, cy); g.rotate(-fdb);
     for (const sg of [-1, 1]) poly(g, [[0, -10 - fdp], [sg * 178, 57 - fdp], [sg * 178, 40 - fdp], [0, -27 - fdp]], MAG, '#000', 2.5);
     g.restore();
   }

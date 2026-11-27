@@ -1,6 +1,10 @@
 import { mountFlightHud } from './flight-hud.js';
+import { returnFocusAfterPointer } from './cockpit-focus.js';
+import { effectiveRenderRatio, syncRendererSize, normalizeRenderScale } from './renderer-size.js';
 import { createSheetController } from './sheet-controller.js';
+import { createTeleportDialog } from './teleport-dialog.js';
 import { activateFlight } from './flight-lifecycle.js';
+import { resolveHomeRunway, resolveRunwaySelection } from './home-runway.js';
 import { beginMissionSession, stopMissionSession } from './mission-session.js';
 import { diagnostics, installShaderDiagnostics } from './telemetry.js';
 import { FlightLogbook } from './logbook.js';
@@ -25,29 +29,23 @@ import { Environment } from './sky.js';
 import { Clouds } from './clouds.js';
 import { FlightModel, SPEC } from './flight.js';
 import { C172Model, C172, C172_CG, FLAP_DEG, stallAlpha as c172StallAlpha } from './c172.js';
-import { C172Visual } from './c172visual.js';
 import { DA40Model, DA40, DA40_CG, DA40_GEAR, DA40_HARD, DA40_FLAP_DEG, stallAlpha as da40StallAlpha } from './da40.js';
-import { DA40Visual, DA40_EYE } from './da40visual.js';
 import { F27Model, F27, F27_CG, F27_GEAR, F27_HARD, F27_FLAP_DEG, stallAlpha as f27StallAlpha, stallSpeed as f27StallSpeed } from './f27.js';
-import { F27Visual, F27_EYE } from './f27visual.js';
 import { f27CameraPose, f27SeatCm } from './f27camera.js';
 import { F27RadioAltimeter } from './f27callouts.js';
 import { createF27LightRig } from './f27lights.js';
 import { createF27ViewTransition, createF27ViewCover, prepareF27ViewCasters } from './f27view.js';
 import { createF27Livery, F27_PAINT_LABELS, f27PaintChoice } from './f27livery.js';
 import { SF50Model, SF50, SF50_CG, FLAP_DEG as SF50_FLAP_DEG, TRIM_AUTH as SF50_TRIM_AUTH, stallAlpha as sf50StallAlpha } from './sf50.js';
-import { SF50Visual, SF50_EYE } from './sf50visual.js';
 import { makeSF50Feed, sf50Warn } from './sf50feed.js';
 import { SF50_AP, SF50Autoland, planSafeReturn, apTrimServo } from './sf50ap.js';
 import { gaControlFrame, resetHandsOff as clearHandsOff } from './handsoff.js';
 import { c172PitchAuthority, C172_STICK, SF50_STICK, IL76_STICK } from './c172stick.js';
 import { IL76Model, IL76, IL76_CG, NOTCHES as IL76_NOTCHES, NOTCH_TAKEOFF as IL76_NOTCH_TO, TRIM_AUTH as IL76_TRIM_AUTH, stallAlpha as il76StallAlpha } from './il76.js';
 import { A380XModel, A380X, A380X_CG, NOTCHES as A380X_NOTCHES, NOTCH_TAKEOFF as A380X_NOTCH_TO, TRIM_AUTH as A380X_TRIM_AUTH, stallAlpha as a380xStallAlpha } from './a380x.js';
-import { A380XVisual } from './a380xvisual.js';
 import { A380X_AP } from './a380xap.js';
 import { a380xWarn, a380xWarnReset } from './a380xfeed.js';
 import { makeA380xControls } from './a380xctl.js';
-import { IL76Visual, IL76_EYE } from './il76visual.js';
 import { il76Warn, il76Feed, il76WarnReset } from './il76feed.js';
 import { Autobrake, AUTOBRAKE } from './autobrake.js';
 import { IL76_AP } from './il76ap.js';
@@ -58,10 +56,12 @@ import { airData, controlAirspeed, trueAirspeedFromCas } from './airdata.js';
 import { isa } from './atmosphere.js';
 import { cloudTop, cloudAnchor } from './cloudlayer.js';
 import { AircraftSystems } from './systems.js';
-import { AircraftVisual } from './aircraft.js';
+import { SR71ExteriorLights, SR71_EXTERIOR_ACTIONS } from './sr71-exterior-lights.js';
+import { SR71Audio } from './sr71audio.js';
 import { configureCameraAircraft, CameraRig, VIEWS, VIEW_NAMES } from './camera.js';
 import { F27RunwayInset } from './f27runway.js';
 import { Controls } from './controls.js';
+import { bindCameraControls } from './camera-input.js';
 import { Autopilot, attitude, flareSink, landingAidOn, vrefEas } from './autopilot.js';
 import { C172_AP, DA40_AP, F27_AP, supportsApMode } from './propap.js';
 import { configurePropApUi } from './propap-ui.js';
@@ -79,6 +79,7 @@ import { Weather, WEATHER } from './weather.js';
 import { Guide } from './guide.js';
 import { Atc, buildAtis } from './atc.js';
 import { JetBlast } from './blast.js';
+import { SR71_COCKPIT_ACTIONS } from './sr71cockpit.js';
 import { liveWeather } from './metar.js';
 import { Traffic } from './traffic.js';
 import { TouchdownReporter } from './touchdown.js';
@@ -92,7 +93,7 @@ import { mountKeymap } from './keymap-ui.js';
 import { BuildingCollider, C172_COLLIDE_POINTS, C172_PAD, SF50_COLLIDE_POINTS, SF50_PAD, IL76_COLLIDE_POINTS, IL76_PAD } from './buildcollide.js';
 import { makeAutoTrim, autoTrimStep, AT as AUTO_TRIM, AT_C172 } from './autotrim.js';
 import { slewExit } from './slew.js';
-import { startupWeather, makeWeatherPreferences, weatherSnapshot, restoreWeather } from './flight-weather.js';
+import { startupWeather, makeWeatherPreferences, weatherSnapshot, restoreWeather, formatReportedVisibility } from './flight-weather.js';
 import { mountGraphicsRecovery } from './graphics-recovery.js';
 import { imageryNotice } from './imagery-notice.js';
 import { esc } from './esc.js';
@@ -102,6 +103,10 @@ import { isReversed } from './depth.js';
 import { setPanelHardware } from './panel.js';
 import { DEFAULT_VOICE_STYLE, voiceStyle } from './voicewarn.js';
 
+// The bootstrap supplies only the selected visual module; other aircraft code
+// stays outside the startup graph. All existing setup/flight closures share this scope.
+export function startSimulator(visualModule) {
+const { C172Visual, DA40Visual, DA40_EYE, F27Visual, F27_EYE, SF50Visual, SF50_EYE, A380XVisual, IL76Visual, IL76_EYE, SR71Visual, SR71_EYE } = visualModule;
 const $ = (id) => document.getElementById(id);
 const FT = 3.28084, KT = 1.943844, NM = 1852;
 const START_FUEL = 25000; // kg
@@ -138,16 +143,19 @@ renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(55, innerWidth / innerHeight, 0.05, 1.2e7);
 scene.environment = new THREE.PMREMGenerator(renderer).fromScene(new RoomEnvironment(), 0.04).texture; // replaced by the sky
-addEventListener('resize', () => { renderer.setSize(innerWidth, innerHeight, false); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
+addEventListener('resize', () => { syncRendererSize(renderer, renderer.getPixelRatio(), innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); });
 
 const db = new AirportDB();
 const geo = new Geo(39.1361, -121.4365);
 const terrain = new Terrain(scene, geo, db);
 terrain.renderer = renderer;
 terrain.anisotropy = renderer.capabilities.getMaxAnisotropy();
+// Scenery constructors are worker-free; enabled layers start their pools on demand.
 const buildings = new Buildings(scene, geo, terrain, db);
+buildings.enabled = (LS.get('settings', {}) || {}).buildings !== false;
 buildings.renderer = renderer; // roof atlases upload under the per-frame budget instead of lazily mid-render
 const trees = new Trees(scene, geo, terrain, db);
+trees.enabled = (LS.get('settings', {}) || {}).trees !== false;
 const env = new Environment(scene, renderer);
 const clouds = new Clouds(scene);
 // Aircraft (Settings / setup sheet): chosen at load, like the depth mode; switching saves the choice and reloads. ?aircraft=c172 overrides it.
@@ -175,9 +183,10 @@ const A380X_AUTO_TRIM = { ...IL76_AUTO_TRIM, alphaSoft: 0.16, alphaHard: 0.20, r
 const STICK_GA = IS_GA || IS_HEAVY; // the stick path of the Skyhawk and Vision Jet (shaped, slewed stick plus the hands-off assist) is the Il-76's too
 const aircraftSystems = new AircraftSystems();
 let systemsState;
-const visual = IS_F27 ? new F27Visual(scene) : IS_DA40 ? new DA40Visual(scene) : IS_C172 ? new C172Visual(scene) : IS_SF50 ? new SF50Visual(scene) : IS_A380X ? new A380XVisual(scene, renderer) : IS_IL76 ? new IL76Visual(scene) : new AircraftVisual(scene);
+const visual = IS_F27 ? new F27Visual(scene) : IS_DA40 ? new DA40Visual(scene) : IS_C172 ? new C172Visual(scene) : IS_SF50 ? new SF50Visual(scene) : IS_A380X ? new A380XVisual(scene, renderer) : IS_IL76 ? new IL76Visual(scene) : new SR71Visual(scene);
 // These scene lights stay allocated/visible across exterior/cockpit views.
 // The authored anchor lights still drive beam positions and lamp material states.
+const sr71ExteriorLights = AIRCRAFT === 'sr71' ? new SR71ExteriorLights(scene) : null;
 const f27LightRig = IS_F27 ? createF27LightRig(scene) : null;
 const f27Livery=IS_F27 ? createF27Livery({base:BASE,warm:textures=>warmTextures(renderer,textures,5,true)}) : null;
 let f27SelectedPaint=IS_F27 ? f27PaintChoice(new URLSearchParams(location.search).get('livery'),LS.get('f27-livery',null)) : null;
@@ -193,6 +202,7 @@ const dbgOff = perf.bindSwitches(); post.dbg = dbgOff; // F5-F9 in the overlay: 
 const sizePost = () => { const v = renderer.getDrawingBufferSize(new THREE.Vector2()), n = Math.max(1, devicePixelRatio || 1); post.setSize(v.x, v.y, innerWidth * n, innerHeight * n); };
 addEventListener('resize', sizePost);
 const rig = new CameraRig(camera, canvas);
+if (AIRCRAFT === 'sr71') configureCameraAircraft({eye:SR71_EYE});
 // Skyhawk: pilot's eye in the left seat (low enough to see the top-row gauges under the glareshield lip: 0 of 24 ray samples hidden, 9 at
 // y 1.64), a wing camera under the left wing, chase and orbit at a light aircraft's distance
 if (IS_C172) { configureCameraAircraft({ eye: new THREE.Vector3(-1.15, 1.58, -0.29).sub(C172_CG), wing: new THREE.Vector3(-2.2, 1.45, -3.2).sub(C172_CG), look: 4, minDist: 7, chase: 13 }); rig.orbit.dist = 13; }
@@ -213,8 +223,9 @@ function syncF27Camera(recenter=false) {
   if (recenter && rig.view==='cockpit') rig.recenterCockpit();
 }
 if (IS_F27) { configureCameraAircraft({ wing: new THREE.Vector3(-3, 2, -9).sub(F27_CG), look: 7, minDist: 22, chase: 39 }); rig.orbit.dist = 39; syncF27Camera(); }
-const controls = new Controls();
+const controls = new Controls({ slewMode: () => state.slew });
 const touchControls = mountTouchControls(controls);
+const cameraInput = bindCameraControls({ rig, controls, document, active: () => state.started && !state.pending && !state.graphicsHold && !fdm.crashed });
 controls.enabled = false; // until a flight is started from the setup screen
 const AP_CONFIG = IS_F27 ? F27_AP : IS_DA40 ? DA40_AP : IS_C172 ? C172_AP : IS_SF50 ? SF50_AP : IS_HEAVY ? HEAVY_AP : undefined;
 const ap = new Autopilot(AP_CONFIG), autoland = new SF50Autoland();
@@ -228,13 +239,17 @@ const hud = new HUD($('hud'));
 mountFlightHud();
 const syncStripH = () => { const e = $('strip'); if (e) document.documentElement.style.setProperty('--strip-h', Math.round(e.getBoundingClientRect().height) + 'px'); }; // the guide sits above the strip (style.css)
 if (window.ResizeObserver && $('strip')) new ResizeObserver(syncStripH).observe($('strip'));
-const audio = new Audio();
+const audio = AIRCRAFT === 'sr71' ? new SR71Audio() : new Audio();
 if (IS_F27) audio.configure({ engines: 2, turboprop: true });
 if (IS_HEAVY) audio.configure({ engines: 4 }); // four engine voices, panned by their position, and the Il-76's systems layers
 hud.visible = false; // the real SR-71 has no HUD
 
 const firstRun = !(LS.get('settings', null) || {}).gfx; // before the migrations below save anything
 const settings = Object.assign({ unstarts: true, metric: false, crash: true, weather: 'clear', clouds: 0, cloudBase: 6000 / FT, windDir: 320, windSpd: 4 / KT, turb: 0.04, runClock: false, vis: 1.8, volume: 0.7, gfx: 'high', shake: false, dynres: true, relief: 0.75, strip: true, buildings: true, trees: true, rscale: 1, assist: false, handsOff: true, landAid: true, metarAuto: false, traffic: false, voiceWarn: true, voiceStyle: DEFAULT_VOICE_STYLE }, startupWeather(LS.get('settings', {}) || {}));
+// Normalize before any migration saves, canvas sizing or range-control initialization.
+const savedRenderScale = settings.rscale;
+settings.rscale = normalizeRenderScale(savedRenderScale);
+if (settings.rscale !== savedRenderScale) LS.set('settings', settings);
 // earlier builds forced Normal and switched on adaptive resolution (which renders at as little as 55 %): undo both once
 if (!settings.gfxV3) { settings.gfxV3 = true; settings.dynres = false; if (settings.gfx === 'normal' || settings.gfx === 'low') settings.gfx = 'high'; LS.set('settings', settings); }
 // render resolution defaults to 100 % of the screen's own pixels again: the 200 % default (and the gfxV4 step that forced it onto every save) ran the
@@ -309,6 +324,9 @@ function spawn(s, meta) {
   state.refuel = null; if (warp.i) { warp.i = 0; $('st-warp').hidden = true; } // a new position starts at 1x with no tanker
   buildingHit.reset(); buildingHit.hasPrev = false;
   state.ditch = false;
+  // Autoland is a flight sequence, not an AP preference: never carry its
+  // flare/go-around overrides or rollout brakes through a position reset.
+  if (IS_SF50) { autoland.disarm(); state.alBrakes = 0; state.srAvoid = []; }
   if (wreck.active) {
     wreck.clear(visual); if (state.viewBeforeCrash) { setView(state.viewBeforeCrash); state.viewBeforeCrash = null; }
     // the wreck camera backs off to 420 m in orbit view: the next flight starts where the player had the orbit before the crash
@@ -322,15 +340,11 @@ function spawn(s, meta) {
   terrain.refreshNear(s.lat, s.lon, 50);
   if (meta && IS_PROP) fdm.magnetos = true; // airport presets are hot starts; free teleports keep engine state
   const sf50EngineOn = IS_SF50 ? fdm.engineOn : undefined;
-  fdm.reset(new THREE.Vector3(0, s.alt + (s.ground ? CG_H : 0), 0), s.hdg, s.speed, s.ground, s.gamma || 0, IS_F27 ? s.f27Approach === true : s.config);
-  // Free F27 teleports preserve the selected configuration, not reset's speed-based defaults.
-  if (IS_F27 && s.config) {
-    if (Number.isFinite(s.config.flapNotch)) fdm.setFlaps(s.config.flapNotch);
-    fdm.flaps = F27_FLAP_DEG[fdm.flapCmd];
-    fdm.gearDown = s.ground || (s.config.gearDown ?? fdm.gearDown); fdm.gearPos = fdm.gearDown ? 1 : 0;
-    if (!s.ground && s.speed > 30) fdm.trimLevel(s.gamma || 0);
-    fdm.out.flaps = fdm.flaps;
-  }
+  // F27 reset owns configuration-before-trim. Only free relocations retain the
+  // pilot's master/feather selections; airport starts/restarts stay hot or cold.
+  const f27Config = IS_F27 ? { ...s.config, approach: s.f27Approach === true,
+    ...(!meta ? { engineRunning: fdm.engineRunning, feather: fdm.engines.map(e => e.feather) } : {}) } : undefined;
+  fdm.reset(new THREE.Vector3(0, s.alt + (s.ground ? CG_H : 0), 0), s.hdg, s.speed, s.ground, s.gamma || 0, IS_F27 ? f27Config : s.config);
   // SF50.reset intentionally hot-starts presets; a free teleport must not
   // silently reopen the fuel cutoff. Rebuild gauges/spool using that switch.
   if (IS_SF50 && !meta) { fdm.engineOn = sf50EngineOn; fdm.setEngines(fdm.throttle); }
@@ -345,6 +359,8 @@ function spawn(s, meta) {
   controls.rudderSet = 0; controls.engSel = 0; controls.engTrim.fill(0); autobrake.reset(); state.abGs = undefined; if (IS_IL76) il76WarnReset(fdm); if (IS_A380X) a380xWarnReset(fdm); // a new flight starts with the rudder centred, the levers together and no stale warning
   // a ground spawn holds the parking brake (the jet crept forward at idle); the first push of the throttle releases it
   fdm.parkingBrake = !!s.ground; state.autoPark = fdm.parkingBrake; state.flightT = 0; aircraftSystems.reset();
+  sf50Feed?.reset();
+  if (sr71ExteriorLights) { sr71ExteriorLights.reset(); syncSR71ExteriorLights(); }
   // nothing from the last flight flies the new one: auto take-off, landing aid and the autopilot's modes, targets and pilot-set boxes all start fresh
   takeoff.stop(); landAid.on && landAid.disengage(); resetApState();
   if (meta && meta.rwy) nav.setArrival(meta.rwy, meta.end);
@@ -406,8 +422,10 @@ function finishPending() {
   $('loadmsg').textContent = 'Ready';
 }
 function spawnAt(apt, rwyIdx, end, mode) {
-  const r = apt.runways[rwyIdx]; if (!r) return;
-  const sp = r.spawn(end, mode); state.startApt = apt;
+  const selection = resolveRunwaySelection(apt, rwyIdx, end); if (!selection) return false;
+  ({ rwy: rwyIdx, end } = selection);
+  const r = selection.runway, sp = r.spawn(end, mode); if (!sp) return false;
+  state.startApt = apt;
   const setCas = (knots) => { sp.speed = trueAirspeedFromCas(knots / KT, isa(sp.alt)); };
   // the Skyhawk: 65 KIAS on final (the runway's glide path), 105 KIAS at 8,000 ft for the cruise start
   if (IS_C172 && !sp.ground) {
@@ -446,6 +464,7 @@ function spawnAt(apt, rwyIdx, end, mode) {
   state.setup = {aircraft:AIRCRAFT,airport:apt.ident,rwy:rwyIdx,end,mode,mission:missionKind,weather:settings.weather,weatherSnapshot:weatherSnapshot(settings),hour:env.hour};
   if (state.started) { logbook.begin(state.setup); renderLogbook(); }
   toast(`${apt.ident} runway ${r.ends[end].ident} — ${mode === 'runway' ? 'ready for take-off' : mode === 'approach' ? '10 NM final' : mode === 'final' ? '5 NM final' : IS_F27 ? '15,000 ft cruise' : IS_PROP ? '8,000 ft cruise' : IS_SF50 ? 'FL250 cruise' : IS_A380X ? 'FL350 cruise' : IS_IL76 ? 'FL330 cruise' : 'Mach 3.2 cruise'}`);
+  return true;
 }
 function restart() {
   if (!state.lastSpawn) return;
@@ -472,13 +491,14 @@ function beginFlight() {
 const railBtns = [...document.querySelectorAll('#rail button[data-sheet]')];
 railBtns.forEach((b) => b.addEventListener('click', () => openSheet(b.dataset.sheet)));
 document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => openSheet(null)));
-const controlSheets = createSheetController({ document, buttons: railBtns, onOpen: id => {
+function focusFlightSurface() { $('view').focus({ preventScroll: true }); }
+const controlSheets = createSheetController({ document, buttons: railBtns, returnFocus: focusFlightSurface, onOpen: id => {
   if (id === 'map') mapPanel.shown();
   if (id === 'airports') renderAptList();
   if (id === 'flight') renderHome();
 } });
 function openSheet(id, force) { controlSheets(id, force); }
-addEventListener('keydown', (e) => { if (e.key === 'Escape' && !document.body.classList.contains('intro')) openSheet(null); });
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && !e.defaultPrevented && !document.querySelector('dialog[open]') && !document.body.classList.contains('intro')) openSheet(null); });
 // dock labels are tooltips; range tracks fill to their value; the dock fades while the pointer is idle
 document.querySelectorAll('#rail button[title]').forEach((b) => { b.dataset.tip = b.title; b.removeAttribute('title'); });
 const fillRange = (el) => { const min = +el.min || 0, max = +el.max || 100; el.style.setProperty('--fill', `${Math.max(0, Math.min(100, ((el.value - min) / (max - min)) * 100))}%`); };
@@ -515,8 +535,8 @@ function nearDist(a) { const ll = aircraftLatLon(); return ` · ${Math.round(hav
 function bindActions(root, a) {
   root.querySelectorAll('[data-act]').forEach((b) => b.addEventListener('click', () => {
     const [act, ri, ei] = b.dataset.act.split(':'); const r = a.runways[+ri];
-    if (act === 'to' || act === 'app') { const m = act === 'to' ? 'runway' : 'approach'; spawnAt(a, +ri, +ei, missionFits(missionKind, m) ? m : missionSpawnMode(missionKind, m)); openSheet(null); if (state.started) startMission(); } // the selected mission restarts where it expects to start
-    else if (act === 'ils') { nav.setArrival(r, +ei); toast(`Arrival: ${a.ident} runway ${r.ends[+ei].ident} ILS`); renderRoute(); }
+    if (act === 'to' || act === 'app') { const m = act === 'to' ? 'runway' : 'approach'; if (!spawnAt(a, +ri, +ei, missionFits(missionKind, m) ? m : missionSpawnMode(missionKind, m))) return; openSheet(null); if (state.started) startMission(); } // the selected mission restarts where it expects to start
+    else if (act === 'ils') { nav.setArrival(r, +ei); toast(`Arrival: ${a.ident} runway ${r.ends[+ei].ident} · Virtual ILS`); renderRoute(); }
     else if (act === 'home') { setHome(a, +ri || 0, +ei || 0); }
     else if (act === 'direct') { nav.directTo({ lat: a.lat, lon: a.lon, name: a.ident, apt: a.ident }, aircraftLatLon()); toast(`Direct to ${a.ident}`); }
     else if (act === 'add') { nav.add({ lat: a.lat, lon: a.lon, name: a.ident, apt: a.ident }); toast(`${a.ident} added to the route`); }
@@ -526,7 +546,7 @@ function bindActions(root, a) {
 function airportDetail(a, compact) {
   return `${airportHeader(a)}
     <div class="rwys">${a.runways.map((r, i) => runwayHtml(a, r, i, (apt, ri, k, e) =>
-      `<button class="endbtn" data-act="to:${ri}:${k}" title="Line up on runway ${e.ident}">↑ ${e.ident}</button><button class="endbtn" data-act="app:${ri}:${k}" title="10 NM final to ${e.ident}">↘ ${e.ident}</button>${compact ? '' : `<button class="endbtn" data-act="ils:${ri}:${k}" title="Use ${e.ident} as arrival runway">ILS ${e.ident}</button>`}`)).join('')}</div>
+      `<button class="endbtn" data-act="to:${ri}:${k}" title="Line up on runway ${e.ident}">↑ ${e.ident}</button><button class="endbtn" data-act="app:${ri}:${k}" title="10 NM final to ${e.ident}">↘ ${e.ident}</button>${compact ? '' : `<button class="endbtn" data-act="ils:${ri}:${k}" title="Use ${e.ident} for virtual approach guidance">Virtual ILS ${e.ident}</button>`}`)).join('')}</div>
     <div class="chips"><button class="ghost" data-act="direct">Direct to</button><button class="ghost" data-act="add">Add to route</button>
       <button class="ghost" data-act="home:0:0">Set home base</button>${compact ? '' : '<button class="ghost" data-act="map">Show on map</button>'}</div>
     <p class="note">↑ take off · ↘ start on a 10 NM final</p>`;
@@ -534,20 +554,26 @@ function airportDetail(a, compact) {
 
 // ---------- home base ----------
 function setHome(a, rwy, end) {
-  home = { ident: a.ident, rwy, end }; LS.set('home', home); renderHome();
+  const selection = resolveRunwaySelection(a, rwy, end); if (!selection) return;
+  home = { ident: a.ident, rwy: selection.rwy, end: selection.end }; LS.set('home', home); renderHome();
   toast(`Home base set to ${a.ident} — ${a.name}`);
 }
-function homeAirport() { return db.get(home.ident) || db.get('KBAB'); }
+function homeAirport() {
+  const selection = resolveHomeRunway(db, home); if (!selection) return null;
+  home = { ident: selection.apt.ident, rwy: selection.rwy, end: selection.end };
+  return selection.apt;
+}
 function renderHome() {
-  const a = homeAirport(); if (!a) return;
-  const r = a.runways[home.rwy] || a.longest, e = r.ends[home.end] || r.ends[0];
+  const a = homeAirport(); $('home-go').disabled = !a; if (!a) return;
+  const r = a.runways[home.rwy], e = r.ends[home.end];
   $('home-name').textContent = `${a.ident} — ${a.name}`;
   $('home-sub').textContent = [`Runway ${e.ident}`, fmtLen(r.len), aptPlace(a)].filter(Boolean).join(' · ');
   $('home-go').textContent = state.started ? 'Return' : 'Start here';
 }
 $('home-go').addEventListener('click', () => {
   const a = db.ready && homeAirport(); if (!a) return;
-  startWarm(); spawnAt(a, home.rwy, home.end, missionSpawnMode(missionKind, 'runway')); beginFlight(); if (state.pending) showLoadUi(); startMission();
+  startWarm(); if (!spawnAt(a, home.rwy, home.end, missionSpawnMode(missionKind, 'runway'))) return;
+  beginFlight(); if (state.pending) showLoadUi(); startMission();
   if (settings.metarAuto) loadMetar(a, true);
 });
 
@@ -576,8 +602,14 @@ function searchBox(input, results, onPick) {
   });
   input.addEventListener('blur', () => setTimeout(() => { items = []; render(); }, 150));
 }
+function departureSelection() {
+  const selection = resolveRunwaySelection(dep.apt || (db.ready && homeAirport()), dep.rwy, dep.end);
+  if (selection) Object.assign(dep, { apt: selection.apt, rwy: selection.rwy, end: selection.end });
+  return selection;
+}
 function renderDep() {
-  const a = dep.apt; if (!a) return;
+  const selection = departureSelection(); if (!selection) return;
+  const a = selection.apt;
   $('dep-card').innerHTML = `${airportHeader(a)}<div class="lbl">Runway</div><div class="chips">${a.runways.flatMap((r, i) => r.ends.map((e, k) =>
     `<button class="endbtn ${dep.rwy === i && dep.end === k ? 'on' : ''}" data-r="${i}" data-e="${k}">${e.ident} <small>${fmtLen(r.len)}</small></button>`)).join('')}</div>`;
   renderSum();
@@ -585,15 +617,17 @@ function renderDep() {
 }
 // scenery for the chosen runway starts loading as soon as it is picked, not when Start is pressed
 function prefetchPlace() {
-  if (state.started || !dep.apt) return; const r = dep.apt.runways[dep.rwy]; if (!r) return;
-  spawn(r.spawn(dep.end, 'runway'), { rwy: r, end: dep.end });
+  if (!flightAssetsReady) return; // setup choices never require a loaded 3D aircraft
+  if (state.started) return; const selection = departureSelection(); if (!selection) return;
+  const r = selection.runway;
+  spawn(r.spawn(selection.end, 'runway'), { rwy: r, end: selection.end });
 }
 searchBox($('dep-q'), $('dep-results'), (a) => { invalidateWeatherRequest(); dep.apt = a; dep.rwy = 0; dep.end = 0; renderDep(); prefetchPlace(); });
 seg('start-mode', (v) => { dep.mode = v; });
 // one line above Start flight says what it will do: aircraft, runway, start (or mission), time and weather
 function renderSum() {
   const on = (id) => { const b = document.querySelector(`#${id} button.on`); return b && !b.hidden ? b.textContent : ''; };
-  const a = dep.apt, r = a && a.runways[dep.rwy], e = r && r.ends[dep.end];
+  const selection = departureSelection(), a = selection?.apt, e = selection?.runwayEnd;
   const start = missionKind && missionKind !== 'free' ? on('mission-mode') : on('start-mode');
   $('flight-sum').textContent = [AIRCRAFT_TYPES[AIRCRAFT].short, a ? `${a.ident}${e ? ` ${e.ident}` : ''}` : '', start, $('intro-tod-l').textContent, on('intro-wx')].filter(Boolean).join(' · ');
 }
@@ -737,11 +771,16 @@ const rainField = new RainField(); weather.field3d = true; rainField.attach(scen
 weather.noBeads = true; // canopy water is a real refraction pass on the glass now (glasswater.js)
 weather.resize(innerWidth, innerHeight); addEventListener('resize', () => weather.resize(innerWidth, innerHeight));
 const setIntroWx = seg('intro-wx', (v) => applyWeather(v));
-const setWxPreset = seg('wx-presets', (v) => applyWeather(v));
+const setWxPresetStyle = seg('wx-presets', (v) => applyWeather(v));
+const wxPresetButtons = [...$('wx-presets').querySelectorAll('button')];
+function setWxPreset(v) {
+  setWxPresetStyle(v);
+  for (const b of wxPresetButtons) b.setAttribute('aria-pressed', String(b.dataset.v === v));
+}
 // a preset sets cloud cover, wind, turbulence and visibility together, and starts its rain, gloom, fog and lightning
 function applyWeather(id, persist = true) {
   const p = WEATHER[id]; if (!p) return;
-  invalidateWeatherRequest(); state.metar = null; delete settings.metarWx;
+  invalidateWeatherRequest(); state.metar = null; state.wxManual = false; state.wxReportStatus = null; delete settings.metarWx;
   if (persist) weatherPreferences.commit();
   settings.weather = id; settings.clouds = p.clouds; settings.windSpd = p.wind / KT; settings.turb = p.turb; settings.vis = p.vis;
   // A chosen preset is authoritative; METAR must not replace it at Start.
@@ -755,10 +794,11 @@ $('start-btn').addEventListener('click', () => {
   // rapid clicks after the start spawned and started the mission again while the world loaded. Before the start, a pending spawn is only the
   // menu's background scenery (boot, runway pick): the click must go ahead, or Start flight seemed to need several clicks.
   if (state.pending && state.started) return;
-  const a = dep.apt || (db.ready && homeAirport()); if (!a) return;
-  if ($('make-home').checked) setHome(a, dep.rwy, dep.end);
+  const selection = departureSelection(); if (!selection) return;
+  const a = selection.apt;
   const mode = ['tutorial', 'tour', 'c172guide', 'c172pattern'].includes(missionKind) ? 'runway' : missionKind === 'landassist' ? 'approach' : missionKind === 'landhand' ? 'final' : dep.mode;
-  startWarm(); spawnAt(a, dep.rwy, dep.end, mode);
+  startWarm(); if (!spawnAt(a, dep.rwy, dep.end, mode)) return;
+  if ($('make-home').checked) setHome(a, dep.rwy, dep.end);
   if (mode !== 'runway') { fdm.gearDown = mode === 'approach' || mode === 'final'; fdm.gearPos = fdm.gearDown ? 1 : 0; }
   beginFlight();
   if (state.pending) showLoadUi();
@@ -769,7 +809,7 @@ $('start-btn').addEventListener('click', () => {
 // Explicit quick-start choice never changes the saved aircraft or requests geolocation.
 const quickAircraft = IS_F27 ? 'f27' : IS_DA40 ? 'da40' : IS_C172 ? 'c172' : 'sr71';
 $('just-fly').textContent = `Just fly · ${AIRCRAFT_TYPES[quickAircraft].short}`;
-$('just-fly').addEventListener('click', () => {
+function startQuickFlight(inCockpit = false) {
   if (AIRCRAFT !== quickAircraft) {
     const u = new URL(location.href); u.searchParams.set('aircraft', quickAircraft); u.searchParams.set('quick', '1'); location.assign(u); return;
   }
@@ -779,9 +819,13 @@ $('just-fly').addEventListener('click', () => {
   missionKind = 'free'; missionKindSet('free'); dep.mode = 'runway';
   weatherPreferences.begin();
   applyWeather('clear', false); env.hour = 15; settings.metarAuto = false; $('metar-auto').checked = false; syncEnvUi();
-  startWarm(); spawnAt(a, Math.min(home.rwy, a.runways.length - 1), home.end === 1 ? 1 : 0, 'runway');
-  beginFlight(); if (state.pending) showLoadUi(); freeOrbitBehind(); startMission();
-});
+  startWarm(); if (!spawnAt(a, home.rwy, home.end, 'runway')) return;
+  beginFlight(); if (state.pending) showLoadUi(); freeOrbitBehind();
+  if (inCockpit) void setView('cockpit');
+  startMission();
+}
+$('just-fly').addEventListener('click', () => startQuickFlight());
+$('sr71-start-cockpit').addEventListener('click', () => startQuickFlight(true));
 const missionKindSet = seg('mission-mode', (v) => { missionKind = v; $('mission-blurb').textContent = MISSIONS[v].blurb; });
 
 // Plain text rendering prevents corrupt local records from becoming markup.
@@ -830,13 +874,29 @@ function tutorialCtx() {
     view: rig.view, orbitAz: rig.orbit.az, xtk: n.ilsValid ? n.locXtk : null };
 }
 // ---------- live weather (METAR) ----------
-function invalidateWeatherRequest() { state.wxRequest = (state.wxRequest || 0) + 1; state.wxBusy = false; }
+function syncWeatherStatus() {
+  if (state.wxBusy) return; // Keep immediate launch/request feedback until it settles or is canceled.
+  $('metar-raw').textContent = state.wxUiError || (state.metar && state.wxReportStatus ? state.wxReportStatus
+    : state.wxManual ? 'Manual weather adjustments active. No observation describes the current settings.'
+    : settings.weather === 'metar' ? 'Restored weather settings active; no current observation is loaded.'
+    : `${(WEATHER[settings.weather] || WEATHER.clear).name} preset active. No live observation is applied.`);
+  const current = state.wxUiError ? 'Live weather unavailable · settings unchanged'
+    : state.metar && state.wxReportStatus ? state.wxReportStatus.split(':', 1)[0]
+    : state.wxManual ? 'Manual weather' : settings.weather === 'metar' ? 'Restored weather'
+    : `${(WEATHER[settings.weather] || WEATHER.clear).name} preset`;
+  if ($('weather-current').textContent !== current) $('weather-current').textContent = current;
+}
+function invalidateWeatherRequest() { state.wxRequest = (state.wxRequest || 0) + 1; state.wxBusy = false; state.wxUiError = null; syncWeatherStatus(); }
 function updateFlightWeather() {
   if (!state.setup) return;
   Object.assign(state.setup, { weather: settings.weather, weatherSnapshot: weatherSnapshot(settings), hour: env.hour });
   logbook.updateSetup(state.setup);
 }
-function manualWeather() { invalidateWeatherRequest(); weatherPreferences.commit(); state.metar = null; }
+function manualWeather() {
+  invalidateWeatherRequest(); weatherPreferences.commit(); state.metar = null; state.wxManual = true; state.wxReportStatus = null;
+  setWxPreset('');
+  $('reported-vis-l').textContent = 'No active observation'; syncWeatherStatus();
+}
 
 function applyMetarWx(w) {
   settings.weather = 'metar'; settings.clouds = w.coverage; settings.cloudBase = w.baseM; settings.windDir = w.windDir; settings.windSpd = w.windKt / KT; settings.turb = w.turb; settings.vis = w.vis;
@@ -847,31 +907,45 @@ async function loadMetar(apt, auto) {
   const a = apt || (state.lastSpawn && state.lastSpawn.meta && state.lastSpawn.meta.rwy && state.lastSpawn.meta.rwy.ap) || dep.apt;
   if (!a || !a.ident) return;
   invalidateWeatherRequest(); const request = state.wxRequest;
-  state.wxBusy = true; $('metar-raw').textContent = `Fetching live weather for ${a.ident}…`;
+  state.wxBusy = true; $('metar-raw').textContent = `Fetching live weather for ${a.ident}…`; $('weather-current').textContent = `Loading weather for ${a.ident}…`;
   try {
-    const { w, source, km } = await liveWeather(a, BASE); if (request !== state.wxRequest) return; if (!auto) weatherPreferences.commit(); applyMetarWx(w); state.metar = w;
-    if (w.raw) {
+    const { w, source, km } = await liveWeather(a, BASE); if (request !== state.wxRequest) return; if (!auto) weatherPreferences.commit();
+    state.wxBusy = false; state.metar = w; state.wxManual = false; state.wxModeled = w.modeled === true || /model/i.test(source);
+    state.wxReportStatus = `${source}${km ? ` (${km} km away)` : ''}: ${w.raw || 'Structured weather observation'}`;
+    applyMetarWx(w);
+    if (w.atisObservation) {
       const atisIndex = ((state.atisIndex ?? -1) + 1) % 26; state.atisIndex = atisIndex;
-      // the weather is already applied here: an ATIS that cannot be built is skipped, it must not report "No live weather"
-      try { const atis = buildAtis({ metar: w.raw, information: String.fromCharCode(65 + atisIndex), runways: a.runways || [] }); atc.say(`${a.name} ATIS`, atis, atis); } catch (e) { console.warn('ATIS skipped:', e.message); }
+      // Structured data only: model prose is not a METAR. A nearby/model result
+      // cannot determine the departure's runway; retain runway selection for exact reports.
+      try { const atis = buildAtis({ metar: w.atisObservation, information: String.fromCharCode(65 + atisIndex), runways: !state.wxModeled && source === `METAR ${a.ident}` ? a.runways || [] : [] }); atc.say(`${a.name} ${state.wxModeled ? 'modeled weather' : 'ATIS'}`, atis, atis); } catch (e) { console.warn('ATIS skipped:', e.message); }
     }
-    $('metar-raw').textContent = `${source}${km ? ` (${km} km away)` : ''}: ${w.raw}`;
-    toast(`Live weather (${source}${km ? `, ${km} km away` : ''}): ${w.windKt ? `wind ${String(w.windDir).padStart(3, '0')}/${w.windKt} kt` : 'calm'}, ${w.coverage > 0.1 ? `cloud ${Math.max(0, Math.round((w.baseM - (a.elev || 0)) * FT / 100) * 100)} ft` : 'clear'}${w.rain ? ', precipitation' : ''}${w.thunder ? ', thunderstorms' : ''}`);
-  } catch (e) { if (request !== state.wxRequest) return; $('metar-raw').textContent = `No live weather for ${a.ident} (${e.message}). The weather settings are unchanged.`; if (!auto) toast('Live weather unavailable', true); }
+    syncWeatherStatus();
+    toast(`${state.wxModeled ? 'Modeled weather' : 'Live weather'} (${source}${km ? `, ${km} km away` : ''}): ${w.windKt ? `wind ${String(w.windDir).padStart(3, '0')}/${w.windKt} kt` : 'calm'}, ${w.obscured ? `vertical visibility ${Number.isFinite(w.verticalVisibilityFt) ? w.verticalVisibilityFt + ' ft' : 'unavailable'} (obscuration)` : w.coverage > 0.1 ? `cloud ${Math.max(0, Math.round((w.baseAglM ?? (w.baseM - (a.elev || 0))) * FT / 100) * 100)} ft` : 'clear'}${w.rain ? ', precipitation' : ''}${w.thunder ? ', thunderstorms' : ''}`);
+  } catch (e) { if (request !== state.wxRequest) return; state.wxUiError = `No live weather for ${a.ident} (${e.message}). The weather settings are unchanged.`; state.wxBusy = false; syncWeatherStatus(); if (!auto) toast('Live weather unavailable', true); }
   if (request === state.wxRequest) state.wxBusy = false;
 }
 $('metar-btn').addEventListener('click', () => loadMetar());
 bindMetarAuto();
-function bindMetarAuto() { const el = $('metar-auto'); el.checked = settings.metarAuto === true; el.addEventListener('change', () => { manualWeather(); settings.metarAuto = el.checked; saveSettings(); }); }
+function bindMetarAuto() { const el = $('metar-auto'); el.checked = settings.metarAuto === true; el.addEventListener('change', () => { invalidateWeatherRequest(); weatherPreferences.commit(); settings.metarAuto = el.checked; saveSettings(); }); }
 
 // ---------- throttle lever, loading screen, first-flight guide, radio ----------
 const lever = { el: $('throttle-lever'), track: $('tl-track'), knob: $('tl-knob'), fill: $('tl-fill'), val: $('tl-val'), drag: false };
-function leverSet(e) { const r = lever.track.getBoundingClientRect(); controls.throttle = Math.max(0, Math.min(1, 1 - (e.clientY - r.top) / r.height)); controls.touched = true; }
-lever.track.addEventListener('pointerdown', (e) => { lever.track.setPointerCapture(e.pointerId); lever.drag = true; leverSet(e); e.preventDefault(); });
+function leverInputAllowed() { return controls.enabled && !controls.locked; }
+function leverSet(e) {
+  if (!leverInputAllowed()) { lever.drag = false; return; }
+  const r = lever.track.getBoundingClientRect(); controls.throttle = Math.max(0, Math.min(1, 1 - (e.clientY - r.top) / r.height)); controls.touched = true;
+}
+lever.track.addEventListener('pointerdown', (e) => { if (!leverInputAllowed()) return; lever.track.setPointerCapture(e.pointerId); lever.drag = true; leverSet(e); e.preventDefault(); });
 lever.track.addEventListener('pointermove', (e) => { if (lever.drag) leverSet(e); });
 lever.track.addEventListener('pointerup', () => { lever.drag = false; });
 lever.track.addEventListener('pointercancel', () => { lever.drag = false; });
-lever.track.addEventListener('keydown', (e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') { controls.throttle = Math.max(0, Math.min(1, controls.throttle + (e.key === 'ArrowUp' ? 0.05 : -0.05))); controls.touched = true; e.preventDefault(); e.stopPropagation(); } });
+lever.track.addEventListener('lostpointercapture', () => { lever.drag = false; });
+lever.track.addEventListener('keydown', (e) => {
+  if (!['ArrowUp', 'ArrowDown', 'Home', 'End'].includes(e.key)) return;
+  e.preventDefault(); e.stopPropagation();
+  if (!leverInputAllowed()) return;
+  controls.throttle = e.key === 'Home' ? 0 : e.key === 'End' ? 1 : Math.max(0, Math.min(1, controls.throttle + (e.key === 'ArrowUp' ? 0.05 : -0.05))); controls.touched = true;
+});
 // Propeller aircraft and Vision Jet: hide jet-only systems, but keep the autopilot annunciator.
 if (IS_GA) {
   for (const el of [$('p-chute'), $('p-ab'), $('p-uns'), IS_F27 ? null : $('d-tr').parentElement, lever.track.querySelector('.tl-ab')]) if (el) el.style.display = 'none';
@@ -885,14 +959,19 @@ if (IS_HEAVY) {
   for (const id of ['d-t3', 'd-t4']) bars.insertAdjacentHTML('beforeend', `<i><em id="${id}"></em></i>`);
 }
 // DOM writes only when something shown changes (it restyled the lever every frame); the throttle is quantised to 0.2 %
-const leverLast = { on: null, q: -1, blink: null }, thrSeg = document.querySelector('#strip .seg-d.thr');
+const leverLast = { on: null, q: -1, blink: null, disabled: null }, thrSeg = document.querySelector('#strip .seg-d.thr');
 function updateLever() {
+  const disabled = !leverInputAllowed();
+  if (disabled) lever.drag = false;
+  if (disabled !== leverLast.disabled) { leverLast.disabled = disabled; lever.track.setAttribute('aria-disabled', String(disabled)); }
   const on = state.started && !state.pending; if (on !== leverLast.on) { leverLast.on = on; lever.el.hidden = !on; } if (!on) return;
   const q = Math.round(Math.max(0, Math.min(1, fdm.throttle)) * 500);
   if (q !== leverLast.q) {
     leverLast.q = q; const t = q / 500;
     lever.knob.style.bottom = (t * 100) + '%'; lever.fill.style.height = `calc(${t * 100}% - ${t * 8}px)`;
-    lever.track.setAttribute('aria-valuenow', Math.round(t * 100));
+    const percent = Math.round(t * 100);
+    lever.track.setAttribute('aria-valuenow', percent);
+    lever.track.setAttribute('aria-valuetext', `${percent}% throttle${t < 0.02 ? ', idle' : IS_GA || IS_HEAVY ? '' : t > 0.75 ? `, afterburner ${Math.round((t - 0.75) / 0.25 * 100)}%` : `, ${Math.round(t / 0.75 * 100)}% military power`}`);
     lever.val.textContent = t < 0.02 ? 'IDLE' : IS_GA || IS_HEAVY ? `${Math.round(t * 100)}%` : t > 0.75 ? `A/B ${Math.round((t - 0.75) / 0.25 * 100)}%` : `${Math.round(t / 0.75 * 100)}% MIL`;
   }
   const blink = !controls.touched && !ap.on;
@@ -902,19 +981,27 @@ function updateLever() {
 const SF50_TIPS = ['Shift (or E) and Q move the thrust lever: take-off thrust on the runway, max continuous once flying.', 'Runway starts set take-off trim: a light pull at 90 KIAS rotates.',
   'G raises the gear (refused on the ground); F and Shift+F step the flaps through 50 % and 100 %.', 'Let go of the stick and auto-trim holds the attitude.',
   'Keep below 250 KIAS: 210 with the gear down, 190 with 50 % flaps, 150 with full flaps.', 'V cycles the cameras, M opens the map, ? shows every control.'];
-const C172_TIPS = ['Shift (or E) and Q move the throttle.', 'F and Shift+F step the flaps.', 'V cycles the cameras, M opens the map, ? shows every control.',
+const C172_TIPS = ['E and Q move the throttle.', 'F and Shift+F step the flaps.', 'V cycles the cameras, M opens the map, ? shows every control.',
   'The throttle lever on the right edge works with the mouse.'];
 const IL76_TIPS = ['Shift (or E) and Q move the thrust lever for all four engines; they need about 8 s to spool up.', 'Runway starts set take-off slats and flaps and trim: rotate at about 171 KIAS at 210 t.',
   'G raises the gear (refused on the ground); F and Shift+F step the slats and flaps; 2 spoilers, 3 thrust reverse on the ground, 4 cargo hatch.', 'The take-off run is long: 1,500 m at full weight.',
   'V cycles the cameras, M opens the map, ? shows every control.'];
 const A380X_TIPS = ['E / Q set all four Trent thrust levers. Allow the engines to spool up.', 'Use a long runway; rotate smoothly near 155–165 KIAS, depending on mass.', 'F / Shift+F select UP, CONF 1, 2, 3, FULL. G operates the landing gear.', '2 spoilers; 3 reverse (inboard engines only, on the ground); B wheel brakes.', 'Cockpit and double-deck passenger cabin load on first view selection.', 'Original FlyByWire visual conversion; indicative browser-game dynamics, not MSFS avionics.'];
-const lsEl = $('loadscreen'), LS_TIPS = IS_F27 ? ['E / Q adjust twin Dart power; Shift+I starts or stops engines.', 'F / Shift+F select flaps. G operates the retractable gear.', 'V opens the English cockpit. F27 Systems has the lighting and seat controls.', 'Shift+N opens doors only stopped on the ground with engines off.'] : IS_A380X ? A380X_TIPS : IS_IL76 ? IL76_TIPS : IS_SF50 ? SF50_TIPS : IS_DA40 ? ['E and Q control power; F and Shift+F select flaps.', 'V cycles to the real cockpit. Shift+N opens doors on the ground.', 'The G1000-style displays and flight dynamics are simplified.'] : IS_C172 ? C172_TIPS : ['Shift (or E) and Q move the throttle. 9 lights both afterburners.', 'Above Mach 2.3 keep the sideslip small or an inlet can unstart.', 'The J58 engines need about six seconds to spool up.', 'V cycles the cameras, M opens the map, ? shows every control.', 'Pull the drag chute with C after touchdown, below 200 knots.', 'The throttle lever on the right edge works with the mouse.'];
+const lsEl = $('loadscreen'), LS_TIPS = IS_F27 ? ['E / Q adjust twin Dart power; Shift+I starts or stops engines.', 'F / Shift+F select flaps. G operates the retractable gear.', 'V opens the English cockpit. F27 Systems has the lighting and seat controls.', 'Shift+N opens doors only stopped on the ground with engines off.'] : IS_A380X ? A380X_TIPS : IS_IL76 ? IL76_TIPS : IS_SF50 ? SF50_TIPS : IS_DA40 ? ['E and Q control power; F and Shift+F select flaps.', 'V cycles to the real cockpit. Shift+N opens doors on the ground.', 'The G1000-style displays and flight dynamics are simplified.'] : IS_C172 ? C172_TIPS : ['E and Q move the throttle. 9 lights both afterburners.', 'Above Mach 2.3 keep the sideslip small or an inlet can unstart.', 'The J58 engines need about six seconds to spool up.', 'V cycles the cameras, M opens the map, ? shows every control.', 'Pull the drag chute with C after touchdown, below 200 knots.', 'The throttle lever on the right edge works with the mouse.'];
 const loadUi = { shown: false, since: 0, done: false, tip: 0, fade: 0 };
 const lsStep = (n, st) => { const li = lsEl.querySelector(`[data-step="${n}"]`); if (li) li.className = st; };
 // Start flight shows the loading screen in the click itself: it used to wait 300 ms for the frame loop, which looked like the button had done
 // nothing until the engine sound (let through only once the world is ready) started. Teleports keep the 300 ms grace in updateLoadUi.
 function showLoadUi(now = performance.now()) {
-  if (loadUi.shown) return;
+  if (loadUi.shown) {
+    // A successful model transfer replays the start click with the overlay
+    // already visible; make the next phase clear instead of repeating 'exterior'.
+    if (state.started && state.pending) {
+      const airport = state.lastSpawn?.meta?.rwy?.ap;
+      $('ls-sub').textContent = airport ? `${airport.ident} — ${airport.name}` : 'Loading terrain and imagery…';
+    }
+    return;
+  }
   loadUi.shown = true; loadUi.done = false; loadUi.since = loadUi.since || now; loadUi.p = 0; lsEl.hidden = false; lsEl.classList.remove('out');
   ['aircraft', 'elevation', 'imagery', 'shaders', 'weather'].forEach((n) => lsStep(n, ''));
   $('ls-fill').style.width = '0%'; $('ls-pct').textContent = '0%';
@@ -922,6 +1009,7 @@ function showLoadUi(now = performance.now()) {
   $('ls-sub').textContent = a ? `${a.ident} — ${a.name}` : 'Loading terrain and imagery…';
 }
 function updateLoadUi(now) {
+  if (flightAssetsBusy || (!flightAssetsReady && pendingFlightButton)) return;
   const pend = state.pending && state.started ? state.pending : null;
   if (pend) {
     loadUi.done = false;
@@ -936,7 +1024,7 @@ function updateLoadUi(now) {
     if (now - loadUi.tip > 4500) { loadUi.tip = now; $('ls-tip').textContent = LS_TIPS[(Math.random() * LS_TIPS.length) | 0]; }
   } else {
     loadUi.since = 0;
-    if (loadUi.shown && !loadUi.done) { diagnostics.record('cockpit_reached', 'flight'); loadUi.done = true; loadUi.p = 0; ['aircraft', 'elevation', 'imagery', 'shaders', 'weather'].forEach((n) => lsStep(n, 'done')); $('ls-fill').style.width = '100%'; $('ls-pct').textContent = '100%'; setTimeout(() => lsEl.classList.add('out'), 250); setTimeout(() => { lsEl.hidden = true; loadUi.shown = false; maybeStartGuide(); }, 950); }
+    if (loadUi.shown && !loadUi.done) { diagnostics.record('cockpit_reached', 'flight'); loadUi.done = true; loadUi.p = 0; ['aircraft', 'elevation', 'imagery', 'shaders', 'weather'].forEach((n) => lsStep(n, 'done')); $('ls-fill').style.width = '100%'; $('ls-pct').textContent = '100%'; setTimeout(() => lsEl.classList.add('out'), 250); setTimeout(() => { lsEl.hidden = true; loadUi.shown = false; maybeStartGuide(); scheduleFlightExtras(); }, 950); }
     else if (!loadUi.shown && state.started && !state.guideChecked) maybeStartGuide();
   }
 }
@@ -956,10 +1044,13 @@ $('guide-replay').addEventListener('click', () => {
 const atc = new Atc($('radio'), audio);
 function atcCtx() {
   const m = state.lastSpawn && state.lastSpawn.meta, rw = m && m.rwy, a = rw && rw.ap, n = state.navOut || {};
-  const ll = aircraftLatLon();
-  return { started: state.started && !state.pending && !state.paused, crashed: fdm.crashed, onGround: fdm.onGround, gsKt: fdm.vel.length() * KT, agl: (fdm.pos.y - state.lastGround) * FT, gearDown: fdm.gearDown,
+  const ll = aircraftLatLon(), threshold = nav.arrival && nav.arrival.rwy.ends[nav.arrival.end];
+  // Unlike navOut.thrDist, this remains available past the threshold / outside ILS coverage.
+  const arrivalDistance = threshold ? -haversine(ll.lat, ll.lon, threshold.start.lat, threshold.start.lon)
+    * Math.cos((bearing(threshold.start.lat, threshold.start.lon, ll.lat, ll.lon) - threshold.hdg) * D2R) : null;
+  return { started: state.started && !state.pending && !state.paused, crashed: fdm.crashed, onGround: fdm.onGround, gsKt: fdm.vel.length() * KT, agl: (fdm.pos.y - state.lastGround) * FT, gearDown: fdm.gearDown, fixedGear: IS_PROP, aircraft: AIRCRAFT, goAround: !!ap.ga, arrivalDistance,
     apt: a, rwy: rw ? rw.ends[m.end].ident : '', arrApt: nav.arrival ? nav.arrival.rwy.ap : null, arrRwy: nav.arrival ? nav.arrival.rwy.ends[nav.arrival.end].ident : '', wind: { dir: settings.windDir, kt: settings.windSpd * KT }, nav: n, qnhHpa: state.metar && state.metar.qnhHpa,
-    traffic: traffic.list, ownship: { lat: ll.lat, lon: ll.lon, alt: fdm.pos.y } };
+    traffic: traffic.list, ownship: { lat: ll.lat, lon: ll.lon, alt: fdm.pos.y, heading: attitude(fdm.quat).heading } };
 }
 const airflow = new Airflow(scene), cloudShadow = new CloudShadow();
 TERRAIN_UNIFORMS.uCsTex.value = cloudShadow.rt.texture; TERRAIN_UNIFORMS.uCsTex2.value = cloudShadow.rtOld.texture;
@@ -971,9 +1062,10 @@ const PANEL_HOT = [ // canvas rects on the 2048x1152 instrument texture: [x0, y0
   [430, 1015, 560, 1115, 'gear', 'Landing gear'], [1588, 20, 1716, 96, 'ap', 'Autopilot'], [1289, 1045, 1381, 1100, 'chute', 'Drag chute'],
 ];
 function cockpitPick(ev) {
-  const real = visual.real; if (rig.view !== 'cockpit' || !real || !state.started || state.pending) return null;
+  const real = visual.real; if (rig.view !== 'cockpit' || !real?.pick || !state.started || state.pending) return null;
   const r = renderer.domElement.getBoundingClientRect(); pickNdc.set(((ev.clientX - r.left) / r.width) * 2 - 1, -((ev.clientY - r.top) / r.height) * 2 + 1);
   pickRay.setFromCamera(pickNdc, camera);
+  if (AIRCRAFT === 'sr71') return visual.pick(pickRay);
   const targets = [...real.pick.panels]; for (const t of real.pick.throttles) t.traverse((o) => { if (o.isMesh) targets.push(o); });
   const hit = pickRay.intersectObjects(targets, false)[0]; if (!hit) return null;
   if (hit.object.userData.thr) return { kind: 'throttle' };
@@ -983,12 +1075,18 @@ function cockpitPick(ev) {
 const cvs = renderer.domElement;
 cvs.addEventListener('pointerdown', (ev) => {
   const h = cockpitPick(ev); if (!h) return;
-  if (h.kind === 'throttle') { rig.blockDrag = true; pickDrag.on = true; pickDrag.y0 = ev.clientY; pickDrag.t0 = controls.throttle; cvs.setPointerCapture(ev.pointerId); controls.touched = true; ev.preventDefault(); return; }
+  if (h.kind === 'sr71') {
+    // Original cockpit switches may handle their own action; the existing
+    // rebindable gear, canopy, seal and accessory actions remain the fallback.
+    if (!visual.event?.(h.action)) controls.handlers[h.action]?.();
+    ev.preventDefault(); return;
+  }
+  if (h.kind === 'throttle') { pickDrag.engineIndex = h.engineIndex; rig.blockDrag = true; pickDrag.on = true; pickDrag.y0 = ev.clientY; pickDrag.t0 = controls.throttle + (h.engineIndex === undefined ? 0 : controls.engTrim[h.engineIndex]); cvs.setPointerCapture(ev.pointerId); controls.touched = true; ev.preventDefault(); return; }
   if (h.kind === 'gear') controls.handlers.gear && controls.handlers.gear(); else if (h.kind === 'ap') toggleAp(); else if (h.kind === 'chute') controls.handlers.chute && controls.handlers.chute();
   ev.preventDefault();
 });
 cvs.addEventListener('pointermove', (ev) => {
-  if (pickDrag.on) { controls.throttle = Math.max(0, Math.min(1, pickDrag.t0 - (ev.clientY - pickDrag.y0) / (innerHeight * 0.3))); controls.touched = true; return; }
+  if (pickDrag.on) { const target = Math.max(0, Math.min(1, pickDrag.t0 - (ev.clientY - pickDrag.y0) / (innerHeight * 0.3))); if (pickDrag.engineIndex === undefined) controls.throttle = target; else controls.engTrim[pickDrag.engineIndex] = target - controls.throttle; controls.touched = true; return; }
   const now = performance.now(); if (now - (state.hoverAt || 0) < 120) return; state.hoverAt = now;
   const h = cockpitPick(ev); cvs.style.cursor = h ? (h.kind === 'throttle' ? 'ns-resize' : 'pointer') : ''; if (h && h.label) cvs.title = h.label; else cvs.removeAttribute('title');
 });
@@ -1034,7 +1132,7 @@ function updateMission(dt) {
   const ll = aircraftLatLon(), att = attitude(fdm.quat), n = state.navOut || {};
   const ev = mission.update(dt, { lat: ll.lat, lon: ll.lon, hdg: att.heading, M: fdm.out.M || 0, alt: fdm.pos.y,
     agl: n.ilsValid ? n.agl : fdm.pos.y - state.lastGround, vy: fdm.vel.y, onGround: fdm.onGround, iasKt: ias() * KT, gs: fdm.vel.length(), throttle: fdm.throttle,
-    crashed: fdm.crashed, gearDown: fdm.gearDown, chute: fdm.chuteOpen || 0, pitchDeg: att.pitch * 180 / Math.PI, vrefKt: vrefEas(fdm.mass) * KT, ilsValid: !!n.ilsValid, gsDev: n.gsDev || 0, locXtk: n.locXtk || 0, thrDist: n.thrDist || 0, apOn: ap.on });
+    crashed: fdm.crashed, gearDown: fdm.gearDown, chute: fdm.chuteOpen || 0, pitchDeg: att.pitch * 180 / Math.PI, vrefKt: vrefEas(fdm.mass) * KT, ilsValid: !!n.ilsValid, gsDev: n.gsDev || 0, locXtk: n.locXtk || 0, thrDist: n.thrDist || 0, apOn: ap.on, apApproach: !!ap.modes.appr, goAround: ap.on && !!ap.ga });
   if (ev) { toast(ev.text); if (ev.toast) toast(ev.toast); if (ev.event === 'done') audio.play('gear-lock'); }
   if (mission.coach) renderCoach(mission.coach());
   missionAcc += dt;
@@ -1070,7 +1168,7 @@ function showAirport(a) {
 
 // ---------- map & route ----------
 const mapPanel = new MapPanel($('map'), db, nav, {
-  onAirport: (a) => { const box = $('map-apt'); box.className = 'card'; box.innerHTML = airportDetail(a, true) + `<div class="lbl">Arrival</div><div class="chips">${a.runways.flatMap((r, i) => r.ends.map((e, k) => `<button class="endbtn" data-act="ils:${i}:${k}">ILS ${e.ident}</button>`)).join('')}</div>`; bindActions(box, a); },
+  onAirport: (a) => { const box = $('map-apt'); box.className = 'card'; box.innerHTML = airportDetail(a, true) + `<div class="lbl">Arrival</div><div class="chips">${a.runways.flatMap((r, i) => r.ends.map((e, k) => `<button class="endbtn" data-act="ils:${i}:${k}">Virtual ILS ${e.ident}</button>`)).join('')}</div>`; bindActions(box, a); },
   addWaypoint: (lat, lon) => nav.add({ lat, lon, name: `WP${nav.wps.length + 1}` }),
   directTo: (lat, lon) => { nav.directTo({ lat, lon, name: 'DCT' }, aircraftLatLon()); toast('Direct to waypoint'); },
   teleport: (lat, lon) => openTeleport(lat, lon),
@@ -1090,6 +1188,7 @@ const TP_PRESETS = IS_F27 ? [['Cruise', 15000, 192, 0, false, 0], ['Approach', 3
     : IS_A380X ? [['FL350 cruise', 35000, 280, 0, false], ['Approach', 4000, 180, 0, true], ['Final', 1500, 145, -3, true]] : IS_IL76 ? [['Mach 0.72 cruise', 33000, tpSpeedAtMach(0.72, 33000, 'cas'), 0, false], ['Approach', 4000, 180, 0, true], ['Final', 1500, 148, -3, true]]
       : [['Mach 3.2 cruise', 80000, tpSpeedAtMach(3.2, 80000, 'eas'), 0, false], ['Subsonic', 25000, 320, 0, false], ['Approach', 3000, 200, -3, true]];
 const tp = { lat: 0, lon: 0, flapNotch: undefined };
+const teleportDialog = createTeleportDialog({ dialog: $('tp'), initialFocus: $('tp-alt'), controls, isStarted: () => state.started, returnFocus: focusFlightSurface });
 const explicitTeleportConfig = () => IS_F27 || IS_PROP || IS_SF50 || AIRCRAFT === 'sr71';
 function openTeleport(lat, lon) {
   Object.assign(tp, { lat, lon });
@@ -1109,12 +1208,10 @@ function openTeleport(lat, lon) {
   $('tp-quick').querySelectorAll('button').forEach((b) => b.addEventListener('click', () => { const p = TP_PRESETS[+b.dataset.i];
     $('tp-alt').value = Math.round(p[1] / FT * u); $('tp-spd').value = p[2]; $('tp-gam').value = p[3];
     $('tp-gear').checked = IS_PROP || p[4]; tp.flapNotch = p[5]; }));
-  $('tp').hidden = false; controls.enabled = false; setTimeout(() => $('tp-alt').focus(), 0);
+  teleportDialog.open();
 }
-function closeTeleport() { $('tp').hidden = true; controls.enabled = state.started; }
+function closeTeleport() { teleportDialog.close(); }
 $('tp-cancel').addEventListener('click', closeTeleport);
-$('tp').addEventListener('keydown', (e) => { e.stopPropagation(); if (e.key === 'Escape') closeTeleport(); });
-$('tp').addEventListener('pointerdown', (e) => { if (e.target === $('tp')) closeTeleport(); });
 $('tp-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const num = (id, d) => { const v = parseFloat($(id).value); return Number.isFinite(v) ? v : d; };
@@ -1161,7 +1258,7 @@ function renderRoute() {
   const tot = ll && nav.wps.length ? nav.totalNm(ll) : 0, gs = Math.hypot(fdm.vel.x, fdm.vel.z);
   $('route-sum').textContent = nav.done ? 'Route complete · 0 NM to go' : nav.wps.length ? `${tot.toFixed(0)} NM to go${gs > 30 ? ` · ETE ${Math.floor(tot * NM / gs / 60)} min at ${Math.round(gs * KT)} kt GS` : ''}` : '';
   const arr = nav.arrival;
-  $('arr-box').textContent = arr ? `${arr.rwy.ap.ident} runway ${arr.rwy.ends[arr.end].ident} — ${arr.rwy.ils(arr.end) || 'visual'} · ${fmtLen(arr.rwy.len)}` : 'None — choose one from an airport';
+  $('arr-box').textContent = arr ? `${arr.rwy.ap.ident} runway ${arr.rwy.ends[arr.end].ident} — ${arr.rwy.ils(arr.end) ? 'Virtual ILS (generated guidance)' : 'Visual approach'} · ${fmtLen(arr.rwy.len)}` : 'None — choose one from an airport';
 }
 nav.onChange(renderRoute);
 $('route-list').addEventListener('click', (ev) => {
@@ -1243,7 +1340,7 @@ document.querySelectorAll('#ap-modes button').forEach((b) => b.addEventListener(
   if (on && MODE_GROUPS[m]) MODE_GROUPS[m].forEach((x) => { ap.modes[x] = false; });
   ap.modes[m] = on;
   if (m === 'nav' && on && !nav.wps.length) { ap.modes.nav = false; ap.modes.hdg = true; toast('No flight plan — add waypoints on the Map', true); }
-  if (m === 'appr' && on && !nav.arrival) { ap.modes.appr = false; toast('Tune an ILS first: \\ for the runway ahead, or Airports → ILS', true); }
+  if (m === 'appr' && on && !nav.arrival) { ap.modes.appr = false; toast('Select virtual ILS first: \\ for the runway ahead, or Airports → Virtual ILS', true); }
   else if (m === 'appr' && on && !ap.on && !fdm.onGround) engageAp(); // armed APPR without the A/P flew nothing (FLCH already engaged it)
   if (m === 'flch' && on) { if (!ap.on) engageAp(); if (!ap.modes.spd && !ap.modes.mach) ap.modes.spd = true; }
   if (m === 'vs' && on) apInputs.vs.value = Math.round(fdm.vel.y * 196.85 / 100) * 100;
@@ -1423,8 +1520,9 @@ function sf50ApFrame(dt, att) {
       else if (e === 'hold') toast(`Safe Return: ${autoland.attempt + 1} approaches abandoned. Holding altitude in an orbit near the field. Touch the stick to fly it yourself.`, true);
       else if (e === 'touchdown') toast('Autoland: touchdown — braking');
       else if (e === 'stopped') {
+        const wasSafeReturn = autoland.safeReturn; // disarm clears the completed mode
         fdm.parkingBrake = true; controls.throttle = 0; fdm.throttle = 0; state.alBrakes = 0;
-        ap.disengage(); autoland.disarm(); syncAp(); toast(autoland.safeReturn ? 'Safe Return complete: stopped on the runway, parking brake set' : 'Autoland complete: stopped, parking brake set (Shift+B releases it)', true);
+        ap.disengage(); autoland.disarm(); syncAp(); toast(wasSafeReturn ? 'Safe Return complete: stopped on the runway, parking brake set' : 'Autoland complete: stopped, parking brake set (Shift+B releases it)', true);
       }
     }
   }
@@ -1434,7 +1532,7 @@ function sf50ApFrame(dt, att) {
 }
 function armAutoland() {
   if (autoland.armed) { autoland.disarm(); ap.vsOverride = null; ap.tauV = null; ap.kiDiv = null; toast('Autoland off'); syncAp(); return; }
-  if (!nav.arrival) { toast('Choose an arrival runway first (Map → an airport → ILS), or use Safe Return', true); return; }
+  if (!nav.arrival) { toast('Choose an arrival runway first (Map → an airport → Virtual ILS), or use Safe Return', true); return; }
   if (fdm.onGround) { toast('Autoland arms in the air', true); return; }
   if (!ap.on) engageAp(); if (!ap.on) return;
   ap.modes.appr = true; autoland.arm();
@@ -1481,12 +1579,45 @@ if (IS_HEAVY) {
 // cabin door (Shift+N): opens only stopped on the ground, and closes by itself if the jet starts to roll
 controls.on('doors', () => {
   if (IS_HEAVY) { il76c.doors(); return; }
+  if (AIRCRAFT === 'sr71') {
+    const open = !visual.controls.goal;
+    if (open && (!fdm.onGround || fdm.vel.length() > 1)) { toast('Stop on the ground before opening the canopy', true); return; }
+    if (!visual.setDoors(open)) { toast('Unseal the canopy first (SR-71 canopy seal binding)', true); return; }
+    if (!open) audio.play('sr71-canopy-lock');
+    toast(open ? 'Original canopy opening' : 'Original canopy closing'); return;
+  }
   if (!IS_SF50 && !IS_DA40 && !IS_F27) { toast('Doors: DA40, Vision Jet and Il-76 only', true); return; }
   const open = visual.cabinDoor.cmd > 0;
   if (IS_F27 && !open && fdm.engines.some(e => e.lit || (e.propRpm || 0) > 60)) { toast('Stop both engines before opening F27 doors', true); return; }
   if (!open && (!fdm.onGround || Math.hypot(fdm.vel.x, fdm.vel.z) > 1)) { toast('The cabin door opens only when stopped on the ground', true); return; }
   visual.setDoors(!open); audio.play('gear-door', open ? 1 : -1); toast(open ? 'Cabin door closed' : 'Cabin door open');
 });
+function syncSR71ExteriorLights() {
+  if (!sr71ExteriorLights) return;
+  for (const button of document.querySelectorAll('[data-sr71-exterior-light]')) {
+    const on = sr71ExteriorLights.state[button.dataset.sr71ExteriorLight];
+    button.classList.toggle('on', on); button.setAttribute('aria-pressed', String(on));
+  }
+}
+if (AIRCRAFT === 'sr71') {
+  $('sr71-exterior-controls').hidden = false;
+  const toggleLight = key => {
+    const on = sr71ExteriorLights.toggle(key); syncSR71ExteriorLights();
+    toast('SR-71 ' + key + ' light' + (on ? ' on' : ' off') + ((key === 'landing' || key === 'taxi') && fdm.gearPos < .98 && on ? ' · waits for nose gear down' : ''));
+  };
+  for (const { id, key } of SR71_EXTERIOR_ACTIONS) controls.on(id, () => toggleLight(key));
+  for (const button of document.querySelectorAll('[data-sr71-exterior-light]')) button.addEventListener('click', () => toggleLight(button.dataset.sr71ExteriorLight));
+  syncSR71ExteriorLights();
+  for (const { id } of SR71_COCKPIT_ACTIONS) controls.on(id, () => { if (rig.view === 'cockpit') visual.event?.(id); });
+  controls.on('sr71Seal', () => {
+    if (!visual.toggleSeal()) { toast('Close the canopy before sealing',true); return; }
+    audio.play(visual.controls.sealed?'sr71-seal-on':'sr71-seal-off');
+    toast(visual.controls.sealed?'Canopy sealed':'Canopy unsealed — canopy handle is free');
+  });
+  for(const [id,key] of [['sr71Walt','walt'],['sr71Clipboard','clipboard']]) controls.on(id, () => {
+    void visual.toggleEquipment(key).then(()=>toast('Original '+key+' geometry '+(visual.controls[key]?'open':'stowed')+'; no live simulator display')).catch(e=>toast(e.message,true));
+  });
+}
 // Il-76 only: spoilers and brake panels (2), thrust reverse (3), cargo hatch (4), paratroop doors (5)
 for (const [id, fn] of [['spoilers', 'spoilers'], ['reverse', 'reverse'], ['cargo', 'cargo'], ['paratroop', 'paratroop']]) controls.on(id, () => (IS_HEAVY ? il76c[fn]() : toast('This is an Il-76 control', true)));
 controls.on('autoland', () => { if (IS_SF50) armAutoland(); else toast('Autoland is fitted to the Vision Jet', true); });
@@ -1525,9 +1656,12 @@ async function chooseF27Paint(paint,persist=false) {
 }
 
 // ---------- views ----------
-const VIEW_DESC = { cabin: 'Original double-deck passenger cabin', cockpit: 'Pilot seat, live panel', chase: 'Behind the jet', orbit: 'Drag to orbit', tower: 'Nearest control tower', wing: 'Over the left wing', flyby: 'Watch it pass' };
+const VIEW_DESC = { cabin: 'Original double-deck passenger cabin', cockpit: AIRCRAFT === 'sr71' ? 'Original cockpit · most gauges not live' : 'Pilot seat, live panel', chase: 'Behind the jet', orbit: 'Drag to orbit', tower: 'Nearest control tower', wing: 'Over the left wing', flyby: 'Watch it pass' };
 $('view-grid').innerHTML = VIEWS.map((v) => `<button class="vcard" data-v="${v}"><b>${VIEW_NAMES[v]}</b><small>${VIEW_DESC[v]}</small></button>`).join('');
-$('view-grid').querySelectorAll('.vcard').forEach((b) => b.addEventListener('click', () => setView(b.dataset.v)));
+$('view-grid').querySelectorAll('.vcard').forEach((b) => b.addEventListener('click', () => {
+  if (AIRCRAFT === 'sr71') openSheet(null, true);
+  void setView(b.dataset.v);
+}));
 let f27RequestedView='orbit', f27ViewRequest=0, f27CockpitReady, f27CockpitWarm=false;
 const f27Cover=IS_F27 ? createF27ViewCover(canvas) : null;
 const f27View=IS_F27 ? createF27ViewTransition({getView:()=>rig.view,apply:applyView,cover:active=>f27Cover.set(active),
@@ -1560,7 +1694,98 @@ function f27CockpitPreload() {
   }
   return f27CockpitReady;
 }
+// A cockpit request never moves the eye into an empty interior. V and the
+// accessible Views card share this same cancellable, retryable preparation.
+let sr71RequestedView = 'orbit', sr71ViewSerial = 0, sr71CockpitReady = null, sr71CockpitPrepared = false;
+const sr71CockpitButton = $('sr71-cockpit-entry');
+sr71CockpitButton.hidden = $('sr71-start-cockpit').hidden = AIRCRAFT !== 'sr71';
+sr71CockpitButton.addEventListener('click', (event) => {
+  openSheet(null, true);
+  void setView(sr71RequestedView === 'cockpit' ? 'orbit' : 'cockpit');
+  returnFocusAfterPointer(event, sr71CockpitButton);
+});
+$('sr71-view-retry').addEventListener('click', () => setView('cockpit'));
+$('sr71-view-cancel').addEventListener('click', () => setView(rig.view === 'cockpit' ? 'orbit' : rig.view));
+function prepareSR71Cockpit() {
+  if (!sr71CockpitReady) {
+    const run = Promise.resolve().then(() => visual.preloadCockpit()).then(async part => {
+      const textures = new Set(visual.cockpitTextures());
+      part?.root.traverse(object => {
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) {
+          if (material) for (const value of Object.values(material)) if (value?.isTexture) textures.add(value);
+        }
+      });
+      // Texture upload is optional preparation, not another aircraft download
+      // gate. Slow software GPUs can take minutes to eagerly upload every map.
+      let uploadTimer;
+      try { await Promise.race([warmTextures(renderer, textures, 4, true), new Promise(resolve => { uploadTimer = setTimeout(resolve, 2500); })]); }
+      finally { clearTimeout(uploadTimer); }
+      const undo = revealCockpit(part?.root ? [part.root] : []);
+      let compiled;
+      try { compiled = warmLate({ renderer, scene, camera, post }, part?.root ? [part.root] : visual.cockpit); }
+      finally { undo(); }
+      // Like the F27 transition, do not trap an already-loaded cockpit behind
+      // a driver readiness callback. Compilation has been submitted; keep this
+      // optional warm-up bounded even on software/slow GPUs.
+      let timer;
+      try { await Promise.race([compiled, new Promise(resolve => { timer = setTimeout(resolve, 2500); })]); }
+      finally { clearTimeout(timer); }
+      sr71CockpitPrepared = !!part;
+      return part;
+    }).catch(error => { if (sr71CockpitReady === run) sr71CockpitReady = null; throw error; });
+    sr71CockpitReady = run;
+  }
+  return sr71CockpitReady;
+}
+async function requestSR71View(view) {
+  const serial = ++sr71ViewSerial;
+  sr71RequestedView = view;
+  const feedback = $('sr71-view-feedback');
+  if (view !== 'cockpit') { feedback.hidden = true; applyView(view); return; }
+  if (!flightAssetsReady) {
+    sr71RequestedView = rig.view;
+    toast('Start in SR-71 cockpit from Flight setup to prepare the aircraft first.');
+    return;
+  }
+  if (sr71CockpitPrepared) { feedback.hidden = true; applyView(view); return; }
+  feedback.hidden = false; $('sr71-view-retry').hidden = true;
+  $('sr71-view-message').textContent = 'Preparing cockpit… Exterior view remains active.';
+  try {
+    await withAssetDeadline(prepareSR71Cockpit(), 60000);
+    if (serial !== sr71ViewSerial) return;
+    applyView(view); feedback.hidden = true;
+  } catch (error) {
+    if (serial !== sr71ViewSerial) return;
+    sr71RequestedView = rig.view;
+    $('sr71-view-message').textContent = 'Cockpit is not ready. Keep flying outside, or retry cockpit preparation.';
+    $('sr71-view-retry').hidden = false;
+    console.warn('SR-71 cockpit preparation:', error);
+  }
+}
+let flightExtrasScheduled = false;
+function scheduleFlightExtras() {
+  if (flightExtrasScheduled) return;
+  flightExtrasScheduled = true;
+  // Optional work only; the SR-71 exterior and cockpit are already loaded.
+  // Keep other aircraft's existing prefetch policy.
+  setTimeout(() => whenIdle(() => {
+    if (!state.started || state.pending) { flightExtrasScheduled = false; return; }
+    if (!navigator.connection?.saveData) {
+      if (IS_F27) void f27CockpitPreload().catch(() => {});
+    }
+    visual.lateReady.then(late => {
+      if (!late.length) return;
+      const undo = revealCockpit(late);
+      try { return warmLate({ renderer, scene, camera, post }, late); } finally { undo(); }
+    }).catch(error => console.warn('late warm-up failed', error));
+    if (AIRCRAFT !== 'sr71') {
+      void warmTextures(renderer, visual.cockpitTextures());
+      try { audio.init(); } catch (error) { console.warn('audio prepare failed', error); }
+    }
+  }, 6000), 1200);
+}
 function setView(v, recenter=false) {
+  if (AIRCRAFT === 'sr71') return requestSR71View(v);
   if (!IS_F27) { applyView(v);return; }
   f27RequestedView=v;
   if(v===rig.view&&!f27View.pending&&!recenter){applyView(v);return;}
@@ -1636,6 +1861,15 @@ function updateF27TerrainLights(cameraWorld, height, agl) {
 }
 function applyView(v) {
   rig.set(v);
+  if (AIRCRAFT === 'sr71') {
+    const inside = v === 'cockpit';
+    const label = inside ? 'Return to exterior view' : 'Enter SR-71 cockpit';
+    sr71CockpitButton.setAttribute('aria-pressed', String(inside));
+    sr71CockpitButton.setAttribute('aria-label', label);
+    sr71CockpitButton.dataset.tip = label;
+    sr71CockpitButton.classList.toggle('on', inside);
+  }
+  if (AIRCRAFT === 'sr71') void visual.ensureView(v).catch(e=>toast('Original cockpit unavailable: '+e.message,true));
   if (IS_DA40 && Math.abs(renderer.getPixelRatio() - viewRenderRatio()) > 0.001) setRenderScale();
   if (IS_F27) {
     if (v === 'cockpit') syncF27Camera(true);
@@ -1645,6 +1879,7 @@ function applyView(v) {
   $('view-grid').querySelectorAll('.vcard').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
 }
 function cycleView(delta) {
+  if (AIRCRAFT === 'sr71') { const from = VIEWS.indexOf(sr71RequestedView); return setView(VIEWS[(from + delta + VIEWS.length) % VIEWS.length]); }
   if (!IS_F27) return setView(rig.next(delta));
   const from = VIEWS.indexOf(f27RequestedView);
   return setView(VIEWS[(from + delta + VIEWS.length) % VIEWS.length]);
@@ -1657,15 +1892,31 @@ function syncEnvUi() {
   // don't fight a slider the user is dragging (the real-time clock calls this every 0.1 s)
   for (const id of ['tod', 'intro-tod']) if (document.activeElement !== $(id)) $(id).value = env.hour;
   $('tod-l').textContent = t; $('intro-tod-l').textContent = t;
+  for (const b of wxTimeButtons) {
+    const selected = String(env.hour === Number(b.dataset.hour));
+    if (b.getAttribute('aria-pressed') !== selected) b.setAttribute('aria-pressed', selected);
+  }
   setClouds(settings.clouds);
-  $('cloud-base').value = settings.cloudBase * FT; $('cb-l').textContent = fmtAlt(settings.cloudBase);
+  $('cloud-base').value = settings.cloudBase * FT;
+  const obscured = state.metar?.obscured;
+  $('cb-l').textContent = obscured && !Number.isFinite(state.metar.verticalVisibilityFt) ? 'Obscuration height unavailable'
+    : `${fmtAlt(settings.cloudBase)} MSL${obscured ? ` · VV ${state.metar.verticalVisibilityFt} ft AGL` : ''}`;
+  $('cloud-base').setAttribute('aria-valuetext', $('cb-l').textContent);
   $('wind-dir').value = settings.windDir; $('wind-spd').value = settings.windSpd * KT;
   $('wind-l').textContent = `${String(settings.windDir).padStart(3, '0')}° / ${Math.round(settings.windSpd * KT)} kt`;
+  $('weather-wind').textContent = $('wind-l').textContent;
   $('turb').value = settings.turb; $('turb-l').textContent = settings.turb < 0.15 ? 'light' : settings.turb < 0.45 ? 'moderate' : 'severe';
-  $('vis').value = settings.vis; $('vis-l').textContent = `${Math.round(60 * settings.vis)} km`;
+  $('vis').value = settings.vis; $('vis-l').textContent = `${settings.vis.toFixed(2)}×`;
+  $('reported-vis-l').textContent = state.metar ? `${state.wxModeled ? 'Modeled' : 'Reported'}: ${formatReportedVisibility(state.metar, settings.metric)}` : 'No active observation';
+  syncWeatherStatus();
 }
-const setClouds = seg('clouds', (v) => { manualWeather(); settings.clouds = +v; updateFlightWeather(); saveSettings(); });
-$('tod').addEventListener('input', () => { env.hour = +$('tod').value; syncEnvUi(); });
+const setClouds = seg('clouds', (v) => { manualWeather(); settings.clouds = +v; syncEnvUi(); updateFlightWeather(); saveSettings(); });
+$('tod').addEventListener('input', () => { env.hour = +$('tod').value; syncEnvUi(); updateFlightWeather(); });
+const wxTimeButtons = [...$('weather-times').querySelectorAll('button[data-hour]')];
+for (const b of wxTimeButtons) b.addEventListener('click', () => {
+  $('tod').value = b.dataset.hour;
+  $('tod').dispatchEvent(new Event('input', { bubbles: true }));
+});
 $('tod-run').checked = !!settings.runClock;
 $('tod-run').addEventListener('change', () => { settings.runClock = $('tod-run').checked; saveSettings(); });
 $('cloud-base').addEventListener('input', () => { manualWeather(); settings.cloudBase = +$('cloud-base').value / FT; syncEnvUi(); updateFlightWeather(); saveSettings(); });
@@ -1708,18 +1959,16 @@ const dynres = { base: 1, scale: 1, times: [], at: 0 };
 // Render ratio = the preset's range around the screen's own ratio, times the render-resolution slider, capped at 3 so a 2x laptop screen at 200 %
 // does not ask for 16x the pixels. The other costs are tied to the screen's own pixels, not to this ratio (see setRenderScale).
 const MAX_RATIO = 3;
-const baseRatio = (q) => Math.min(MAX_RATIO, Math.min(q.dpr[1], Math.max(q.dpr[0], devicePixelRatio)) * (settings.rscale || 1));
+const baseRatio = (q) => Math.min(MAX_RATIO, Math.min(q.dpr[1], Math.max(q.dpr[0], devicePixelRatio)) * settings.rscale);
 function viewRenderRatio() {
   const native = Math.max(1, devicePixelRatio || 1);
-  const scaled = dynres.base * (settings.dynres ? dynres.scale : 1);
   // Do not override a manually lowered upscale/quality slider or preset ceiling.
   // F27 changes view without resizing render targets or forcing resolution up.
-  return !IS_F27 && rig.view === 'cockpit' ? Math.max(scaled, Math.min(dynres.base, native)) : scaled;
+  return effectiveRenderRatio(dynres.base, dynres.scale, settings.dynres, native, rig.view === 'cockpit', IS_F27);
 }
 function setRenderScale() {
   const native = Math.max(1, devicePixelRatio || 1);
-  renderer.setPixelRatio(viewRenderRatio());
-  renderer.setSize(innerWidth, innerHeight, false);
+  syncRendererSize(renderer, viewRenderRatio(), innerWidth, innerHeight);
   // Supersampling already gives 4+ samples per screen pixel at 2x: hardware MSAA on top of it only costs bandwidth (4 samples of a half-float
   // target at 4x the pixels). Keep it where the buffer is near native size, where it is the anti-aliasing.
   // from the preset's base ratio, not the adaptive one: dropping the resolution used to switch hardware MSAA on, which costs more than it saved
@@ -1761,7 +2010,7 @@ function adaptResolution(dt, now) {
   }
   // already at the floor and still slow: give up ambient occlusion, then half the shadow updates, before touching the picture itself
   const atFloor = dynres.scale * dynres.base <= floorFor(pressure.level) * native + 1e-3;
-  const np = nextPressure(pressure, atFloor, med); Object.assign(pressure, np);
+  const np = nextPressure(pressure, atFloor, med, { p90 }); Object.assign(pressure, np);
   if (np.drop && settings.autoGfx !== false) {
     // for this session only: the next start is back on the player's own preset (the automatic drop used to be saved for good)
     const lower = lowerPreset(state.gfxActive || settings.gfx);
@@ -1814,8 +2063,8 @@ bindCheck('opt-voice', 'voiceWarn', (on) => { audio.setVoice(on, settings.voiceS
 $('voice-style').classList.toggle('off', settings.voiceWarn === false);
 const setVoiceStyle = seg('voice-style', (v) => { settings.voiceStyle = voiceStyle(v); saveSettings(); audio.init(); audio.setVoice(settings.voiceWarn !== false, settings.voiceStyle); audio.previewVoice(); });
 setVoiceStyle(voiceStyle(settings.voiceStyle));
-$('rscale').value = settings.rscale || 1; $('rscale-l').textContent = Math.round((settings.rscale || 1) * 100) + '%';
-$('rscale').addEventListener('input', () => { settings.rscale = +$('rscale').value; $('rscale-l').textContent = Math.round(settings.rscale * 100) + '%'; saveSettings(); rebase(); });
+$('rscale').value = settings.rscale; $('rscale-l').textContent = Math.round(settings.rscale * 100) + '%';
+$('rscale').addEventListener('input', () => { settings.rscale = normalizeRenderScale($('rscale').value); $('rscale').value = settings.rscale; $('rscale-l').textContent = Math.round(settings.rscale * 100) + '%'; saveSettings(); rebase(); });
 // browser zoom or moving the window to another screen changes devicePixelRatio: re-derive the render scale so the picture stays native
 addEventListener('resize', rebase); // native cloud limits must also follow size-only changes
 bindCheck('opt-traffic', 'traffic', (v) => { traffic.enabled = v; });
@@ -1882,10 +2131,17 @@ function pause(v) {
   controls.setLocked(state.paused || state.graphicsHold); // keys and the gamepad stop flying the jet while paused; view, map and menu keys still work
   holdAudio();
   $('b-pause').classList.toggle('on', state.paused);
+  $('b-pause').setAttribute('aria-pressed', String(state.paused));
   $('st-state').textContent = state.paused ? 'Paused' : fdm.crashed ? 'Crashed' : 'Flying'; $('st-state').className = 'chip ' + (state.paused || fdm.crashed ? 'paused' : 'live');
 }
-$('b-pause').addEventListener('click', () => pause());
-$('b-sound').addEventListener('click', () => { audio.enabled = !audio.enabled; atc.soundChanged(); $('b-sound').classList.toggle('off', !audio.enabled); });
+function toggleSound() {
+  audio.enabled = !audio.enabled; atc.soundChanged();
+  $('b-sound').classList.toggle('off', !audio.enabled);
+  $('b-sound').setAttribute('aria-pressed', String(audio.enabled));
+  $('sound-status').textContent = audio.enabled ? 'Sound on' : 'Sound muted';
+}
+$('b-pause').addEventListener('click', (event) => { pause(); returnFocusAfterPointer(event, event.currentTarget); });
+$('b-sound').addEventListener('click', (event) => { toggleSound(); returnFocusAfterPointer(event, event.currentTarget); });
 $('crash-reset').addEventListener('click', restart);
 $('crash-apt').addEventListener('click', () => openSheet('airports', true));
 
@@ -1961,9 +2217,9 @@ function tuneIlsAhead() {
     const score = d / 1852 + off * 0.15 + align * 0.05; // ahead and lined up beats merely close
     if (off < 70 && (!best || score < best.score)) best = { a, r, k, score, d };
   });
-  if (!best) { toast('No ILS runway ahead within 30 NM (Airports → ILS picks any runway)', true); return; }
+  if (!best) { toast('No virtual ILS runway ahead within 30 NM (Airports → Virtual ILS picks any runway)', true); return; }
   nav.setArrival(best.r, best.k); renderRoute();
-  toast(`ILS tuned: ${best.a.ident} runway ${best.r.ends[best.k].ident} · ${best.r.ils(best.k)} · ${(best.d / 1852).toFixed(1)} NM`);
+  toast(`Virtual ILS selected: ${best.a.ident} runway ${best.r.ends[best.k].ident} · generated guidance · ${(best.d / 1852).toFixed(1)} NM`);
 }
 controls.on('tuneIls', tuneIlsAhead);
 $('ap-tuneils').addEventListener('click', () => { if (state.started) tuneIlsAhead(); });
@@ -2071,9 +2327,10 @@ const engSelect = (n) => { if (N_LEVERS < 2) { toast('Single engine: one thrust 
   controls.engSel = controls.engSel === n ? 0 : n; toast(controls.engSel ? `Engine ${n} selected: the throttle keys move its lever alone` : 'All engines selected'); };
 for (let i = 1; i <= 4; i++) controls.on('engine' + i, () => engSelect(i));
 controls.on('engineAll', () => { controls.engSel = 0; controls.engTrim.fill(0); toast('All engines selected, levers together'); });
-controls.on('sound', () => { audio.enabled = !audio.enabled; atc.soundChanged(); $('b-sound').classList.toggle('off', !audio.enabled); });
-addEventListener('pointerdown', () => audio.init());
-addEventListener('keydown', () => audio.init());
+controls.on('sound', toggleSound);
+// SR-71 unlocks before event handlers so the first real cockpit action can request its own sample.
+addEventListener('pointerdown', () => audio.init(), AIRCRAFT === 'sr71');
+addEventListener('keydown', () => audio.init(), AIRCRAFT === 'sr71');
 
 // ---------- simulation ----------
 // mean wind (log-law shear, settings.windSpd is the 10 m wind) plus Dryden turbulence
@@ -2127,7 +2384,6 @@ function stepWreck(dt, cw) {
 function simulate(dt) {
   state.flightT = (state.flightT || 0) + dt;
   if (!state.slew) logbook.tick(dt);
-  if (state.autoPark) { if (!fdm.parkingBrake) state.autoPark = false; else if (controls.throttle > 0.12) { fdm.parkingBrake = false; state.autoPark = false; toast('Parking brake released'); } }
   if (state.slew) {
     const s = controls.slew, att = attitude(fdm.quat);
     const agl = fdm.pos.y - groundAt(fdm.pos.x, fdm.pos.z);
@@ -2138,6 +2394,7 @@ function simulate(dt) {
     fdm.vel.set(0, 0, 0); fdm.w.set(0, 0, 0);
     return;
   }
+  if (state.autoPark) { if (!fdm.parkingBrake) state.autoPark = false; else if (controls.throttle > 0.12) { fdm.parkingBrake = false; state.autoPark = false; toast('Parking brake released'); } }
   const att = attitude(fdm.quat);
   let tourFlying = false;
   if (tour.active) {
@@ -2153,7 +2410,8 @@ function simulate(dt) {
   if (ap.on) {
     if (controls.manual || (ap.cfg.manualThrottle && (controls.trimUp || controls.trimDown))) { ap.disengage(); autoland.disarm(); state.alBrakes = 0; syncAp(); toast('Autopilot disconnected by manual input', true); }
     else {
-      const c = ap.update(dt, { fdm, out: fdm.out, att, vs: fdm.vel.y, alt: fdm.pos.y, ias: apIas(), nav: state.navOut });
+      // Two-axis fits leave yaw to the pilot; the other APs retain their yaw servo.
+      const c = ap.update(dt, { fdm, out: fdm.out, att, vs: fdm.vel.y, alt: fdm.pos.y, ias: apIas(), nav: state.navOut, rudder: controls.axes.yaw });
       fdm.ctrl.de = c.de; fdm.ctrl.da = c.da; fdm.ctrl.dr = c.dr;
       if (ap.modes.spd || ap.modes.mach || c.thrOverride) { fdm.throttle = c.th; controls.throttle = c.th; }
       if (IS_SF50) sf50ApFrame(dt, att);
@@ -2234,6 +2492,7 @@ function simulate(dt) {
     if (e === 'gear-lock') { audio.play('gear-lock'); state.bump += 0.15; }
     else if (e === 'crash-absorbed') { state.bump += 0.5; if (performance.now() - (state.absorbedAt || 0) > 3000) { state.absorbedAt = performance.now(); toast('Impact ignored (Crash is off)', true); } }
     else if (e === 'crash') {
+      atc.crash(); // cancel browser speech/readbacks without muting impact audio
       // the wreck plays out first; the crash report follows once it has come to rest
       ap.disengage(); syncAp(); takeoff.stop();
       wreck.start(visual, fdm, fdm.crashKind, IS_PROP ? { fuelCap: FUEL_MAX, speedRef: 75, sinkRef: 28, size: 0.3 } : IS_SF50 ? { fuelCap: SF50.FUEL_MAX, speedRef: 110, sinkRef: 35, size: 0.45 } : IS_HEAVY ? { fuelCap: HEAVY_SPEC.FUEL_MAX, speedRef: 120, sinkRef: 40, size: 1.4 } : undefined);
@@ -2255,7 +2514,11 @@ function simulate(dt) {
     else if (e.type === 'restart') toast(`${e.engine ? 'Right' : 'Left'} inlet restarted`);
   }
   // one message per landing, not one per wheel contact (touchdown.js)
-  { const sink = touchdown.frame(fdm.events, dt, fdm.onGround); if (sink !== null) {
+  { const sink = touchdown.frame(fdm.events, dt, fdm.onGround);
+    // Contact effects still play above, but a fatal impact is not a completed arrival.
+    // Cancel even without a main-wheel report so a later wreck contact cannot log it.
+    if (fdm.crashed) logbook.cancel();
+    else if (sink !== null) {
       toast(`Touchdown ${Math.round(sink * 196.85)} fpm`);
       const ll = aircraftLatLon(), nearest = db.nearest(ll.lat,ll.lon);
       const a = nearest && (nearest.a || nearest); const arrival = a && haversine(ll.lat,ll.lon,a.lat,a.lon) < 3000 ? a.ident : 'Unknown';
@@ -2354,7 +2617,7 @@ function sf50State(att, warn) {
     att, casMs: casMs(), gsMs: Math.hypot(fdm.vel.x, fdm.vel.z), trkDeg: (Math.atan2(fdm.vel.x, -fdm.vel.z) * 180 / Math.PI + 360) % 360, flightT: state.flightT || 0, hour: env.hour,
     settings, nav: n, ap, warn, com1Name: tw ? `${tw.a.ident} TWR` : '', destElevFt: destElevFt(),
     airports: db.near(ll.lat, ll.lon, 70).slice(0, 8).map(({ a, d }) => ({ id: a.ident, brgDeg: bearing(ll.lat, ll.lon, a.lat, a.lon), distNm: d / 1852 })),
-  }, 0.1);
+  });
 }
 
 // the Il-76's PFD, ND and engine display feed (src/il76feed.js): bank is + right wing down, pitch and bank in degrees
@@ -2376,6 +2639,7 @@ function frame(now) {
 const hiddenPump = { id: 0 };
 function syncHiddenPump() {
   clearInterval(hiddenPump.id); hiddenPump.id = 0;
+  if (!flightLoopStarted) return;
   if (document.hidden) hiddenPump.id = setInterval(() => { if (!state.pending) return; try { frameBody(performance.now()); } catch (e) { diagnostics.record('runtime_error', 'javascript'); window.__frameErr = String((e && e.stack) || e); } }, 250);
 }
 document.addEventListener('visibilitychange', () => { syncHiddenPump(); holdAudio(); });
@@ -2434,7 +2698,8 @@ function frameBody(now) {
   fps += (1 / Math.max(dt, 1e-3) - fps) * 0.05;
   { const ft = (now - last0) / 1000; adaptResolution(ft, now); adaptClouds(ft, now); last0 = now; }
   controls.onGround = fdm.onGround;
-  controls.update(dt);
+  controls.update(dt, state.slew);
+  cameraInput.update(dt);
   const ll = aircraftLatLon();
   syncImageryNotice();
   state.navOut = nav.update(ll, fdm.pos.y, fdm.vel.length(), ap.cfg.manualThrottle ? ap.cfg.bank(fdm.out.M || 0, ap.modes.nav) : undefined);
@@ -2468,7 +2733,7 @@ function frameBody(now) {
   // Refresh indications without advancing consumables during pause/loading/menu/crash.
   updateAircraftSystems(0);
   updateMission(state.paused ? 0 : dt * warpX());
-  const rainCam = { q: [camera.quaternion.x, camera.quaternion.y, camera.quaternion.z, camera.quaternion.w], fov: camera.fov, alt: rig.world.y,
+  const rainCam = { q: [camera.quaternion.x, camera.quaternion.y, camera.quaternion.z, camera.quaternion.w], fov: camera.fov, alt: rig.world.y, agl: Math.max(0, cw.y - groundAt(cw.x, cw.z)),
     vel: rig.view === 'tower' || rig.view === 'flyby' ? [0, 0, 0] : [fdm.vel.x, fdm.vel.y, fdm.vel.z] };
   for (const ev of weather.update(state.paused ? 0 : dt, fdm.out.V || 0, rig.view === 'cockpit', rainCam)) audio.play('thunder', ev.level, ev.distance);
   {
@@ -2527,8 +2792,9 @@ function frameBody(now) {
     buildings.uni.uWetB.value = env.wet * 0.9;
     TERRAIN_UNIFORMS.uWet.value = env.wet; TERRAIN_UNIFORMS.uRip.value = r > 0.05 ? r : 0; }
   if (visual.glassWater && post.glassWater !== visual.glassWater) { post.glassWater = visual.glassWater; visual.glassWater.setMode(post.enabled ? 0 : 1); }
-  if (!wreck.active) visual.update(dt, fdm, cw, rig.view, env, groundY, IS_F27 ? (rig.view==='cockpit' ? f27PanelState(att,agl) : null) : IS_DA40 ? (rig.view === 'cockpit' ? () => da40State(att, warn) : null) : IS_SF50 ? (rig.view === 'cockpit' ? () => sf50State(att, warn) : null) : IS_IL76 ? (rig.view === 'cockpit' ? () => il76State(att, warn) : null) : IS_A380X ? null : rig.view === 'cockpit' ? panelState(att, warn) : null, IS_F27&&!state.slew&&!state.pending?controls.axes:undefined);
+  if (!wreck.active) visual.update((AIRCRAFT === 'sr71' || IS_SF50) && (state.paused || state.pending) ? 0 : dt, fdm, cw, rig.view, env, groundY, IS_F27 ? (rig.view==='cockpit' ? f27PanelState(att,agl) : null) : IS_DA40 ? (rig.view === 'cockpit' ? () => da40State(att, warn) : null) : IS_SF50 ? (rig.view === 'cockpit' ? () => sf50State(att, warn) : null) : IS_IL76 ? (rig.view === 'cockpit' ? () => il76State(att, warn) : null) : IS_A380X ? null : rig.view === 'cockpit' ? panelState(att, warn) : null, (IS_F27||AIRCRAFT==='sr71')&&!state.slew&&!state.pending?controls.axes:undefined);
   else visual.shadow.visible = false;
+  if (sr71ExteriorLights) { sr71ExteriorLights.update(state.paused || state.pending ? 0 : dt, visual, fdm, !wreck.active); sr71ExteriorLights.updateTerrain(TERRAIN_UNIFORMS, env.daylight); }
   if (IS_F27) { f27LightRig.update(visual.parts.find(p=>p.root.visible),!wreck.active); updateF27TerrainLights(cw, groundY, agl); updateF27Runway(cw, agl, dt, ll, now); }
   if (state.started && !state.pending) traffic.update(state.paused ? 0 : dt, { camWorld: cw, lat: ll.lat, lon: ll.lon, night: env.night, own: fdm.pos });
   { // tree colour follows the climate band under the aircraft: lush and warm in the tropics, dark blue-green conifers toward the poles
@@ -2645,9 +2911,10 @@ function frameBody(now) {
   state.coneSilent = coneSilent;
   try {
     audio.update({
-      paused: state.paused || !!state.pending, cockpit: rig.view === 'cockpit', camDist, camFwdDot: fwd.dot(dirToCam),
+      started: state.started, paused: state.paused || !!state.pending || (AIRCRAFT === 'sr71' && loadUi.shown), cockpit: rig.view === 'cockpit', camDist, camFwdDot: fwd.dot(dirToCam),
       inMachConeAhead: coneSilent, doppler: a / Math.max(a * 0.3, a - vRad), mach: M, engines: IS_SF50 ? [fdm.engines[0]] : fdm.engines, fan: IS_SF50, profile: IS_A380X ? 'trent900' : IS_IL76 ? 'turbofan4' : IS_F27 ? 'turboprop' : null, turboprop: IS_F27 ? fdm.engines.map((e,i) => ({rpm:e.propRpm, turbineRpm:e.rpm, lit:e.lit, fail:e.fail, starting:e.starting, thr:Math.max(0,Math.min(1,fdm.throttle+(fdm.leverTrim?.[i]||0)))})) : null, engineRunning: IS_F27 ? fdm.engineRunning : undefined, piston: IS_PROP ? { rpm: fdm.rpm || 0, thr: fdm.throttle } : null,
       crashed: !!fdm.crashed, rho: out.rho || 1.2, ias: iasMs * KT, onGround: fdm.onGround, gs: fdm.vel.length(), rain: weather.rain,
+      ...(AIRCRAFT === 'sr71' ? { tasKt: Number.isFinite(out.V) ? out.V * KT : undefined, canopyOpen: visual.cabinDoor.pos } : {}),
       gearMoving: fdm.gearPos > 0.001 && fdm.gearPos < 0.999, warnTone: IS_HEAVY ? il76c.warnTone(warn) : warn.pullUp ? 2 : warn.stall ? 1 : IS_F27 && warn.gearUnsafe ? 3 : IS_F27 && casMs()*KT>227 ? 4 : 0, warn,
       ...(IS_HEAVY ? { flapMoving: Math.abs(fdm.flaps - HEAVY_NOTCHES[fdm.flapCmd].flap) > 0.05 || Math.abs(fdm.slats - HEAVY_NOTCHES[fdm.flapCmd].slat) > 0.05, cargoMoving: visual.cargoMoving(),
         revMoving: fdm.engines.some((e) => e.rev > 0.02 && e.rev < 0.98), spoilers: fdm.spoilers, apu: fdm.onGround && fdm.vel.length() < 6 } : {}),
@@ -2750,8 +3017,29 @@ function startWarm(again) {
   if (warm.started && !again) return warm.promise; warm.started = true; warm.done = false;
   try { occlusion.warm(renderer, camera); } catch (e) { console.warn('cockpit mask warm-up failed', e); }
   warm.promise = Promise.resolve().then(() => { const undo = revealCockpit(); try { return warmShaders(warmArgs()); } finally { undo(); } })
-    .then((r) => { warm.programs = r.programs; warm.ms = r.ms; finishPrograms(renderer).then((n) => { warm.finished = n; }); }).catch((e) => console.warn('shader warm-up failed', e)).finally(() => { warm.done = true; });
+    .then(async (r) => { await warmSR71CockpitScene(); warm.programs = r.programs; warm.ms = r.ms; finishPrograms(renderer).then((n) => { warm.finished = n; }); }).catch((e) => console.warn('shader warm-up failed', e)).finally(() => { warm.done = true; });
   return warm.promise;
+}
+async function warmSR71CockpitScene() {
+  if (AIRCRAFT !== 'sr71' || !visual.interior) return;
+  // The interior is detached outside. Compiling that tree alone warms its own
+  // materials, but misses every exterior/scenery material's 18-spot variant.
+  // Submit the complete scene with the exact cockpit light set before flight,
+  // then restore it synchronously so no exterior frame draws the interior.
+  const root = visual.interior.root, parent = root.parent;
+  const before = renderer.info.programs.length;
+  visual.model.add(root);
+  const undo = revealCockpit([root]);
+  let ready;
+  try { ready = warmLate({ renderer, scene, camera, post }, [scene]); }
+  finally {
+    undo();
+    if (parent) parent.add(root); else root.removeFromParent();
+  }
+  await ready;
+  // Without parallel linking, compilation alone leaves a synchronous first-use
+  // wait. Finish only the newly submitted variants under the loading screen.
+  await finishPrograms(renderer, before);
 }
 function warmArgs() {
   const extra = [terrain.material, buildings._material(), ...trees.nearMat, trees.impMat], casters = [buildings.casterMat, ...trees.casterOf.values()];
@@ -2774,58 +3062,118 @@ function revealCockpit(extra = []) {
 }
 function prewarmCrash() { startWarm(); }
 
+// Flight assets are demand-loaded: the menu artwork is static and needs no 3D aircraft.
+let flightAssetsReady = false, flightAssetsPromise = null, flightAssetsBusy = false;
+let pendingFlightButton = null, flightLoopStarted = false;
+function startFlightLoop() {
+  if (flightLoopStarted) return;
+  flightLoopStarted = true;
+  state.bootT = performance.now(); requestAnimationFrame(frame); syncHiddenPump();
+}
+const flightLoadActions = $('flight-load-actions');
+$('flight-load-retry').addEventListener('click', () => location.reload());
+$('flight-load-back').addEventListener('click', () => {
+  const returnTo = pendingFlightButton;
+  pendingFlightButton = null; lsEl.hidden = true; loadUi.shown = false; loadUi.since = 0;
+  openSheet('flight', true);
+  $(returnTo || 'start-btn').focus();
+});
+document.addEventListener('click', event => {
+  const button = event.target instanceof Element && event.target.closest('#start-btn, #home-go, #just-fly, #resume-flight, #sr71-start-cockpit');
+  if (!button || button.disabled || !window.__simReady) return;
+  if (flightAssetsReady) { startFlightLoop(); return; }
+  // Quick and Resume may navigate to a different aircraft. Let their own handlers
+  // choose it without downloading the currently selected aircraft first.
+  if (button.id === 'just-fly' && AIRCRAFT !== quickAircraft) return;
+  if (button.id === 'resume-flight' && logbook.read().last?.aircraft !== AIRCRAFT) return;
+  event.preventDefault(); event.stopImmediatePropagation();
+  pendingFlightButton = button.id;
+  flightLoadActions.hidden = false; $('flight-load-retry').hidden = true; showLoadUi();
+  $('ls-title').textContent = 'Preparing your flight';
+  $('ls-sub').textContent = AIRCRAFT === 'sr71' ? 'Loading SR-71 exterior and cockpit…' : `Loading ${AC.short || AIRCRAFT_TYPES[AIRCRAFT].short} exterior…`;
+  lsStep('aircraft', 'busy');
+  if (flightAssetsBusy) return;
+  flightAssetsBusy = true;
+  // Give the loading feedback a paint before parsing models/compiling graphics.
+  new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)))
+    .then(prepareFlightAssets).then(() => {
+      flightAssetsBusy = false;
+      const id = pendingFlightButton; pendingFlightButton = null;
+      if (id) { flightLoadActions.hidden = true; startFlightLoop(); $(id).click(); }
+    }).catch(error => {
+      flightAssetsBusy = false;
+      if (!pendingFlightButton) return;
+      $('ls-title').textContent = 'Aircraft could not be prepared';
+      $('ls-sub').textContent = `${error.message}. Check your connection, reload to retry, or return to setup and choose another aircraft.`;
+      lsStep('aircraft', 'error'); flightLoadActions.hidden = false; $('flight-load-retry').hidden = false;
+      console.warn('flight preparation failed', error);
+    });
+}, true);
+function prepareFlightAssets() {
+  if (flightAssetsPromise) return flightAssetsPromise;
+  flightAssetsPromise = (async () => {
+    document.querySelectorAll('link[data-aircraft-preload]').forEach(link => { link.media = 'all'; });
+    let exterior = 0, cockpit = 0;
+    const reportAircraftProgress = () => {
+      const p = Math.round((AIRCRAFT === 'sr71' ? exterior * .6 + cockpit * .4 : exterior) * 30);
+      $('ls-fill').style.width = `${p}%`;
+      $('ls-pct').textContent = `${p}%`;
+    };
+    await withAssetDeadline(Promise.all([
+      visual.load(`${BASE}models/${AC.model}`, p => { exterior = p; reportAircraftProgress(); }),
+      ...(AIRCRAFT === 'sr71' ? [prepareSR71Cockpit().then(part => {
+        if (!part) throw new Error('Original SR-71 cockpit is unavailable');
+        cockpit = 1; reportAircraftProgress();
+      })] : []),
+      ...(IS_F27 ? [chooseF27Paint(f27SelectedPaint)] : []),
+    ]), IS_A380X || AIRCRAFT === 'sr71' ? 180000 : 30000);
+    if (IS_A380X) configureCameraAircraft({ eye: visual.eye, cabin: visual.cabinEye });
+    visual.registerOccluders(occlusion); visual.attachSelfShadow(env.sun);
+    if (IS_A380X || AIRCRAFT === 'sr71') {
+      wreck.prepared = Promise.resolve({ meshes: 0, tris: 0 }); wreck.piecesWarmed = Promise.resolve();
+    } else {
+      wreck.prepare(visual).catch(e => console.warn('crash split precompute failed', e));
+      wreck.piecesWarmed = wreck.prepared.then(() => new Promise(resolve => {
+        const wait = () => warm.finished !== undefined ? whenIdle(resolve, 4000) : setTimeout(wait, 500); wait();
+      })).then(() => wreck.warmPieces(visual, renderer, scene, camera, post.enabled ? post.sceneRT : null))
+        .catch(e => console.warn('crash piece warm-up failed', e));
+    }
+    if (visual.gearRig) visual.gearRig.onDoor = d => audio.play('gear-door', d === 'open' ? -1 : 1);
+    if (IS_IL76) visual.onDoorSound = k => audio.play('cargo-clunk', k === 'cargo-open' ? -1 : 1);
+    flightAssetsReady = true; window.__flightAssetsReady = true;
+    lsStep('aircraft', 'done');
+  })();
+  return flightAssetsPromise;
+}
+
 // ---------- boot ----------
 (async () => {
-  const bar = (p, msg) => {
-    $('loadbar').style.width = (p * 100) + '%'; if (msg) $('loadmsg').textContent = msg;
-    if (window.__startQueued) { $('ls-fill').style.width = (p * 30) + '%'; $('ls-pct').textContent = Math.round(p * 30) + '%'; if (msg) $('ls-sub').textContent = msg; }
-  };
-  loadWayback(`${BASE}data/wayback.json`); // finer archived Esri releases at some airports; optional
-  try {
-    await withAssetDeadline(Promise.all([
-      visual.load(`${BASE}models/${AC.model}`, (p) => bar(p * 0.6, 'Loading aircraft…')),
-      db.load(`${BASE}data/airports.json`),
-      ...(IS_F27?[chooseF27Paint(f27SelectedPaint)]:[]),
-    ]), IS_A380X ? 180000 : 30000);
-  } catch (e) { showStartupError(IS_A380X ? `A380X could not load: ${e.message}. Select another aircraft or retry on a desktop GPU.` : 'Aircraft or airport data could not load. Check your connection, then retry.'); if (IS_A380X) document.querySelectorAll('#ac-cards button').forEach(b => { b.disabled = false; }); console.error(e); return; }
-  bar(0.8, 'Loading scenery…');
-  if (IS_F27 && !navigator.connection?.saveData) void f27CockpitPreload().catch(() => {}); // after exterior + airport data; retry on cockpit entry if needed
+  loadWayback(`${BASE}data/wayback.json`); // optional; no aircraft transfer on home
+  try { await withAssetDeadline(db.load(`${BASE}data/airports.json`)); }
+  catch (e) { showStartupError('Airport data could not load. Check your connection, then retry.'); return; }
+  if (AIRCRAFT === 'sr71') {
+    visual.onStatus = message => { const el=document.getElementById('sr71-model-status');if(el)el.textContent=message; };
+    const host=document.getElementById('help-sortie');
+    host?.insertAdjacentHTML('beforeend','<li id="sr71-model-status">Original SR-71 airframe with USAF markings. Exterior and cockpit load before flight; use Cockpit or V to enter. Unseal (Shift+S), then canopy (Shift+N), stopped on ground. WALT (Shift+W) and clipboard (Shift+C): geometry only. The complete MSFS systems and effects are not reproduced.</li>');
+  }
   if (IS_A380X) {
     configureCameraAircraft({ eye: visual.eye, cabin: visual.cabinEye });
     visual.onViewStatus = (name, status) => { const msg = $('a380x-view-status'); if (msg) { msg.hidden = status === 'ready'; msg.textContent = status === 'loading' ? `Loading original A380X ${name}… Exterior flight is ready.` : status === 'error' ? `A380X ${name} failed to load. Switch to an exterior view or reselect to retry.` : ''; } };
   }
-  visual.registerOccluders(occlusion);
-  visual.attachSelfShadow(env.sun); // self-shadow and the finest cascade draw the ~37k triangle LOD proxy, not the ~300k triangle airframe
-  if (IS_A380X) { wreck.prepared = Promise.resolve({ meshes: 0, tris: 0 }); wreck.piecesWarmed = Promise.resolve(); }
-  else {
-  wreck.prepare(visual).catch((e) => console.warn('crash split precompute failed', e)); // idle-time slices: impact no longer splits ~250k triangles on the spot
-  // then, once the shader warm-up has linked everything, the piece geometries get their first draw (VAOs, sorted index upload) before any impact
-  wreck.piecesWarmed = wreck.prepared.then(() => new Promise((res) => { const w = () => (warm.finished !== undefined ? whenIdle(res, 4000) : setTimeout(w, 500)); w(); }))
-    .then(() => wreck.warmPieces(visual, renderer, scene, camera, post.enabled ? post.sceneRT : null)).catch((e) => console.warn('crash piece warm-up failed', e));
-  }
-  if (visual.gearRig) visual.gearRig.onDoor = (d) => audio.play('gear-door', d === 'open' ? -1 : 1);
-  if (IS_IL76) visual.onDoorSound = (k) => audio.play('cargo-clunk', k === 'cargo-open' ? -1 : 1); // the cargo hatch reaching its stops
   const a = homeAirport();
-  dep.apt = a; dep.rwy = Math.min(home.rwy, a.runways.length - 1); dep.end = home.end;
+  if (!a) { showStartupError('Home runway unavailable. Reload to retry airport data.'); return; }
+  dep.apt = a; dep.rwy = home.rwy; dep.end = home.end;
   $('dep-q').value = `${a.ident} — ${a.name}`;
   renderHome(); renderDep(); syncEnvUi(); renderSum(); renderRoute();
-  spawn(a.runways[dep.rwy].spawn(dep.end, 'runway'), { rwy: a.runways[dep.rwy], end: dep.end });
   $('start-btn').disabled = false; $('home-go').disabled = false;
+  $('sr71-start-cockpit').disabled = AIRCRAFT !== 'sr71';
+  setView('orbit'); rig.orbit.az = 0.9; rig.orbit.el = 0.14; rig.orbit.dist = IS_PROP ? 16 : IS_SF50 ? 18 : IS_A380X ? 108 : IS_IL76 ? 66 : IS_F27 ? 39 : 46;
   window.__simReady = true;
   if (new URLSearchParams(location.search).get('resume') === '1') { const u=new URL(location.href);u.searchParams.delete('resume');history.replaceState(null,'',u);window.__startQueued='resume-flight'; }
   if (new URLSearchParams(location.search).get('quick') === '1') { const u = new URL(location.href); u.searchParams.delete('quick'); history.replaceState(null, '', u); window.__startQueued = 'just-fly'; }
   if (window.__startQueued) { const id = window.__startQueued; window.__startQueued = null; $(id).click(); } // clicked while loading: start now
-  setView('orbit'); rig.orbit.az = 0.9; rig.orbit.el = 0.14; rig.orbit.dist = IS_PROP ? 16 : IS_SF50 ? 18 : IS_A380X ? 108 : IS_IL76 ? 66 : IS_F27 ? 39 : 46;
-  bar(1, 'Preparing graphics…');
-  setTimeout(() => startWarm().then(() => { // once the first frames have set the lights and environment the shaders depend on
-    visual.lateReady.then((late) => { if (!late.length) return; const undo = revealCockpit(late); try { return warmLate({ renderer, scene, camera, post }, late); } finally { undo(); } }).catch((e) => console.warn('late warm-up failed', e));
-    whenIdle(() => warmTextures(renderer, visual.cockpitTextures()));
-    // the engine and wind sounds are ~40 s of synthesised noise buffers: build them now, while the menu is up, instead of in the first click
-    // (the context starts suspended without a gesture; the click's audio.init() only resumes it)
-    whenIdle(() => { try { audio.init(); } catch (e) { console.warn('audio prepare failed', e); } }, 6000);
-  }), 700);
   // test hook: advance the simulation without waiting for animation frames
-  const advance = (sec) => { for (let t = 0; t < sec; t += 1 / 60) { controls.update(1 / 60); state.navOut = nav.update(aircraftLatLon(), fdm.pos.y, fdm.vel.length(), ap.cfg.manualThrottle ? ap.cfg.bank(fdm.out.M || 0, ap.modes.nav) : (fdm.out.M || 0) > 1 ? 35 : 30); if (!state.paused && !fdm.crashed && !state.pending) simulate(1 / 60); } return { alt: fdm.pos.y, M: fdm.out.M, crashed: fdm.crashed }; };
+  const advance = (sec) => { for (let t = 0; t < sec; t += 1 / 60) { controls.update(1 / 60, state.slew); state.navOut = nav.update(aircraftLatLon(), fdm.pos.y, fdm.vel.length(), ap.cfg.manualThrottle ? ap.cfg.bank(fdm.out.M || 0, ap.modes.nav) : (fdm.out.M || 0) > 1 ? 35 : 30); if (!state.paused && !fdm.crashed && !state.pending) simulate(1 / 60); } return { alt: fdm.pos.y, M: fdm.out.M, crashed: fdm.crashed }; };
   const advanceWreck = (sec) => { for (let t = 0; t < sec; t += 1 / 30) if (wreck.active) stepWreck(1 / 30, rig.world); return { t: wreck.t, settled: wreck.settled() }; };
   // advance until the wreck's own clock (which runs slow at first) reaches t
   const advanceWreckTo = (t) => { for (let n = 0; wreck.active && wreck.t < t && n < 5000; n++) stepWreck(1 / 30, rig.world); return { t: wreck.t, settled: wreck.settled() }; };
@@ -2833,9 +3181,10 @@ function prewarmCrash() { startWarm(); }
     // round 4 test hooks: which mission runs, the map's teleport, and the restart key's action
     f27RunwayMesh: () => f27RunwayInset?.mesh,
     f27CameraReady: () => f27CockpitWarm,
-    f27LightRig,
+    f27LightRig, sr71ExteriorLights,
     f27Livery, f27View,
     missionInfo: () => ({ kind: missionKind, mission: mission ? mission.constructor.name : null, phase: mission ? mission.phase : null, tour: tour.active, tutorial: tutorial.active, toasts: [...document.querySelectorAll('#toasts > *')].map((t) => t.textContent).slice(-3) }),
     mapTeleport: (lat, lon) => mapPanel.cb.teleport(lat, lon), mapPanel, restart, holdForShaders, showAirport, homeAirport };
-  state.bootT = performance.now(); requestAnimationFrame(frame); syncHiddenPump(); // a tab opened in the background never fires visibilitychange
 })();
+
+}

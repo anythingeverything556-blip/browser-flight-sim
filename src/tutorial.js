@@ -54,13 +54,22 @@ export const STEPS = [
 ];
 
 export class Tutorial {
-  constructor() { this.active = false; this.i = 0; this.s = {}; this.pt = 0; this.passed = false; this.final = 0; }
-  start(c) { this.active = true; this.i = 0; this.s = {}; this.pt = 0; this.passed = false; this.final = 0; this.entered = false; this.c0 = c; }
+  constructor() { this.active = false; this.i = 0; this.s = {}; this.pt = 0; this.passed = false; this.final = 0; this.failed = null; }
+  start(c) { this.active = true; this.i = 0; this.s = {}; this.pt = 0; this.passed = false; this.final = 0; this.entered = false; this.c0 = c; this.failed = null; }
   stop() { this.active = false; }
-  skip() { if (this.active && this.i < STEPS.length) { this.passed = true; this.pt = 1e9; } }
+  skip() { if (this.active && !this.failed && this.i < STEPS.length) { this.passed = true; this.pt = 1e9; } }
   // c: aircraft state; returns what the coach card should show, or null once the tutorial is over
   update(dt, c) {
     if (!this.active) return null;
+    // A crash also disconnects the autopilot. It must not satisfy 'Take control',
+    // a pending step's dwell, or the completion card. Only a restart clears failure.
+    if (c.crashed) this.failed = this.failed || c.crashed;
+    if (this.failed) {
+      this.passed = false; this.pt = 0;
+      return { label: 'Tutorial', title: 'Flight ended — try again', hint: '', ok: false, next: false,
+        text: `Crashed: ${this.failed}. Press R to restart the tutorial.` };
+    }
+    if (c.started === false || c.paused || c.pending) return null;
     if (this.i >= STEPS.length) {
       this.final += dt;
       if (this.final > 12) { this.stop(); return null; }

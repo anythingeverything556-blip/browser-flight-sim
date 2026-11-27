@@ -83,7 +83,7 @@ export class Autopilot {
     this.target = { ...cfg.target };
     this.status = { lat: 'HDG', vert: 'ALT', loc: false, gs: false, prot: '', warn: '', recover: false };
     this.stallHold = 0; this.overHold = 0; this.recovering = false; this.recT = 0; this.altErrT = 0;
-    this.deI = 0; this.thI = 0.6; this.locI = 0; this.holdVs = null;
+    this.deI = 0; this.thI = 0.6; this.locI = 0; this.holdVs = null; this.approachId = null;
     this.kiDiv = null; // elevator integrator time scale override; normally scheduled with speed (see update)
   }
   engage(state) {
@@ -105,7 +105,7 @@ export class Autopilot {
   }
   // drop approach latches and the PITCH-hold target so nothing stale survives a re-engage or respawn
   reset() {
-    this.vsOverride = null;
+    this.vsOverride = null; this.approachId = null;
     this.status.loc = false; this.status.gs = false; this.locI = 0; this.holdVs = null;
     this.stallHold = 0; this.overHold = 0; this.recovering = false; this.status.recover = false; this.status.prot = ''; this.status.warn = ''; this.altErrT = 0;
   }
@@ -166,6 +166,14 @@ export class Autopilot {
     }
     // vertical: altitude -> flight-path angle -> elevator (PI with pitch-rate damping)
     let vsT;
+    // A capture belongs to one tuned runway/end, not to APPR mode itself. Drop both
+    // latches and the crosswind correction before evaluating the new signal's gates.
+    // ilsIdent preserves compatibility with callers supplying legacy nav snapshots.
+    const approachId = nav.ilsId ?? nav.ilsIdent ?? null;
+    if (approachId !== this.approachId) {
+      this.status.loc = false; this.status.gs = false; this.locI = 0;
+      this.approachId = approachId;
+    }
     // approach mode: localizer captures inside 2.5°, glideslope once within half a degree of the path
     if (this.modes.appr && nav.ilsValid && !rec) {
       // the localizer captures on an intercept heading (not flying away from the runway), the glideslope only in front of its origin: past it the

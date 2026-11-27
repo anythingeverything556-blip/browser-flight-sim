@@ -498,19 +498,52 @@ class Trees {
       l.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, 1, 0, 1, 1, 0, 1], 2)),
       l.setIndex([0, 1, 2, 0, 2, 3]),
       (this.quad = l));
-    const h = Math.max(1, Math.min(3, (navigator.hardwareConcurrency || 2) - 1));
-    this.workers = Array.from({ length: h }, () => {
-      const u = new Worker(new URL('./trees-worker.js', import.meta.url), { type: 'module' }),
-        f = { w: u, busy: null };
-      return (
-        (u.onmessage = (d) => this._decoded(f, d.data)),
-        (u.onerror = (d) => {
-          (console.warn('trees worker', d.message),
-            f.busy && ((f.busy.state = 'failed'), (f.busy.retryAt = performance.now() + 2e4), (f.busy = null)));
-        }),
-        f
-      );
-    });
+    // Optional scenery must not create workers during core flight startup.
+    const count = Math.max(1, Math.min(3, (globalThis.navigator?.hardwareConcurrency || 2) - 1));
+    this.workers = Array.from({ length: count }, () => ({ w: null, busy: null, failures: 0, retryAt: 0, deadline: 0 }));
+  }
+  _failDecode(job, delay = 20000) {
+    if (!job || job.state === 'disposed') return;
+    job.decodeFailures = (job.decodeFailures || 0) + 1;
+    job.state = 'failed';
+    job.retryAt = job.decodeFailures >= 3 ? Infinity : performance.now() + delay;
+  }
+  _failWorker(slot, error) {
+    console.warn('trees worker unavailable', error?.message || error);
+    const worker = slot.w;
+    slot.w = null; // Invalidate callbacks before termination; never reuse a failed worker.
+    if (worker) {
+      worker.onmessage = worker.onerror = worker.onmessageerror = null;
+      worker.terminate();
+    }
+    this._failDecode(slot.busy);
+    slot.busy = null;
+    slot.deadline = 0;
+    slot.retryAt = ++slot.failures >= 3 ? Infinity : performance.now() + 20000;
+  }
+  _checkWorkers() {
+    const now = performance.now();
+    for (const slot of this.workers)
+      if (slot.busy && now >= slot.deadline) this._failWorker(slot, 'decode timeout');
+  }
+  _ensureWorkers() {
+    if (!this.enabled) return false;
+    this._checkWorkers();
+    for (const slot of this.workers) {
+      if (slot.w || performance.now() < slot.retryAt) continue;
+      try {
+        const worker = new Worker(new URL('./trees-worker.js', import.meta.url), { type: 'module' });
+        slot.w = worker;
+        worker.onmessage = (event) => {
+          if (slot.w === worker) this._decoded(slot, event.data);
+        };
+        worker.onerror = worker.onmessageerror = (event) => {
+          event.preventDefault?.();
+          if (slot.w === worker) this._failWorker(slot, event);
+        };
+      } catch (error) { this._failWorker(slot, error); }
+    }
+    return this.workers.some((slot) => slot.w);
   }
   async _template() {
     return this.template
@@ -577,7 +610,17 @@ class Trees {
     ((t.meshes = []), (t.count = 0), (t.treeData = null));
   }
   clear() {
-    for (const t of [...this.chunks.values()]) t.state !== 'decoding' && this._drop(t);
+    for (const slot of this.workers) {
+      if (!slot.busy) continue;
+      const worker = slot.w;
+      slot.w = null;
+      slot.busy = null;
+      slot.deadline = 0;
+      worker.onmessage = worker.onerror = worker.onmessageerror = null;
+      worker.terminate();
+    }
+    for (const t of [...this.chunks.values()]) this._drop(t);
+    this.jobs.length = 0;
   }
   _vector(t, e) {
     const n = `${t}/${e}`;
@@ -648,6 +691,7 @@ class Trees {
     }
   }
   _pump() {
+    if (!this._ensureWorkers()) return;
     for (const t of [...this.chunks.values()].sort((e, n) => e.dist - n.dist))
       (t.state === 'failed' && performance.now() > t.retryAt && (t.state = 'new'),
         !(t.state !== 'new' || t.dist > this.radius) &&
@@ -660,7 +704,7 @@ class Trees {
             (t.vtEntry = this._vector(t.x >> 1, t.y >> 1)))));
     if ((this._pumpImages(), !(!this.jobs.length || !this.db.ready)))
       for (const t of this.workers) {
-        if (t.busy) continue;
+        if (!t.w || t.busy) continue;
         if (((this.jobs = this.jobs.filter((l) => l.state === 'queued')), !this.jobs.length)) break;
         this.jobs.sort((l, h) => l.dist - h.dist);
         const e = this.jobs.shift();
@@ -680,10 +724,13 @@ class Trees {
               h.width / 2 + 40,
             ]);
         const a = n.filter(Boolean);
-        (i && a.push(i),
+        i && a.push(i);
+        t.id = ++this.jobId;
+        t.deadline = performance.now() + 30e3;
+        try {
           t.w.postMessage(
             {
-              id: ++this.jobId,
+              id: t.id,
               x15: e.x,
               y15: e.y,
               sx: e.x & 1,
@@ -700,14 +747,25 @@ class Trees {
               cap: QS,
             },
             a,
-          ));
+          );
+        } catch (error) {
+          // A failed structured clone may leave the image bitmaps with us.
+          for (const bitmap of n) bitmap?.close?.();
+          this._failWorker(t, error);
+        }
       }
   }
   _decoded(t, e) {
+    if (!e || e.id !== t.id || !t.busy) return;
     const n = t.busy;
-    if (((t.busy = null), (this.stats.lastWorkerMs = e.ms || 0), !n || n.state !== 'decoding')) return;
+    t.busy = null;
+    t.deadline = 0;
+    t.failures = 0;
+    this.stats.lastWorkerMs = e.ms || 0;
+    if (n.state !== 'decoding') return;
     if (e.error) {
-      (console.warn('trees decode', e.error), (n.state = 'failed'), (n.retryAt = performance.now() + 3e4));
+      console.warn('trees decode', e.error);
+      this._failDecode(n, 30e3);
       return;
     }
     if (
@@ -809,6 +867,7 @@ class Trees {
     ((t.sited = !0), (t.fine = t.fineAtStart), (t.gridI = -1));
   }
   update(t, e, n, i, r) {
+    this._checkWorkers(); // Also release timed-out ownership while disabled or above the scenery ceiling.
     if (!this.enabled) {
       (this.chunks.size && this.clear(), (this.group.visible = !1));
       return;

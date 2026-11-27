@@ -154,7 +154,7 @@ export class Terrain {
     this.anisotropy = 8;
     this.drawn = []; this.camera = null; this.now = performance.now();
     this.material = sharedTerrainMaterial(); this.uniformGate = true;
-    this.ghosts = []; this.buildMax = BUILD_MAX; this.uploadBytes = UPLOAD_BYTES; this.selStamp = 0; this.presStamp = 0; this.demEpoch = 0; this.roots = []; this._rootId = -1; this._regionStamp = 0; this._regionMark = new Int32Array(4096); this.reshapeQ = [];
+    this.ghosts = []; this.buildMax = BUILD_MAX; this.uploadBytes = UPLOAD_BYTES; this.selStamp = 0; this.presStamp = 0; this.demEpoch = 0; this.elevationVersion = 0; this.roots = []; this._rootId = -1; this._regionStamp = 0; this._regionMark = new Int32Array(4096); this.reshapeQ = [];
     this._SL = []; this._wanted = []; this._imgJobs = []; this._demJobs = []; this._builds = []; this._ups = []; this._cur = []; this._next = []; this._leaves = []; this._drawnB = []; this._lost = []; this._old = [];
     this._ahead = { e: 0, n: 0, u: 0 }; this._view = { x: 0, y: 0, z: -1, half: 1, cosH: 1, sinH: 0 }; this._dir = new THREE.Vector3(); this._vn = null; this._k = 1; this._farD = 8000; this._stamp = 0; this._selN = 0;
     this._p = new Float64Array(16); this._rows = new Float64Array(4);
@@ -243,7 +243,7 @@ export class Terrain {
     e.jobId = this.loader.request({ type: 'dem', url: DEM_URL(e.z, e.x, e.y), z: e.z, x: e.x, y: e.y }, (m) => {
       this.stats.demActive--; e.jobId = 0; this._last.L = -1;
       this.pumpDem();
-      if (m.data) { e.data = m.data; e.state = 'ready'; e.settled = true; this.stats.demOk++; if (e.failed) this.rebuildFallbacks(); return; }
+      if (m.data) { e.data = m.data; e.state = 'ready'; e.settled = true; e.version = ++this.elevationVersion; this.stats.demOk++; if (e.failed) this.rebuildFallbacks(); return; }
       const gone = m.status === 404 || m.status === 410;
       this.stats.demFail++; e.tries++; e.state = 'failed'; e.failed = true;
       e.settled = gone || e.tries >= 4;
@@ -276,6 +276,23 @@ export class Terrain {
     const old = [...this.dem.values()].filter((e) => e.state !== 'loading' && !e.pin && this.now - e.wantedAt > 3000).sort((a, b) => a.used - b.used);
     for (let i = 0; i < old.length && this.dem.size > DEM_CAP; i++) this.dem.delete(old[i].key);
     this._last.L = -1; this.demEpoch++;
+  }
+  // Latest successful DEM arrival that can affect a height-sampled inset. Bounds
+  // use unwrapped longitude; include bicubic neighbours (two source pixels) and
+  // every loaded level, since a coarse stand-in can change before the fine DEM.
+  elevationRevision(bounds) {
+    let revision = 0;
+    for (const e of this.dem.values()) {
+      if (e.state !== 'ready' || !e.version) continue;
+      const n = 2 ** e.z, pad = 2 / 256;
+      const x0 = lon2tx(bounds.lon0, e.z), x1 = lon2tx(bounds.lon1, e.z);
+      const x = e.x + Math.round(((x0 + x1) / 2 - e.x) / n) * n;
+      if (x + 1 + pad < x0 || x - pad > x1) continue;
+      const y0 = lat2ty(bounds.lat1, e.z), y1 = lat2ty(bounds.lat0, e.z);
+      if (e.y + 1 + pad < y0 || e.y - pad > y1) continue;
+      revision = Math.max(revision, e.version);
+    }
+    return revision;
   }
   // one source pixel at DEM level L; neighbouring DEM tiles are consulted so tile borders are seamless
   pix(L, gx, gy) {
@@ -940,7 +957,8 @@ export class Terrain {
     for (let i = 0; i < wanted.length; i++) {
       const t = wanted[i];
       if (t.img === 'none' || (t.img === 'failed' && now >= t.retryAt)) imgJobs.push(t);
-      if (t.built) continue;
+      // Built fallback tiles still own DEM demand. Otherwise a stationary view
+      // drops settled failures forever, even after their retry deadline passes.
       if (t.demEpoch !== this.demEpoch) { t.demList = this.tileDems(t); t.demEpoch = this.demEpoch; }
       const dl = t.demList;
       for (let j = 0; j < dl.length; j++) {
@@ -949,7 +967,7 @@ export class Terrain {
         if (e.listed !== this.frame) { e.listed = this.frame; e.score = t.score; if (e.state === 'none' || (e.state === 'failed' && now >= e.retryAt)) demJobs.push(e); }
         else if (t.score < e.score) e.score = t.score;
       }
-      if (this.canBuild(t)) builds.push(t);
+      if (!t.built && this.canBuild(t)) builds.push(t);
     }
     for (const e of this.pins) {
       if (e.settled || e.state === 'ready') { e.pin = false; this.pins.delete(e); continue; }

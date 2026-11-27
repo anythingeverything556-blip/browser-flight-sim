@@ -13,15 +13,16 @@ const TERRAIN_UNIFORMS = {
     uDetail: { value: 1 },
     uLand: { value: new THREE.Vector4(0, 0, 0, 0) }, // aircraft landing light: position relative to the camera (xyz) and strength (w)
     uLandDir: { value: new THREE.Vector3(1, 0, 0) },
-    // F27-only twin landing beams and steerable taxi beam. All zeros for other aircraft.
-    uF27Beam: {value: Array.from({length:3}, () => new THREE.Vector4())},
+    // F27-only twin landing beams and steerable taxi beam. Vector4 defaults W to
+    // 1, which would light every other aircraft from the camera's origin.
+    uF27Beam: {value: Array.from({length:3}, () => new THREE.Vector4(0,0,0,0))},
     uF27Aim: {value: Array.from({length:3}, () => new THREE.Vector4(1,0,0,0.94))},
-    uF27Contact: {value: new THREE.Vector4()},
-    uF27Runway: {value: new THREE.Vector4()}, // camera-relative xz, half-length and half-width (m)
-    uF27PatchArea: {value: new THREE.Vector4()}, // start/end feather widths for collision-aligned terrain inset
+    uF27Contact: {value: new THREE.Vector4(0,0,0,0)},
+    uF27Runway: {value: new THREE.Vector4(0,0,0,0)}, // camera-relative xz, half-length and half-width (m)
+    uF27PatchArea: {value: new THREE.Vector4(0,0,0,0)}, // start/end feather widths for collision-aligned terrain inset
     uF27RunwayStyle: {value: new THREE.Vector4(1,0,0,0)}, // runway axis, blend, paved
     uF27Forward: {value: new THREE.Vector2(1,0)},
-    uF27Tires: {value: Array.from({length:3}, () => new THREE.Vector4())},
+    uF27Tires: {value: Array.from({length:3}, () => new THREE.Vector4(0,0,0,0))},
     uBlastA: { value: new THREE.Vector4(0, 0, 0, 0) }, // jet blast: exhaust point relative to the camera (xyz) and strength (w)
     uBlastB: { value: new THREE.Vector4(1, 0, 100, 1e4) }, // unit direction aft in xz, blast length (m), camera height above ground (m)
     uCsTex: { value: null }, uCsMap: { value: new THREE.Vector4(0, 0, 1 / 20000, 0) }, // cloud shadow map (cloudshadow.js)
